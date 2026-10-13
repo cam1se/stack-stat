@@ -1,14 +1,25 @@
 <p align="center">
-  <img src="docs/user/assets/hero.png" alt="StackStat: GitHub PR stacks, at a glance" width="100%">
+  <img src="docs/user/assets/hero.png" width="820" alt="StackStat: GitHub PR stacks, at a glance">
 </p>
 
 <p align="center">
-  <img src="docs/user/assets/demo.gif" alt="Demo of the stack-stat dashboard: selecting layers, reading checks and reviews, and scrolling details" width="480">
+  <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-stable-DEA584?style=flat&colorA=222222&logo=rust&logoColor=white" alt="Rust"></a>
+  <a href="https://ratatui.rs"><img src="https://img.shields.io/badge/TUI-ratatui-222222?style=flat&colorA=222222" alt="Built with ratatui"></a>
+  <a href="https://github.com/tcamise-gpsw/stack-stat/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat&logo=githubactions&logoColor=white" alt="CI"></a>
+  <a href="https://github.com/tcamise-gpsw/stack-stat/releases"><img src="https://img.shields.io/badge/release-latest-4CAF50?style=flat&colorA=222222" alt="Releases"></a>
+  <a href="https://tcamise-gpsw.github.io/stack-stat/"><img src="https://img.shields.io/badge/docs-gh--pages-4CAF50?style=flat&colorA=222222" alt="Docs"></a>
 </p>
 
-# stack-stat
+A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-stack) that answers two questions at a glance: <strong>is each layer ready to merge?</strong> and, if not, <strong>what is blocking it?</strong> It follows the checked-out worktree branch, so it stays accurate while an agent hops between branches.
 
-A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-stack). It follows the checked-out worktree branch and shows stack layers, draft/ready state, CI checks, reviews, and commit-specific local checks. The selected row and checked-out branch remain distinct.
+> [!TIP]
+> Full documentation, including configuration, local checks, and troubleshooting, is at **[tcamise-gpsw.github.io/stack-stat](https://tcamise-gpsw.github.io/stack-stat/)**.
+
+Every layer gets a verdict glyph: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. The header names the next layer to merge and lists what stands in its way, and the detail pane for the selected layer is always open, with failing checks first. Here it is in action:
+
+<p align="center">
+  <img src="docs/user/assets/demo.gif" width="840" alt="Demo of the stack-stat dashboard: selecting layers, reading checks and reviews, and scrolling details">
+</p>
 
 ## Prerequisites
 
@@ -21,7 +32,10 @@ gh extension install github/gh-stack
 
 ## Install
 
-When a release is available, the macOS/Linux installer downloads a checksum-verified binary:
+> [!NOTE]
+> One-time step. Keep it current afterwards with `stack-stat update`.
+
+The macOS/Linux installer downloads a checksum-verified binary:
 
 ```sh
 bash <(gh api repos/tcamise-gpsw/stack-stat/contents/scripts/install.sh -H 'Accept: application/vnd.github.raw')
@@ -31,6 +45,6 @@ Windows users can run the [PowerShell installer](scripts/install.ps1). Alternati
 
 ## Use
 
-From a Git worktree whose branch belongs to a `gh stack` stack, run `stack-stat`. Each layer shows a colored verdict glyph: `✔` ready to merge, `…` waiting on running CI, pending review or a missing local result, `✖` blocked. The detail pane for the selected layer is always open, starting on the worktree's branch. Use ↑/↓ to select a layer; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation.
+From a Git worktree whose branch belongs to a `gh stack` stack, run `stack-stat`. The detail pane starts on the worktree's branch. Use ↑/↓ to select a layer; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation.
 
 External agents and scripts can publish local results with `stack-stat report lint pass`; see [local checks](docs/user/local-checks.md) and [configuration](docs/user/configuration.md). [User documentation](https://tcamise-gpsw.github.io/stack-stat/) covers the full UI and troubleshooting. Developers should read [AGENTS.md](AGENTS.md), the [contributor guide](CONTRIBUTING.md), and [architecture](docs/architecture/01-l1-context.md).
