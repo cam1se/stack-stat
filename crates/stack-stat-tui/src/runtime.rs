@@ -14,7 +14,7 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use futures_util::StreamExt;
-use ratatui::{Terminal, backend::CrosstermBackend, widgets::Paragraph};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use stack_stat_core::{
     config::Config,
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
@@ -80,6 +80,7 @@ where
         original_hook(info);
     }));
     let mut guard = TerminalGuard::enter()?;
+    let theme = crate::theme::Theme::for_depth(crate::theme::ColorDepth::detect());
     let (tx, mut rx) = mpsc::unbounded_channel::<AppMessage>();
     let pollers = poll::spawn(git, Arc::clone(&github), store, config, tx.clone());
     let mut keys = EventStream::new();
@@ -92,9 +93,9 @@ where
                     for effect in effects {
                         if execute_effect(effect, &github, &tx, &pollers).await? { return Ok(()); }
                     }
-                    draw(&mut guard, &app)?;
+                    draw(&mut guard, &app, &theme)?;
                 }
-                Some(Ok(Event::Resize(_, _))) => draw(&mut guard, &app)?,
+                Some(Ok(Event::Resize(_, _))) => draw(&mut guard, &app, &theme)?,
                 Some(Err(error)) => return Err(error).context("reading terminal input"),
                 None => return Ok(()),
                 _ => {},
@@ -105,11 +106,11 @@ where
                 app.apply(message);
                 pollers.set_ci_active(app.ci_active());
                 if completed_mutation { pollers.refresh_all(); }
-                draw(&mut guard, &app)?;
+                draw(&mut guard, &app, &theme)?;
             }
             _ = ticks.tick() => {
                 app.tick(Utc::now());
-                draw(&mut guard, &app)?;
+                draw(&mut guard, &app, &theme)?;
             }
         }
     }
@@ -142,18 +143,11 @@ async fn execute_effect<H: GitHubProvider + 'static>(
 fn draw<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     guard: &mut TerminalGuard,
     app: &App<G, H, S>,
+    theme: &crate::theme::Theme,
 ) -> Result<()> {
-    // Task 11 replaces this temporary frame with the complete dashboard.
     guard
         .terminal
-        .draw(|frame| {
-            let line = format!(
-                "stack-stat · {} · {} · q quit",
-                app.state().worktree_branch,
-                app.status_line().text
-            );
-            frame.render_widget(Paragraph::new(line), frame.area());
-        })
+        .draw(|frame| crate::ui::render(frame, app, theme))
         .context("drawing terminal frame")?;
     Ok(())
 }

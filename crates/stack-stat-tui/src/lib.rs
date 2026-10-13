@@ -15,3 +15,7 @@ pub mod preflight;
 pub mod report;
 /// Terminal lifecycle and event loop.
 pub mod runtime;
+/// Semantic terminal colors and capability detection.
+pub mod theme;
+/// Pure ratatui widgets and dashboard layout.
+pub mod ui;

@@ -27,6 +27,12 @@ The main loop selects terminal input, provider messages, and a presentation tick
 
 The keymap is one table shared by input dispatch and the help overlay. Normal mode handles navigation and actions. Filter mode edits a branch-name query. Help consumes its next key without navigating. Mutations use a confirmation mode that accepts only `y`; another key cancels. Only one mutation can be in flight. Effects run outside the key handler, then request an immediate refresh on completion. Terminal raw mode, alternate screen, and cursor state are restored on normal exit, errors, and panic.
 
+## Frame layout and theme
+
+The header reserves separate lines for stack order and the worktree branch so the branch remains visible when a chain is too wide. The body is a compact status table. Its columns show branch and PR identity, draft/ready/merged/queued lifecycle, a filtered CI summary, visible review state, and reported local checks. The checked-out branch and selected row are distinct: `←wt` marks the former and `►` marks the latter. Enter or Tab opens a selected-branch detail pane with every check, reviewer, local result, and rebase warning. If it does not fit, the pane truncates with `…`. The footer provides context-sensitive key hints, confirmations, fetch errors, and update notices. Help is generated from the same keymap used for dispatch.
+
+At widths below 100 columns, reviews collapse to an icon; below 80, local checks collapse to a worst-state icon. Branch names truncate before fixed status columns shrink. The renderer reads only App state and its injected clock value. Theme selection happens once on launch: `COLORTERM` selects truecolor when available, `TERM` falls back to indexed colors, and basic ANSI colors remain usable otherwise. Animation applies to the active branch, running checks, changed cells, loading placeholders, and activity/freshness indicators as described in the [design](../specs/001-stack-stat-design.md).
+
 ## Refresh policy
 
 Git and the local store poll independently at their configured intervals. GitHub polls more often while checks are running or queued, and pauses after a rate-limit error until a parseable reset or the fallback delay. A forced refresh wakes pollers without waiting for their normal timers. Store cleanup waits for an initial Git branch map so it does not delete reports before learning which branches exist.

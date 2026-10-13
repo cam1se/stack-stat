@@ -93,6 +93,15 @@ impl PrBuilder {
         });
         self
     }
+    pub fn bot_review(mut self, login: &str) -> Self {
+        self.0.reviews.push(ReviewResponse {
+            author: login.into(),
+            state: "APPROVED".into(),
+            is_bot: true,
+            submitted_at: None,
+        });
+        self
+    }
     pub fn check(mut self, name: &str, status: &str, conclusion: Option<&str>) -> Self {
         self.0.checks.push(PrCheckResponse {
             name: name.into(),

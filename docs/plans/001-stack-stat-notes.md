@@ -53,3 +53,9 @@ N/A
 - A throwaway local stack (not pushed) launched the actual alternate-screen TUI; the minimal frame showed `test-layer`, and `q` exited with code 0 and restored the terminal. Full rendering follows in Task 11.
 - The file writer unexpectedly marked `tests/support/mod.rs` executable; its mode was reset to 0644 and the tool behavior was reported.
 - Tokio watch sends a change notification even for an identical value; the App handles frequent Git updates. The GitHub activity watch now publishes only transitions, avoiding accidental remote polling on every local Git tick.
+
+### Task 11: Rendering: header, table, detail pane, status bar, help, theme
+
+- The user supplied a real, read-only stacked worktree. Its status directory did not exist before or after the smoke; the dashboard showed stack layers, PR states, checks, reviews, and the moving selection without mutating that repo. `q` exited 0. One selected PR had dozens of checks; the approved no-scroll detail behavior truncates before later review/local sections. This limits inspection of lower sections for large PRs, despite the summary review column remaining visible.
+- A narrow 80-column rendering test exposed the footer dropping its `q quit` hint because verbose hints filled the line. Compact hints now preserve both quit and active status text at narrow widths.
+- The `proc://` PTY input helper appends an Enter to nonempty writes. Sending `?` opened help then immediately closed it; a key-event trace confirmed both inputs. The real keymap and `TestBackend` help overlay behaved correctly, and the tool issue was reported. Temporary tracing/probe files were removed.

@@ -448,9 +448,9 @@
 - [x] Throwaway smoke (not committed): run `cargo run` in a repo with an active gh stack, confirm the loop starts, `q` quits, and the terminal is restored. Rendering lands in Task 11, so a minimal placeholder frame is acceptable here
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 10: App state machine, effects, pollers, and test harness` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 10: App state machine, effects, pollers, and test harness` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 11: Rendering: header, table, detail pane, status bar, help, theme
 
@@ -480,24 +480,24 @@
 - Glyphs: use the spec's icons (✅ ❌ 🔄 ⏳ ░░). Layout must account for double-width emoji via ratatui's unicode-width handling, so columns stay aligned in `TestBackend`.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] All regions render per the spec mockup
-- [ ] Responsive collapse at the 100/80 thresholds
-- [ ] `NotInStack` and loading states render their dedicated views
-- [ ] Help overlay generated from the keymap (no second hand-maintained list)
-- [ ] Render is pure and clock-free
+- [x] All regions render per the spec mockup
+- [x] Responsive collapse at the 100/80 thresholds
+- [x] `NotInStack` and loading states render their dedicated views
+- [x] Help overlay generated from the keymap (no second hand-maintained list)
+- [x] Render is pure and clock-free
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-tui --test render` using `Terminal<TestBackend>` and the Task 10 helpers
-- [ ] Spec E2E scenarios implemented here:
-  - [ ] Scenario 1 — happy path, 4-branch stack all green: every branch row present, ✅ checks, approved reviews, no stale markers
-  - [ ] Scenario 2 — mixed CI: row #2 in-progress icon, row #3 failure icon, counts correct
-  - [ ] Scenario 6 — detail pane toggle: Enter shows per-check/per-reviewer/local sections; Enter again removes them and the table's last row moves down
-  - [ ] Scenario 7 — CI skip filter: `secrets-scan` shows "skipped (config)" in the detail pane and is excluded from the row count
-  - [ ] Scenario 8 — bot filtering: `b` shows/hides the `dependabot[bot]` line in the detail pane
-  - [ ] Scenario 11 — responsive: render at 120, 90, 75 columns and assert the column content at each
-  - [ ] Scenario 3 (render half) — `←wt` appears on the new row after the branch switch
-  - [ ] Scenario 5 — stale local checks: `MemoryStatusStore` entry for `auth` at sha `aaa`, fake git tip `bbb`; the Local cell renders the stale style and the detail pane shows `stale (HEAD moved, was aaa…)`
-- [ ] Also cover: NotInStack view text, loading skeleton rows present before the first GitHub poll, help overlay lists every keymap entry, status line shows the confirm prompt, color-depth detection from env values (pure function over passed-in strings, no global env mutation)
+- [x] `cargo test -p stack-stat-tui --test render` using `Terminal<TestBackend>` and the Task 10 helpers
+- [x] Spec E2E scenarios implemented here:
+  - [x] Scenario 1 — happy path, 4-branch stack all green: every branch row present, ✅ checks, approved reviews, no stale markers
+  - [x] Scenario 2 — mixed CI: row #2 in-progress icon, row #3 failure icon, counts correct
+  - [x] Scenario 6 — detail pane toggle: Enter shows per-check/per-reviewer/local sections; Enter again removes them and the table's last row moves down
+  - [x] Scenario 7 — CI skip filter: `secrets-scan` shows "skipped (config)" in the detail pane and is excluded from the row count
+  - [x] Scenario 8 — bot filtering: `b` shows/hides the `dependabot[bot]` line in the detail pane
+  - [x] Scenario 11 — responsive: render at 120, 90, 75 columns and assert the column content at each
+  - [x] Scenario 3 (render half) — `←wt` appears on the new row after the branch switch
+  - [x] Scenario 5 — stale local checks: `MemoryStatusStore` entry for `auth` at sha `aaa`, fake git tip `bbb`; the Local cell renders the stale style and the detail pane shows `stale (HEAD moved, was aaa…)`
+- [x] Also cover: NotInStack view text, loading skeleton rows present before the first GitHub poll, help overlay lists every keymap entry, status line shows the confirm prompt, color-depth detection from env values (pure function over passed-in strings, no global env mutation)
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
