@@ -404,7 +404,7 @@ fn render_scrolled<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         .take(content_height)
         .collect();
     if scroll + content_height < total && content_height > 0 {
-        visible[content_height - 1] = Line::from("  … ↓ J/PgDn");
+        visible[content_height - 1] = Line::from("  … ↓ PgDn");
     }
     let title = if scroll > 0 {
         format!(" Details ↑ {scroll}/{total} ")

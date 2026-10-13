@@ -83,14 +83,14 @@ pub const KEYMAP: &[KeyBinding] = &[
         KeyCode::Down,
         KeyModifiers::NONE,
         Action::Down,
-        "next branch",
+        "next",
         "Table"
     ),
     binding!(
         KeyCode::Up,
         KeyModifiers::NONE,
         Action::Up,
-        "previous branch",
+        "previous",
         "Table"
     ),
     binding!(
@@ -146,14 +146,14 @@ pub const KEYMAP: &[KeyBinding] = &[
         KeyCode::PageDown,
         KeyModifiers::NONE,
         Action::DetailPageDown,
-        "details next page",
+        "scroll details down",
         "Detail"
     ),
     binding!(
         KeyCode::PageUp,
         KeyModifiers::NONE,
         Action::DetailPageUp,
-        "details previous page",
+        "scroll details up",
         "Detail"
     ),
     binding!(
