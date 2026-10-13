@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use stack_stat_core::{
-    model::StackStatus,
+    model::{StackStatus, Verdict},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
@@ -67,18 +67,62 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Span::raw(format!("worktree: {branch}    {icon} ")),
         Span::styled(age, Style::default().fg(age_color)),
     ]);
+    let summary = match state.stack_status {
+        StackStatus::Ready => summary_line(app, theme),
+        StackStatus::Loading => {
+            Line::styled("Stack summary: loading…", Style::default().fg(theme.muted))
+        }
+        StackStatus::NotInStack => Line::styled(
+            "Stack summary: not in a stack",
+            Style::default().fg(theme.muted),
+        ),
+    };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" stack-stat ")
+        .title(Span::styled(
+            " stack-stat ",
+            Style::default()
+                .fg(theme.header_title)
+                .add_modifier(Modifier::BOLD),
+        ))
         .border_style(Style::default().fg(theme.muted));
     frame.render_widget(
         Paragraph::new(vec![
             Line::styled(chain, Style::default().add_modifier(Modifier::BOLD)),
             status_line,
+            summary,
         ])
         .block(block),
         area,
     );
+}
+
+fn summary_line<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
+    app: &App<G, H, S>,
+    theme: &Theme,
+) -> Line<'static> {
+    let summary = app.state().summary();
+    let mut spans = Vec::new();
+    for (verdict, count, always_visible) in [
+        (Verdict::Go, summary.go, true),
+        (Verdict::Wait, summary.wait, true),
+        (Verdict::NoGo, summary.no_go, true),
+        (Verdict::Merged, summary.merged, false),
+        (Verdict::Queued, summary.queued, false),
+    ] {
+        if !always_visible && count == 0 {
+            continue;
+        }
+        if !spans.is_empty() {
+            spans.push(Span::raw("   "));
+        }
+        let (glyph, color) = super::verdict::style(verdict, theme);
+        spans.push(Span::styled(
+            format!("{glyph} {count}"),
+            Style::default().fg(color),
+        ));
+    }
+    Line::from(spans)
 }
 
 pub(super) fn relative_age(now: DateTime<Utc>, at: DateTime<Utc>) -> String {

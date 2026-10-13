@@ -65,6 +65,36 @@ pub enum PrLifecycle {
     Queued,
 }
 
+/// Go/no-go readiness of a stack layer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Verdict {
+    /// Ready to merge: nothing blocks and nothing is outstanding.
+    Go,
+    /// Not blocked, but evidence is still outstanding (running CI, pending review, missing result).
+    Wait,
+    /// Blocked by a draft, failure, requested changes, rebase, or stale/failed local result.
+    NoGo,
+    /// Already merged.
+    Merged,
+    /// In the merge queue.
+    Queued,
+}
+
+/// Per-verdict branch counts for a whole stack.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StackSummary {
+    /// Branches ready to merge.
+    pub go: usize,
+    /// Branches with outstanding evidence and no blocker.
+    pub wait: usize,
+    /// Blocked branches.
+    pub no_go: usize,
+    /// Merged layers.
+    pub merged: usize,
+    /// Layers in the merge queue.
+    pub queued: usize,
+}
+
 /// Pull request fields needed to render status.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrInfo {
@@ -72,6 +102,8 @@ pub struct PrInfo {
     pub number: u32,
     /// URL to the PR.
     pub url: String,
+    /// PR title; empty when unknown.
+    pub title: String,
     /// Whether the PR is a draft.
     pub is_draft: bool,
     /// Aggregate review decision supplied by GitHub.

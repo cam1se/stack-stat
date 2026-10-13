@@ -25,6 +25,7 @@ fn pr(checks: Vec<CiCheck>, reviews: Vec<Review>) -> PrInfo {
     PrInfo {
         number: 42,
         url: "https://example.test/42".into(),
+        title: String::new(),
         is_draft: false,
         review_decision: ReviewDecision::None,
         checks,

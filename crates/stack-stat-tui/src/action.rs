@@ -13,8 +13,6 @@ pub enum Action {
     Top,
     /// Select the last visible branch.
     Bottom,
-    /// Toggle the detail pane.
-    ToggleDetail,
     /// Scroll the detail pane one line down.
     DetailDown,
     /// Scroll the detail pane one line up.
@@ -125,20 +123,6 @@ pub const KEYMAP: &[KeyBinding] = &[
         KeyModifiers::SHIFT,
         Action::Bottom,
         "last branch",
-        "Table"
-    ),
-    binding!(
-        KeyCode::Enter,
-        KeyModifiers::NONE,
-        Action::ToggleDetail,
-        "toggle details",
-        "Table"
-    ),
-    binding!(
-        KeyCode::Tab,
-        KeyModifiers::NONE,
-        Action::ToggleDetail,
-        "toggle details",
         "Table"
     ),
     binding!(

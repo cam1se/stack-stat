@@ -164,6 +164,7 @@ fn compose_pr(pr: &PrResponse, config: &Config) -> PrInfo {
     PrInfo {
         number: pr.number,
         url: pr.url.clone(),
+        title: pr.title.clone(),
         is_draft: pr.is_draft,
         review_decision: match pr.review_decision.as_deref() {
             Some("APPROVED") => ReviewDecision::Approved,

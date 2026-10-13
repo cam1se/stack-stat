@@ -52,6 +52,29 @@ async fn agent_branch_switch_moves_current_row_after_git_poll() {
 }
 
 #[tokio::test]
+async fn initial_selection_prefers_worktree_branch_and_falls_back_to_first_visible() {
+    let (mut selected_current, _) = TestScenario::builder()
+        .stack("main", &["auth", "api"])
+        .pr("auth", PrBuilder::new(42))
+        .pr("api", PrBuilder::new(43))
+        .current_branch("api")
+        .build()
+        .into_app();
+    selected_current.poll_once(Source::All).await;
+    assert_eq!(selected_current.selected_branch(), Some("api"));
+
+    let (mut no_matching_current, _) = TestScenario::builder()
+        .stack("main", &["auth", "api"])
+        .pr("auth", PrBuilder::new(42))
+        .pr("api", PrBuilder::new(43))
+        .current_branch("outside")
+        .build()
+        .into_app();
+    no_matching_current.poll_once(Source::All).await;
+    assert_eq!(no_matching_current.selected_branch(), Some("auth"));
+}
+
+#[tokio::test]
 async fn draft_toggle_requires_confirmation_and_records_effect() {
     let (mut app, handles) = scenario();
     app.poll_once(Source::Git).await;

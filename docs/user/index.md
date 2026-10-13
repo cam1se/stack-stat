@@ -1,3 +1,5 @@
+![StackStat: GitHub PR stacks, at a glance](assets/hero.png)
+
 # stack-stat
 
 See every layer of the stack containing your worktree's checked-out branch. The table shows branch and PR identity, draft/ready/merged/queued state, CI checks, reviews, and local reports. The header always identifies the actual worktree branch, even when an agent switches branches while the dashboard is open.
@@ -27,15 +29,14 @@ Windows users can run [install.ps1](https://github.com/tcamise-gpsw/stack-stat/b
 
 ## Read the dashboard
 
-- **Header:** stack order from trunk to top, checked-out worktree branch, and age of the last GitHub refresh. A spinner means data is being fetched; an overdue refresh is highlighted.
-- **Table:** `►` selects a row; `←wt` identifies the checked-out branch. The Checks cell gives passed/total for checks not excluded by [repository configuration](configuration.md). `—` means no result; draft, ready, merged, and queued states stay separate. The Local column distinguishes pass, fail, missing, and stale evidence.
-- **Detail pane:** Enter or Tab opens it for the selected branch. It lists each CI check (including configured skips), individual human and bot reviewers, requested reviews, local reports, and whether the branch needs a rebase. Overflowing details have a continuation marker and can be scrolled.
+- **Header:** stack order from trunk to top, checked-out worktree branch, age of the last GitHub refresh, and a summary of how many layers are ready (`✔`), waiting (`…`), or blocked (`✖`). A spinner means data is being fetched; an overdue refresh is highlighted.
+- **Table:** each layer is two lines: a colored verdict glyph, the branch, PR number, lifecycle (draft, open, merged, queued), checks, reviews, and local reports, then the PR title. `►` selects a row; `←wt` identifies the checked-out branch. The verdict glyph and the branch color answer "is this ready?": `✔` means ready, not a draft, CI passing, no changes requested or review outstanding, no rebase needed, and declared local checks fresh and passing; `…` means nothing is blocking but evidence is outstanding (running CI, pending review, missing local result); `✖` means a draft, failed CI, requested changes, rebase needed, or a failed or stale local result. Merged and queued layers are neutral. The Checks cell gives passed/total for checks not excluded by [repository configuration](configuration.md). `—` means no result.
+- **Detail pane:** always open for the selected branch and starts on the worktree's checked-out branch. Checks are listed failing first, then running, skipped, and passed, with durations; reviews show a headline and each visible reviewer, then local reports and whether the branch needs a rebase. Overflowing details have a continuation marker and can be scrolled.
 - **Footer:** key hints and operation results. Actions that change GitHub or the worktree prompt for `y`; any other key cancels.
 
 | Key or mouse gesture | Effect |
 |---|---|
 | `j/k`, ↑/↓, `g/G` | Select next/previous or first/last stack layer |
-| Enter or Tab | Toggle selected branch details |
 | `J/K`, Page Down/Up | Scroll details by line or page; branch selection stays put |
 | Wheel over table / detail | Move selected branch / scroll detail lines |
 | Click a table row | Select that branch |

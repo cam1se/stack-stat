@@ -74,7 +74,7 @@ async fn four_layer_healthy_stack_has_passing_status_without_staleness() {
     let buf = draw(&app, 120, 32);
     for number in [42, 43, 44, 45] {
         let row = find_row(&buf, &format!("#{number}")).unwrap();
-        assert_row_contains(&buf, row, &["Ready", "✅", "1/1", "approved"]);
+        assert_row_contains(&buf, row, &["✔", "Open", "✔", "1/1", "approved"]);
     }
     assert!(find_row(&buf, "stale").is_none());
 }
@@ -88,42 +88,37 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
         &buf,
         auth,
         &[
-            "►", "auth", "←wt", "#42", "Ready", "1/1", "approved", "lint", "test",
+            "►", "✔", "auth", "←wt", "#42", "Open", "1/1", "approved", "lint", "test",
         ],
     );
+    assert_row_contains(&buf, auth + 1, &["Change 42"]);
     let api = find_row(&buf, "#43").unwrap();
     let spinner = app.animation().spinner_char().to_string();
     assert_row_contains(
         &buf,
         api,
-        &["api", "#43", "Draft", &spinner, "0/1", "pending"],
+        &["✖", "api", "#43", "Draft", &spinner, "0/1", "pending"],
     );
     let ui = find_row(&buf, "#44").unwrap();
-    assert_row_contains(&buf, ui, &["ui", "#44", "Ready", "❌", "0/1", "changes"]);
+    assert_row_contains(&buf, ui, &["✖", "ui", "#44", "Open", "✖", "0/1", "changes"]);
     assert!(find_row(&buf, "#45").is_some());
     assert!(find_row(&buf, "stale").is_none());
 }
 
 #[tokio::test]
-async fn details_toggle_exposes_checks_reviews_local_results_and_rebase() {
-    let (mut app, _) = ready().await;
-    let closed = draw(&app, 120, 32);
-    assert!(find_row(&closed, "Checks:").is_none());
-    let closed_border = (4..closed.area.height)
-        .find(|&y| closed[(0, y)].symbol() == "└")
-        .unwrap();
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+async fn details_are_visible_without_a_toggle_and_reserve_table_height() {
+    let (app, _) = ready().await;
     let buf = draw(&app, 120, 32);
-    let open_border = (4..buf.area.height)
+    let table_border = (5..buf.area.height)
         .find(|&y| buf[(0, y)].symbol() == "└")
         .unwrap();
     assert!(
-        open_border < closed_border,
+        table_border < buf.area.height - 2,
         "details must reserve table height"
     );
     for text in [
         "PR #42",
-        "Checks:",
+        "Checks ·",
         "ci/build",
         "Reviews:",
         "Local checks:",
@@ -131,8 +126,6 @@ async fn details_toggle_exposes_checks_reviews_local_results_and_rebase() {
     ] {
         assert!(find_row(&buf, text).is_some(), "missing {text}");
     }
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    assert!(find_row(&draw(&app, 120, 32), "Checks:").is_none());
 }
 
 #[tokio::test]
@@ -150,7 +143,6 @@ async fn skipped_ci_check_is_visible_in_details_not_row_total() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let buf = draw(&app, 120, 30);
     assert_row_contains(&buf, find_row(&buf, "#42").unwrap(), &["1/1"]);
     assert!(find_row(&buf, "secrets-scan").is_some());
@@ -172,7 +164,6 @@ async fn bot_review_visibility_toggles_in_detail_pane() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     assert!(find_row(&draw(&app, 120, 28), "dependabot[bot]").is_none());
     app.handle_key(key('b'));
     let buf = draw(&app, 120, 28);
@@ -192,7 +183,6 @@ async fn branch_switch_and_stale_check_have_distinct_visual_markers() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let buf = draw(&app, 120, 28);
     assert!(find_row(&buf, "stale (HEAD moved, was aaaaaaa)").is_some());
     handles.git.set_current_branch("api");
@@ -271,7 +261,6 @@ async fn overflowing_details_end_with_ellipsis_without_overwriting_footer() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let buf = draw(&app, 80, 24);
     assert!(find_row(&buf, "  …").is_some());
     assert!(find_row(&buf, "quit").is_some());
@@ -292,7 +281,6 @@ async fn keyboard_scroll_reaches_reviews_after_many_checks_without_changing_sele
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let first = draw(&app, 100, 28);
     assert!(find_row(&first, "ci/check-0").is_some());
     assert!(find_row(&first, "Reviews:").is_none());
@@ -327,7 +315,6 @@ async fn mouse_wheel_scrolls_hovered_pane_and_click_selects_branch() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let area = ratatui::layout::Rect::new(0, 0, 100, 28);
     let regions = ui::regions(area, &app);
     let detail = regions.detail.unwrap();
@@ -355,7 +342,7 @@ async fn mouse_wheel_scrolls_hovered_pane_and_click_selects_branch() {
     let row = MouseEvent {
         kind: MouseEventKind::Down(MouseButton::Left),
         column: regions.table.x + 3,
-        row: regions.table.y + 2,
+        row: regions.table.y + 3,
         modifiers: KeyModifiers::NONE,
     };
     let target = ui::hit_test(area, &app, row.column, row.row);

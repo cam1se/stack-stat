@@ -56,6 +56,7 @@ impl PrBuilder {
         Self(PrResponse {
             number,
             url: format!("https://example.test/pr/{number}"),
+            title: format!("Change {number}"),
             is_draft: false,
             review_decision: None,
             reviews: vec![],

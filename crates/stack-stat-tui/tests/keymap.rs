@@ -44,7 +44,7 @@ async fn help_blocks_navigation_and_filter_treats_q_as_text() {
 }
 
 #[tokio::test]
-async fn navigation_detail_open_and_refresh_have_distinct_actions() {
+async fn navigation_refresh_and_unbound_enter_tab_have_distinct_actions() {
     let (mut app, handles) = TestScenario::builder()
         .stack("main", &["auth", "api"])
         .pr("auth", PrBuilder::new(42))
@@ -58,9 +58,14 @@ async fn navigation_detail_open_and_refresh_have_distinct_actions() {
     assert_eq!(app.selected_branch(), Some("api"));
     app.handle_key(key('g'));
     assert_eq!(app.selected_branch(), Some("auth"));
-    assert!(!app.detail_open());
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    assert!(app.detail_open());
+    assert!(
+        app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
+            .is_empty()
+    );
+    assert!(
+        app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE))
+            .is_empty()
+    );
     assert_eq!(app.handle_key(key('R')), vec![Effect::Refresh(Source::All)]);
     assert_eq!(
         app.handle_key(key('o')),
@@ -76,10 +81,9 @@ async fn navigation_detail_open_and_refresh_have_distinct_actions() {
 fn keymap_keeps_help_text_and_dispatch_on_the_same_entries() {
     assert!(KEYMAP.iter().all(|binding| !binding.help.is_empty()));
     assert!(
-        KEYMAP
+        !KEYMAP
             .iter()
-            .any(|binding| binding.action == Action::ToggleDetail
-                && binding.key.code == KeyCode::Tab)
+            .any(|binding| matches!(binding.key.code, KeyCode::Enter | KeyCode::Tab))
     );
     assert!(KEYMAP.iter().any(|binding| binding.action == Action::Sync && binding.key.code == KeyCode::Char('S')));
     let mut keys = std::collections::HashSet::new();
@@ -147,16 +151,11 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
             Action::Up | Action::Top => {
                 assert_eq!(app.selected_branch(), Some("auth"), "{:?}", binding.key)
             }
-            Action::ToggleDetail => assert!(app.detail_open()),
             Action::DetailDown
             | Action::DetailUp
             | Action::DetailPageDown
             | Action::DetailPageUp => {
-                assert_eq!(
-                    app.detail_scroll(),
-                    0,
-                    "closed details should ignore scroll keys"
-                );
+                assert_eq!(app.selected_branch(), Some("auth"), "{:?}", binding.key);
             }
             Action::OpenPr => assert_eq!(effects, [Effect::Mutate(ProviderAction::OpenPr(42))]),
             Action::Checkout => assert_eq!(
