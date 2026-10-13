@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/user/assets/hero.png" alt="StackStat: GitHub PR stacks, at a glance" width="100%">
+</p>
+
 # stack-stat
 
 A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-stack). It follows the checked-out worktree branch and shows stack layers, draft/ready state, CI checks, reviews, and commit-specific local checks. The selected row and checked-out branch remain distinct.
