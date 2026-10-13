@@ -27,7 +27,7 @@ async fn help_blocks_navigation_and_filter_treats_q_as_text() {
     assert_eq!(app.selected_branch(), Some("auth"));
     app.handle_key(key('?'));
     assert_eq!(app.mode(), Mode::Help);
-    app.handle_key(key('j'));
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("auth"));
     assert_eq!(app.mode(), Mode::Normal);
     app.handle_key(key('/'));
@@ -54,9 +54,9 @@ async fn navigation_refresh_and_unbound_enter_tab_have_distinct_actions() {
         .into_app();
     app.poll_once(Source::Git).await;
     app.poll_once(Source::GitHub).await;
-    app.handle_key(key('G'));
+    app.handle_key(KeyEvent::new(KeyCode::End, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("api"));
-    app.handle_key(key('g'));
+    app.handle_key(KeyEvent::new(KeyCode::Home, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("auth"));
     assert!(
         app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
@@ -92,6 +92,28 @@ fn keymap_keeps_help_text_and_dispatch_on_the_same_entries() {
             keys.insert((binding.key.code, binding.key.modifiers)),
             "duplicate binding: {:?}",
             binding.key
+        );
+    }
+}
+
+#[test]
+fn navigation_and_scrolling_actions_have_exactly_one_binding_each() {
+    for action in [
+        Action::Down,
+        Action::Up,
+        Action::Top,
+        Action::Bottom,
+        Action::DetailPageDown,
+        Action::DetailPageUp,
+    ] {
+        let bindings: Vec<_> = KEYMAP
+            .iter()
+            .filter(|binding| binding.action == action)
+            .collect();
+        assert_eq!(bindings.len(), 1, "{action:?}");
+        assert!(
+            !matches!(bindings[0].key.code, KeyCode::Char(_)),
+            "{action:?} must use a named key, not a letter alias"
         );
     }
 }
@@ -141,7 +163,7 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
         app.poll_once(Source::Git).await;
         app.poll_once(Source::GitHub).await;
         if matches!(binding.action, Action::Up | Action::Top) {
-            app.handle_key(key('j'));
+            app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
         }
         let effects = app.handle_key(KeyEvent::new(binding.key.code, binding.key.modifiers));
         match binding.action {
@@ -151,10 +173,7 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
             Action::Up | Action::Top => {
                 assert_eq!(app.selected_branch(), Some("auth"), "{:?}", binding.key)
             }
-            Action::DetailDown
-            | Action::DetailUp
-            | Action::DetailPageDown
-            | Action::DetailPageUp => {
+            Action::DetailPageDown | Action::DetailPageUp => {
                 assert_eq!(app.selected_branch(), Some("auth"), "{:?}", binding.key);
             }
             Action::OpenPr => assert_eq!(effects, [Effect::Mutate(ProviderAction::OpenPr(42))]),

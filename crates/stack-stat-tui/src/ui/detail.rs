@@ -409,7 +409,7 @@ fn render_scrolled<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let title = if scroll > 0 {
         format!(" Details ↑ {scroll}/{total} ")
     } else {
-        " Details · J/K/PgUp/PgDn scroll ".into()
+        " Details · PgUp/PgDn scroll ".into()
     };
     frame.render_widget(
         Paragraph::new(visible).block(

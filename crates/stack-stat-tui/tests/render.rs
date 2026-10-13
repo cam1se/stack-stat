@@ -296,9 +296,9 @@ async fn keyboard_scroll_reaches_reviews_after_many_checks_without_changing_sele
     assert!(find_row(&scrolled, "Local checks:").is_some());
     assert_eq!(app.selected_branch(), Some("auth"));
     assert!(app.detail_scroll() > 0);
-    app.handle_key(KeyEvent::new(KeyCode::Char('K'), KeyModifiers::SHIFT));
+    app.handle_key(KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("auth"));
-    app.handle_key(key('j'));
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("api"));
     assert_eq!(app.detail_scroll(), 0);
 }

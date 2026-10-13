@@ -82,6 +82,7 @@ fn normal_hints(width: u16, status: &str) -> Vec<(String, String)> {
         &[
             Action::Down,
             Action::Up,
+            Action::DetailPageDown,
             Action::OpenPr,
             Action::Checkout,
             Action::Refresh,
@@ -140,6 +141,10 @@ pub(super) fn key_label(key: crate::action::KeySpec) -> String {
         crossterm::event::KeyCode::Tab => "Tab".into(),
         crossterm::event::KeyCode::Up => "↑".into(),
         crossterm::event::KeyCode::Down => "↓".into(),
+        crossterm::event::KeyCode::PageUp => "PgUp".into(),
+        crossterm::event::KeyCode::PageDown => "PgDn".into(),
+        crossterm::event::KeyCode::Home => "Home".into(),
+        crossterm::event::KeyCode::End => "End".into(),
         _ => format!("{:?}", key.code),
     };
     if key
