@@ -612,9 +612,9 @@
 - [x] Throwaway link check over `docs/**/*.md` relative links (not committed)
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 14: User documentation, README, and dogfood config` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 14: User documentation, README, and dogfood config` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 15: Final Validation
 

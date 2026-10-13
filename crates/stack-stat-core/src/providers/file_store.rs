@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
-    fs,
+    fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
 };
 
@@ -42,6 +42,14 @@ impl FileStatusStore {
     ///
     /// A single bad status file never hides results for other branches or commits.
     pub fn read_all_with_warnings(&self) -> Result<(Vec<StatusEntry>, Vec<String>)> {
+        if !self.root.exists() {
+            return Ok((Vec::new(), Vec::new()));
+        }
+        let _lock = self.lock(false)?;
+        self.read_unlocked()
+    }
+
+    fn read_unlocked(&self) -> Result<(Vec<StatusEntry>, Vec<String>)> {
         let mut entries = Vec::new();
         let mut warnings = Vec::new();
         let branches = match fs::read_dir(&self.root) {
@@ -115,6 +123,25 @@ impl FileStatusStore {
         Ok((entries, warnings))
     }
 
+    fn lock(&self, exclusive: bool) -> Result<File> {
+        let directory = self.root.parent().expect("status store has a parent");
+        fs::create_dir_all(directory)?;
+        let path = directory.join("status.lock");
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&path)
+            .with_context(|| format!("opening {}", path.display()))?;
+        if exclusive {
+            file.lock()?;
+        } else {
+            file.lock_shared()?;
+        }
+        Ok(file)
+    }
+
     fn file_path(&self, branch: &str, sha: &str) -> PathBuf {
         self.root
             .join(branch_dir::encode(branch))
@@ -141,6 +168,7 @@ impl StatusStoreProvider for FileStatusStore {
         let parent = path
             .parent()
             .expect("file path always has an encoded branch parent");
+        let _lock = self.lock(true)?;
         fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
         let mut data: StoredFile = match fs::read(&path) {
             Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
@@ -158,6 +186,10 @@ impl StatusStoreProvider for FileStatusStore {
 
     fn clear(&self, branch: &str) -> Result<()> {
         let dir = self.root.join(branch_dir::encode(branch));
+        if !self.root.exists() {
+            return Ok(());
+        }
+        let _lock = self.lock(true)?;
         match fs::remove_dir_all(&dir) {
             Ok(()) => Ok(()),
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -166,7 +198,11 @@ impl StatusStoreProvider for FileStatusStore {
     }
 
     fn gc(&self, live_branches: &HashMap<String, String>) -> Result<usize> {
-        let (entries, _) = self.read_all_with_warnings()?;
+        if !self.root.exists() {
+            return Ok(0);
+        }
+        let _lock = self.lock(true)?;
+        let (entries, _) = self.read_unlocked()?;
         let (_, deleted) = retained(entries, live_branches);
         let count = deleted.len();
         for entry in deleted {

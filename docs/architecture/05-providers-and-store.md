@@ -14,7 +14,7 @@ Every `gh` process runs with piped input/output and prompts disabled. Read opera
 
 ## Local check results
 
-The file store lives at `<git-common-dir>/stack-stat/status/<encoded-branch>/<full-sha>.json`. Branch names are encoded as one platform-safe directory segment; `feat/api` does not create nested directories. The file contains a map of named results with outcome, optional message, and UTC timestamp. Writing merges a named result with its existing file and atomically replaces the file from a temporary sibling, so readers never observe a partial JSON document.
+The file store lives at `<git-common-dir>/stack-stat/status/<encoded-branch>/<full-sha>.json`. Branch names are encoded as one platform-safe directory segment; `feat/api` does not create nested directories. The file contains a map of named results with outcome, optional message, and UTC timestamp. Cooperative readers take a shared lock and reporters/cleanup take an exclusive lock on a separate `status.lock` file. Writing merges a named result with its existing file and atomically replaces the file from a temporary sibling. This prevents a Windows reader's open handle from blocking replacement, while preserving complete JSON for readers across processes and worktrees. If no store exists, reads return empty without creating a lock file.
 
 Malformed files are skipped with a warning while other entries remain visible. A new report may replace a malformed file. Cleanup retains each live branch's current-SHA entry and the most recently recorded older entry, deleting earlier entries and deleted branch directories. Retaining the older file is necessary to display a stale result after a commit or rebase. Both the file store and the in-memory fake use the same pure retention rule.
 

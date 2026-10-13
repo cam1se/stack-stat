@@ -77,3 +77,7 @@ N/A
 
 - The MkDocs nav and documentation map already included all planned pages from earlier tasks, so no change to `mkdocs.yml` or `docs/README.md` was needed. The goal framing in `docs/goals.md` also remained accurate.
 - No stable release exists yet; installation and real binary replacement cannot be exercised. The user docs explicitly condition installer use on a published release and document the observed `no stable release found` update error.
+
+### Task 15: Final Validation
+
+- Initial Windows CI failed `concurrent_reader_never_observes_partial_write`: `NamedTempFile::persist` returned Access is denied (os error 5) while another thread read the existing JSON, and a reader briefly saw zero entries. `tempfile` uses `MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)` on Windows; replacement can be blocked while the destination is open. The store now coordinates shared readers and exclusive writes/GC across processes using a separate std `File` lock, with branch directory creation inside the write lock. The existing concurrent-reader regression test remains unchanged; CI rerun will verify Windows.
