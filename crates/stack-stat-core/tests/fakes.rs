@@ -7,11 +7,17 @@ use chrono::{TimeZone, Utc};
 use stack_stat_core::providers::{
     CheckResult, FakeGitHubProvider, FakeGitProvider, GitHubError, GitHubProvider, GitProvider,
     MemoryStatusStore, ProviderAction, ReportedState, StackViewResponse, StatusEntry,
-    StatusStoreProvider, graphql::parse_stack_response, retained,
+    StatusStoreProvider,
+    graphql::{StackDiscovery, parse_stack_response},
+    retained,
 };
 
 fn stack() -> StackViewResponse {
-    serde_json::from_str(include_str!("fixtures/stack_view.json")).unwrap()
+    StackDiscovery::new("api")
+        .unwrap()
+        .accept_response(0, include_str!("fixtures/stack_view.json"), "")
+        .unwrap()
+        .unwrap()
 }
 
 fn entry(branch: &str, sha: &str, secs: i64) -> StatusEntry {
@@ -49,6 +55,7 @@ async fn fake_github_filters_stack_details_and_records_mutations() {
     let details =
         parse_stack_response(include_str!("fixtures/pr_details.json"), &full_stack).unwrap();
     let github = FakeGitHubProvider::new(full_stack.clone(), details.prs);
+    assert_eq!(github.stack_view("ui").await.unwrap().current_branch, "ui");
     github.set_remote_rebase_branches(["api".into(), "ui".into()]);
     let mut requested_stack = full_stack;
     requested_stack
@@ -85,8 +92,36 @@ async fn fake_github_filters_stack_details_and_records_mutations() {
     );
     github.set_stack_error(GitHubError::NotInStack);
     assert_eq!(
-        github.stack_view().await.unwrap_err(),
+        github.stack_view("api").await.unwrap_err(),
         GitHubError::NotInStack
+    );
+}
+
+#[tokio::test]
+async fn fake_github_consumes_action_results_in_order_then_uses_default() {
+    let github = FakeGitHubProvider::new(stack(), vec![]);
+    github.set_mutation_error(GitHubError::Auth);
+    github.set_mutation_results([
+        Err(GitHubError::LocalTrackingMissing),
+        Ok("checked out".into()),
+        Err(GitHubError::RebaseConflict),
+    ]);
+
+    assert_eq!(
+        github.push_stack().await,
+        Err(GitHubError::LocalTrackingMissing)
+    );
+    github.checkout_branch("43").await.unwrap();
+    assert_eq!(github.sync_stack().await, Err(GitHubError::RebaseConflict));
+    assert_eq!(github.push_stack().await, Err(GitHubError::Auth));
+    assert_eq!(
+        github.recorded_actions(),
+        [
+            ProviderAction::PushStack,
+            ProviderAction::Checkout("43".into()),
+            ProviderAction::SyncStack,
+            ProviderAction::PushStack,
+        ]
     );
 }
 

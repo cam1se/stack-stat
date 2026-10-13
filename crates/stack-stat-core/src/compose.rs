@@ -41,7 +41,7 @@ pub enum StackOutcome {
 pub struct GitHubSnapshot {
     /// `owner/name` of the GitHub repository, empty when unknown.
     pub repo: String,
-    /// Local stack view or off-stack condition.
+    /// GitHub stack discovery result or off-stack condition.
     pub stack: StackOutcome,
     /// Remote PR details and rebase comparisons for this stack.
     pub details: StackDetailsResponse,

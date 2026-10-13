@@ -1,11 +1,14 @@
 //! Test-controlled GitHub provider with observable effects.
 
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+};
 
 use async_trait::async_trait;
 
 use super::{
-    GitHubError, GitHubProvider, PrResponse, ProviderAction, StackDetailsResponse,
+    DETACHED_HEAD, GitHubError, GitHubProvider, PrResponse, ProviderAction, StackDetailsResponse,
     StackViewResponse,
 };
 
@@ -28,6 +31,7 @@ pub struct FakeGitHubState {
     pub actions: Vec<ProviderAction>,
     /// Result returned by subsequent action calls.
     pub mutation_result: Result<String, GitHubError>,
+    mutation_results: VecDeque<Result<String, GitHubError>>,
 }
 
 impl FakeGitHubProvider {
@@ -44,6 +48,7 @@ impl FakeGitHubProvider {
                 actions: Vec::new(),
                 repo: String::new(),
                 mutation_result: Ok(String::new()),
+                mutation_results: VecDeque::new(),
             })),
         }
     }
@@ -89,6 +94,17 @@ impl FakeGitHubProvider {
             .mutation_result = Err(error);
     }
 
+    /// Replace per-action results, consumed in invocation order before the default.
+    pub fn set_mutation_results(
+        &self,
+        results: impl IntoIterator<Item = Result<String, GitHubError>>,
+    ) {
+        self.state
+            .lock()
+            .expect("fake GitHub mutex poisoned")
+            .mutation_results = results.into_iter().collect();
+    }
+
     /// Read the actions requested so far.
     #[must_use]
     pub fn recorded_actions(&self) -> Vec<ProviderAction> {
@@ -102,18 +118,28 @@ impl FakeGitHubProvider {
     fn record(&self, action: ProviderAction) -> Result<String, GitHubError> {
         let mut state = self.state.lock().expect("fake GitHub mutex poisoned");
         state.actions.push(action);
-        state.mutation_result.clone()
+        state
+            .mutation_results
+            .pop_front()
+            .unwrap_or_else(|| state.mutation_result.clone())
     }
 }
 
 #[async_trait]
 impl GitHubProvider for FakeGitHubProvider {
-    async fn stack_view(&self) -> Result<StackViewResponse, GitHubError> {
-        self.state
-            .lock()
-            .expect("fake GitHub mutex poisoned")
-            .stack
-            .clone()
+    async fn stack_view(&self, current_branch: &str) -> Result<StackViewResponse, GitHubError> {
+        if current_branch.is_empty() || current_branch == DETACHED_HEAD {
+            return Err(GitHubError::NotInStack);
+        }
+        let state = self.state.lock().expect("fake GitHub mutex poisoned");
+        match &state.stack {
+            Ok(stack) => Ok(StackViewResponse {
+                trunk: stack.trunk.clone(),
+                current_branch: current_branch.into(),
+                branches: stack.branches.clone(),
+            }),
+            Err(error) => Err(error.clone()),
+        }
     }
 
     fn repo(&self) -> String {
