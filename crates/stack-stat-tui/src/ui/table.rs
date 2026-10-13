@@ -287,6 +287,14 @@ fn check_label(branch: &BranchState, spinner: char) -> (String, Health) {
         CheckHealth::Success => ('✔', Health::Success),
         CheckHealth::Skipped | CheckHealth::None => ('░', Health::Muted),
     };
+    // A merged layer's CI is history: keep the glyph but drop the color and animation.
+    if branch.lifecycle == PrLifecycle::Merged {
+        let icon = if summary.running > 0 { '…' } else { icon };
+        return (
+            format!("{icon} {}/{}", summary.passed, summary.total),
+            Health::Muted,
+        );
+    }
     let icon = if summary.running > 0 { spinner } else { icon };
     (
         format!("{icon} {}/{}", summary.passed, summary.total),

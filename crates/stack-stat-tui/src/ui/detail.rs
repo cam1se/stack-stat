@@ -2,10 +2,10 @@
 
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Margin, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
 use stack_stat_core::{
     model::{
@@ -170,8 +170,8 @@ fn check_counts(checks: &[CiCheck]) -> CheckCounts {
             match check_group(check) {
                 0 => counts.failing += 1,
                 1 => counts.running += 1,
-                2 => counts.skipped += 1,
-                _ => counts.passed += 1,
+                2 => counts.passed += 1,
+                _ => counts.skipped += 1,
             }
             counts
         })
@@ -182,8 +182,8 @@ fn check_title(counts: CheckCounts) -> String {
     for (count, label) in [
         (counts.failing, "failing"),
         (counts.running, "running"),
-        (counts.skipped, "skipped"),
         (counts.passed, "passed"),
+        (counts.skipped, "skipped"),
     ] {
         if count > 0 {
             parts.push(format!("{count} {label}"));
@@ -192,15 +192,16 @@ fn check_title(counts: CheckCounts) -> String {
     parts.join(" · ")
 }
 
+/// Display group: failing, running or queued, passed, then skipped.
 fn check_group(check: &CiCheck) -> u8 {
     if check.skipped_by_config {
-        2
+        3
     } else {
         match check.status {
             CheckStatus::Queued | CheckStatus::InProgress => 1,
             CheckStatus::Completed => match check.conclusion {
-                Some(CheckConclusion::Success) => 3,
-                Some(CheckConclusion::Skipped | CheckConclusion::Neutral) => 2,
+                Some(CheckConclusion::Success) => 2,
+                Some(CheckConclusion::Skipped | CheckConclusion::Neutral) => 3,
                 _ => 0,
             },
         }
@@ -362,9 +363,9 @@ fn local_check_group(check: &LocalCheckResult) -> u8 {
     {
         0
     } else if check.state == LocalCheckState::Skip {
-        1
-    } else {
         2
+    } else {
+        1
     }
 }
 
@@ -395,29 +396,36 @@ fn render_scrolled<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
 ) {
     let content_height = area.height.saturating_sub(2) as usize;
     let total = lines.len();
-    let scroll = app
-        .detail_scroll()
-        .min(total.saturating_sub(content_height));
-    let mut visible: Vec<_> = lines
+    let max_scroll = total.saturating_sub(content_height);
+    let scroll = app.detail_scroll().min(max_scroll);
+    let visible: Vec<_> = lines
         .into_iter()
         .skip(scroll)
         .take(content_height)
         .collect();
-    if scroll + content_height < total && content_height > 0 {
-        visible[content_height - 1] = Line::from("  … ↓ PgDn");
-    }
-    let title = if scroll > 0 {
-        format!(" Details ↑ {scroll}/{total} ")
-    } else {
-        " Details · PgUp/PgDn scroll ".into()
-    };
     frame.render_widget(
         Paragraph::new(visible).block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(super::title(title, theme))
+                .title(super::title(" Details ", theme))
                 .border_style(Style::default().fg(theme.muted)),
         ),
         area,
     );
+    if max_scroll > 0 && content_height > 0 {
+        let mut state = ScrollbarState::new(max_scroll)
+            .position(scroll)
+            .viewport_content_length(content_height);
+        frame.render_stateful_widget(
+            Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(None)
+                .end_symbol(None)
+                .style(Style::default().fg(theme.header_title)),
+            area.inner(Margin {
+                vertical: 1,
+                horizontal: 0,
+            }),
+            &mut state,
+        );
+    }
 }

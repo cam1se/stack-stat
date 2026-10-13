@@ -262,7 +262,15 @@ async fn overflowing_details_end_with_ellipsis_without_overwriting_footer() {
         .into_app();
     app.poll_once(Source::All).await;
     let buf = draw(&app, 80, 24);
-    assert!(find_row(&buf, "  …").is_some());
+    let right_border = buf.area.width - 1;
+    assert!(
+        (0..buf.area.height).any(|y| buf[(right_border, y)].symbol() == "█"),
+        "overflowing details show a scrollbar thumb on the pane's right edge"
+    );
+    assert!(
+        find_row(&buf, "↓ PgDn").is_none(),
+        "no in-pane scroll hint line"
+    );
     assert!(find_row(&buf, "quit").is_some());
 }
 

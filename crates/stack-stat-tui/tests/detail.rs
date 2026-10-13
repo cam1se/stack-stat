@@ -100,7 +100,7 @@ async fn app_with(pr: PrResponse) -> FakeApp {
 async fn detail_orders_checks_and_shows_durations() {
     let app = app_with(detail_pr()).await;
     let buffer = draw(&app);
-    let rows = ["chk-failed", "chk-running", "chk-skipped", "chk-passed"]
+    let rows = ["chk-failed", "chk-running", "chk-passed", "chk-skipped"]
         .map(|name| find_row(&buffer, name).expect("check should be rendered"));
     assert!(rows.windows(2).all(|pair| pair[0] < pair[1]));
     assert!(find_row(&buffer, "12s").is_some());
