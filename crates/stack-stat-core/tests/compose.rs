@@ -93,6 +93,7 @@ fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
         },
     );
     config.reviews.bots.push("alice".into());
+    config.reviews.gate_on_unresolved_threads = true;
     let store = StoreSnapshot {
         entries: vec![local("api", &"c".repeat(40))],
         warnings: vec![],
@@ -113,7 +114,8 @@ fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
     assert!(state.branches[2].needs_rebase);
     let api = &state.branches[1];
     assert!(api.is_current);
-    assert!(api.pr.as_ref().unwrap().is_draft);
+    assert_eq!(api.pr.as_ref().unwrap().unresolved_threads, 2);
+    assert!(api.pr.as_ref().unwrap().threads_gate);
     assert!(
         api.pr
             .as_ref()
@@ -157,6 +159,14 @@ fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
     );
     assert!(!api.local_checks[0].is_stale);
     assert!(state.branches[0].pr.as_ref().unwrap().reviews[0].is_bot);
+}
+
+#[test]
+fn composition_keeps_unresolved_threads_non_gating_by_default() {
+    let state = compose(Some(&git("api")), Some(&github()), None, &Config::default());
+    let pr = state.branches[1].pr.as_ref().unwrap();
+    assert_eq!(pr.unresolved_threads, 2);
+    assert!(!pr.threads_gate);
 }
 
 #[test]

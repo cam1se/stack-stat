@@ -41,6 +41,8 @@ fn ready_branch() -> BranchState {
             title: String::new(),
             is_draft: false,
             review_decision: ReviewDecision::Approved,
+            unresolved_threads: 0,
+            threads_gate: false,
             checks: vec![check(
                 CheckStatus::Completed,
                 Some(CheckConclusion::Success),
@@ -54,6 +56,25 @@ fn ready_branch() -> BranchState {
 #[test]
 fn fully_green_branch_is_go() {
     assert_eq!(ready_branch().verdict(), Verdict::Go);
+}
+
+#[test]
+fn gating_unresolved_threads_blocks_even_with_outstanding_evidence() {
+    let mut branch = ready_branch();
+    let pr = branch.pr.as_mut().unwrap();
+    pr.unresolved_threads = 1;
+    pr.threads_gate = true;
+    pr.checks[0].status = CheckStatus::InProgress;
+    pr.checks[0].conclusion = None;
+    assert_eq!(branch.verdict(), Verdict::NoGo);
+}
+
+#[test]
+fn non_gating_unresolved_threads_do_not_change_verdict() {
+    let mut branch = ready_branch();
+    let pr = branch.pr.as_mut().unwrap();
+    pr.unresolved_threads = 1;
+    assert_eq!(branch.verdict(), Verdict::Go);
 }
 
 #[test]

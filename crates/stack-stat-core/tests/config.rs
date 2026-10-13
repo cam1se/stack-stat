@@ -16,6 +16,7 @@ fn absent_files_use_defaults() {
     assert_eq!(config.poll.github_active, 15);
     assert_eq!(config.poll.store, 2);
     assert!(!config.reviews.show_bots);
+    assert!(!config.reviews.gate_on_unresolved_threads);
     assert_eq!(config.display.reviews_default, ReviewsDefault::Collapsed);
     assert!(config.checks.local.is_empty());
 }
@@ -27,7 +28,7 @@ fn repo_filters_and_local_checks_are_loaded() {
         &repo.path().join(".stack-stat.toml"),
         "[checks.skip]\nnames = ['secrets-scan']\npatterns = ['codecov/*', 'test-?']\n\
          [checks.local]\nlint = { description = 'cargo clippy' }\n\
-         [reviews]\nbots = ['check-bot']\nshow_bots = true\n",
+         [reviews]\nbots = ['check-bot']\nshow_bots = true\ngate_on_unresolved_threads = true\n",
     );
     let config = Config::load(repo.path(), None).unwrap();
     assert!(config.is_check_skipped("secrets-scan"));
@@ -38,6 +39,7 @@ fn repo_filters_and_local_checks_are_loaded() {
     assert!(config.is_bot("check-bot"));
     assert_eq!(config.checks.local["lint"].description, "cargo clippy");
     assert!(config.reviews.show_bots);
+    assert!(config.reviews.gate_on_unresolved_threads);
 }
 
 #[test]
@@ -45,18 +47,19 @@ fn personal_preferences_cannot_override_repo_filters() {
     let repo = tempfile::tempdir().unwrap();
     write(
         &repo.path().join(".stack-stat.toml"),
-        "[checks.skip]\nnames = ['required-check']\n[reviews]\nbots = ['ci-bot']\n",
+        "[checks.skip]\nnames = ['required-check']\n[reviews]\nbots = ['ci-bot']\ngate_on_unresolved_threads = true\n",
     );
     let user = repo.path().join("config.toml");
     write(
         &user,
         "[checks.skip]\nnames = []\n[checks.local]\nother = { description = 'local' }\n\
-         [reviews]\nbots = []\n[poll]\ngithub = 60\n\
+         [reviews]\nbots = []\ngate_on_unresolved_threads = false\n[poll]\ngithub = 60\n\
          [display]\nreviews_default = 'expanded'\n",
     );
     let config = Config::load(repo.path(), Some(&user)).unwrap();
     assert!(config.is_check_skipped("required-check"));
     assert!(config.is_bot("ci-bot"));
+    assert!(config.reviews.gate_on_unresolved_threads);
     assert!(config.checks.local.is_empty());
     assert_eq!(config.poll.github, 60);
     assert_eq!(config.display.reviews_default, ReviewsDefault::Expanded);

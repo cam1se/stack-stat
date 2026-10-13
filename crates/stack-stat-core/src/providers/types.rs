@@ -68,6 +68,8 @@ pub struct PrResponse {
     pub reviews: Vec<ReviewResponse>,
     /// Requested reviewers who have not necessarily submitted a review.
     pub review_requests: Vec<ReviewRequest>,
+    /// Unresolved review threads among the first 100 returned by GitHub.
+    pub unresolved_threads: usize,
     /// Normalized check runs and status contexts for the head commit.
     pub checks: Vec<PrCheckResponse>,
 }

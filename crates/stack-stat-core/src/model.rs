@@ -110,6 +110,10 @@ pub struct PrInfo {
     pub is_draft: bool,
     /// Aggregate review decision supplied by GitHub.
     pub review_decision: ReviewDecision,
+    /// Unresolved review threads among GitHub's first 100 returned threads.
+    pub unresolved_threads: usize,
+    /// Whether unresolved review threads block readiness.
+    pub threads_gate: bool,
     /// CI checks on the head commit.
     pub checks: Vec<CiCheck>,
     /// Latest review from each author and pending review requests.

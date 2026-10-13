@@ -28,6 +28,8 @@ fn pr(checks: Vec<CiCheck>, reviews: Vec<Review>) -> PrInfo {
         title: String::new(),
         is_draft: false,
         review_decision: ReviewDecision::None,
+        unresolved_threads: 0,
+        threads_gate: false,
         checks,
         reviews,
     }

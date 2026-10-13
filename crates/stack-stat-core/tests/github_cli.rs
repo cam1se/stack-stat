@@ -11,6 +11,7 @@ fn query_is_sorted_deduplicated_and_selects_check_and_review_fields() {
     assert!(p42 < p43);
     assert_eq!(query.matches("pr43: pullRequest").count(), 1);
     for field in [
+        "reviewThreads(first:100)",
         "reviewRequests",
         "latestReviews",
         "statusCheckRollup",
@@ -29,6 +30,7 @@ fn parser_keeps_partial_data_and_omits_inaccessible_pr() {
     assert_eq!(prs[0].number, 42);
     assert!(prs[0].checks.is_empty());
     assert_eq!(prs[0].review_decision, None);
+    assert_eq!(prs[0].unresolved_threads, 0);
     assert_eq!(prs[0].review_requests[0].author, "reviewers");
 }
 
@@ -38,6 +40,7 @@ fn parser_rejects_responses_without_data_and_preserves_bot_and_context() {
     assert!(matches!(err, GitHubError::Parse(_)));
     let prs = parse_pr_response(include_str!("fixtures/pr_details.json")).unwrap();
     let draft = prs.iter().find(|pr| pr.number == 43).unwrap();
+    assert_eq!(draft.unresolved_threads, 2);
     assert!(draft.reviews[0].is_bot);
     assert_eq!(
         draft

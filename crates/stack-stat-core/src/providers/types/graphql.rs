@@ -57,6 +57,9 @@ pub struct RawPr {
     pub latest_reviews: Option<Nodes<RawReview>>,
     /// Current review requests.
     pub review_requests: Option<Nodes<RawRequest>>,
+    /// Review threads returned by GitHub.
+    #[serde(default)]
+    pub review_threads: Option<Nodes<RawReviewThread>>,
     /// Last commit with check rollup.
     pub commits: Option<Nodes<RawCommitNode>>,
 }
@@ -98,6 +101,14 @@ pub struct RawReview {
 pub struct RawRequest {
     /// Requested user, bot, or team.
     pub requested_reviewer: Option<RawAuthor>,
+}
+
+/// Raw review-thread resolution state.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawReviewThread {
+    /// Whether all comments in the thread have been resolved.
+    pub is_resolved: bool,
 }
 
 /// Commit connection node.
@@ -230,6 +241,13 @@ impl RawPr {
                 })
             })
             .collect();
+        let unresolved_threads = self
+            .review_threads
+            .into_iter()
+            .flat_map(|value| value.nodes)
+            .flatten()
+            .filter(|thread| !thread.is_resolved)
+            .count();
         let checks = self
             .commits
             .into_iter()
@@ -248,6 +266,7 @@ impl RawPr {
             review_decision: self.review_decision,
             reviews,
             review_requests,
+            unresolved_threads,
             checks,
         }
     }
