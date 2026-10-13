@@ -44,10 +44,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Span::raw(" · "),
         Span::styled(
             lifecycle,
-            Style::default().fg(if matches!(lifecycle, "Open" | "Queued") {
-                theme.success
-            } else {
-                theme.muted
+            Style::default().fg(match lifecycle {
+                "Open" | "Queued" => theme.success,
+                "Draft" => theme.error,
+                _ => theme.muted,
             }),
         ),
         Span::raw(if branch.is_current {

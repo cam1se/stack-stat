@@ -143,8 +143,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 let local = local_label(branch, full_local);
                 let branch_name = branch.name.as_str();
                 let title = branch.pr.as_ref().map_or("", |pr| pr.title.as_str());
+                // A merged layer is history: every column is dimmed.
+                let dim = branch.lifecycle == PrLifecycle::Merged;
                 let style = |column: Column, foreground| {
-                    let style = Style::default().fg(foreground);
+                    let style = Style::default().fg(if dim { theme.muted } else { foreground });
                     if app.animation().is_flashing_for(&branch.name, column) {
                         style.bg(theme.flash)
                     } else {
@@ -170,7 +172,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     Cell::from(vec![
                         Line::from(Span::styled(
                             branch_name,
-                            style(Column::Branch, branch_color).add_modifier(Modifier::BOLD),
+                            if dim {
+                                style(Column::Branch, branch_color)
+                            } else {
+                                style(Column::Branch, branch_color).add_modifier(Modifier::BOLD)
+                            },
                         )),
                         Line::styled(
                             if title.is_empty() {
@@ -259,7 +265,7 @@ fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::sty
         PrLifecycle::Merged => ("Merged".into(), theme.muted),
         PrLifecycle::Queued => ("Queued".into(), theme.success),
         PrLifecycle::Open => match branch.pr.as_ref() {
-            Some(pr) if pr.is_draft => ("Draft".into(), theme.muted),
+            Some(pr) if pr.is_draft => ("Draft".into(), theme.error),
             Some(_) => ("Open".into(), theme.success),
             None if branch.pr_number.is_some() => ("…".into(), theme.warning),
             None => ("—".into(), theme.muted),
