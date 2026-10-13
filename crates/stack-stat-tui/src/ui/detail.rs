@@ -368,7 +368,7 @@ fn review_line(review: &Review, theme: &Theme) -> Line<'static> {
     let (icon, status, color) = match review.state {
         ReviewState::Approved => ("✔", "approved", theme.success),
         ReviewState::ChangesRequested => ("↺", "changes requested", theme.error),
-        ReviewState::Pending => ("…", "pending", theme.warning),
+        ReviewState::Pending => ("◷", "pending", theme.warning),
         ReviewState::Commented => ("·", "commented", theme.muted),
         ReviewState::Dismissed => ("·", "dismissed", theme.muted),
     };
@@ -400,13 +400,13 @@ fn local_check_group(check: &LocalCheckResult) -> u8 {
 fn local_check_line(check: &LocalCheckResult, theme: &Theme) -> Line<'static> {
     let (icon, suffix, color) = if check.is_stale {
         let short = check.sha.get(..7).unwrap_or(&check.sha);
-        ("…", format!("stale (HEAD moved, was {short})"), theme.muted)
+        ("◷", format!("stale (HEAD moved, was {short})"), theme.muted)
     } else {
         match check.state {
             LocalCheckState::Pass => ("✔", "passed".into(), theme.success),
             LocalCheckState::Fail => ("✖", "failed".into(), theme.error),
             LocalCheckState::Skip => ("░░", "skipped".into(), theme.muted),
-            LocalCheckState::Missing => ("…", "missing".into(), theme.warning),
+            LocalCheckState::Missing => ("◷", "missing".into(), theme.warning),
         }
     };
     Line::styled(
@@ -436,7 +436,7 @@ fn render_scrolled<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             Block::default()
                 .borders(Borders::ALL)
                 .title(super::title(" Details ", theme))
-                .border_style(Style::default().fg(theme.muted)),
+                .border_style(Style::default().fg(theme.border)),
         ),
         area,
     );

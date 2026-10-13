@@ -66,7 +66,7 @@ async fn next_line_colors_each_issue_and_replaces_the_count_strip_beside_the_pie
 
     let tall = draw(&app, 120, 40);
     assert!(
-        find_row(&tall, "✖ 1").is_none() && find_row(&tall, "… 0").is_none(),
+        find_row(&tall, "✖ 1").is_none() && find_row(&tall, "◷ 0").is_none(),
         "the pie replaces the colored count strip"
     );
     let bullet_color = |needle: &str| {

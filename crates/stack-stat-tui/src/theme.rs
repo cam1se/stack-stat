@@ -60,6 +60,10 @@ pub struct Theme {
     pub flash: Color,
     /// Accent color for the header title.
     pub header_title: Color,
+    /// Pane border color, a calm shade of the logo blue.
+    pub border: Color,
+    /// Secondary accent (logo cyan) for keys and identifying values.
+    pub accent: Color,
     /// Loading placeholder shade.
     pub skeleton: Color,
 }
@@ -78,6 +82,8 @@ impl Theme {
             selected,
             flash,
             header_title,
+            border,
+            accent,
             skeleton,
         ) = match depth {
             ColorDepth::TrueColor => (
@@ -90,6 +96,8 @@ impl Theme {
                 Color::Rgb(0x13, 0x3a, 0x52),
                 Color::Rgb(0x2f, 0x8c, 0xff),
                 Color::Rgb(0x2f, 0x8c, 0xff),
+                Color::Rgb(0x2d, 0x5b, 0x8a),
+                Color::Rgb(0x29, 0xc5, 0xf6),
                 Color::Rgb(0x1a, 0x28, 0x38),
             ),
             ColorDepth::Ansi256 => (
@@ -102,6 +110,8 @@ impl Theme {
                 Color::Indexed(24),
                 Color::Indexed(33),
                 Color::Indexed(33),
+                Color::Indexed(25),
+                Color::Indexed(45),
                 Color::Indexed(236),
             ),
             ColorDepth::Basic16 => (
@@ -114,6 +124,8 @@ impl Theme {
                 Color::Blue,
                 Color::Blue,
                 Color::Blue,
+                Color::Blue,
+                Color::LightCyan,
                 Color::DarkGray,
             ),
         };
@@ -128,6 +140,8 @@ impl Theme {
             selected,
             flash,
             header_title,
+            border,
+            accent,
             skeleton,
         }
     }

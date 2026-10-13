@@ -62,7 +62,7 @@ async fn table_displays_go_wait_and_no_go_verdict_glyphs() {
     app.poll_once(Source::All).await;
 
     let buffer = draw(&app, 120, 40);
-    for (number, glyph) in [(42, "✔"), (43, "…"), (44, "✖")] {
+    for (number, glyph) in [(42, "✔"), (43, "◷"), (44, "✖")] {
         let row = find_body_row(&buffer, &format!("#{number}")).expect("branch row");
         assert_row_contains(&buffer, row, &[glyph, &format!("#{number}")]);
     }

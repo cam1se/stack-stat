@@ -130,7 +130,7 @@ async fn pie_is_absent_from_a_compact_header() {
 async fn summary_strip_counts_each_verdict() {
     let app = dashboard().await;
     let buffer = draw(&app, 120);
-    let summary = find_row(&buffer, "✔ 1   … 1   ✖ 1   ✓ 1").expect("summary strip is rendered");
+    let summary = find_row(&buffer, "✔ 1   ◷ 1   ✖ 1   ✓ 1").expect("summary strip is rendered");
     assert!(summary > 0);
 }
 
@@ -196,6 +196,34 @@ async fn merged_rows_are_dim_in_every_column_and_draft_is_red() {
         buffer[(line[..column].chars().count() as u16, draft)].fg,
         theme.error
     );
+}
+
+#[tokio::test]
+async fn borders_keys_and_header_fields_use_the_logo_palette() {
+    let app = dashboard().await;
+    let theme = Theme::for_depth(ColorDepth::TrueColor);
+    let buffer = draw_at(&app, 140, 40);
+    let color_of = |row: u16, needle: &str| {
+        let line: String = (0..buffer.area.width)
+            .map(|x| buffer[(x, row)].symbol())
+            .collect();
+        let column = line.find(needle).expect(needle);
+        buffer[(line[..column].chars().count() as u16, row)].fg
+    };
+
+    assert_eq!(buffer[(0, 0)].fg, theme.border, "header border");
+    let stack_border = find_row(&buffer, "Stack ─").expect("table border row");
+    assert_eq!(buffer[(0, stack_border)].fg, theme.border, "table border");
+
+    let identity = find_row(&buffer, "owner/name").expect("identity row");
+    assert_eq!(color_of(identity, "owner/name"), theme.header_title);
+    assert_eq!(color_of(identity, "main"), theme.accent);
+    let worktree = find_row(&buffer, "worktree: go").expect("worktree row");
+    assert_eq!(color_of(worktree, "go"), theme.accent);
+
+    let footer = buffer.area.height - 1;
+    assert_eq!(color_of(footer, "q"), theme.accent, "key hint");
+    assert_eq!(color_of(footer, "quit"), theme.muted, "hint label");
 }
 
 #[tokio::test]

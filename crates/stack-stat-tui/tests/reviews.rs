@@ -34,8 +34,8 @@ async fn review_column_is_yellow_text_only_when_a_review_is_required() {
     let required = find_body_row(buffer, "#2").unwrap();
     let requested = find_body_row(buffer, "#3").unwrap();
     assert_row_contains(buffer, none, &["#1", "—"]);
-    assert_row_contains(buffer, required, &["#2", "… required"]);
-    assert_row_contains(buffer, requested, &["#3", "… pending"]);
+    assert_row_contains(buffer, required, &["#2", "◷ required"]);
+    assert_row_contains(buffer, requested, &["#3", "◷ pending"]);
 
     let colored = |row: u16, text: &str| {
         let line: String = (0..buffer.area.width)
@@ -45,7 +45,7 @@ async fn review_column_is_yellow_text_only_when_a_review_is_required() {
         let x = line[..column].chars().count() as u16;
         buffer[(x, row)].fg
     };
-    assert_eq!(colored(required, "… required"), theme.warning);
-    assert_eq!(colored(requested, "… pending"), theme.warning);
+    assert_eq!(colored(required, "◷ required"), theme.warning);
+    assert_eq!(colored(requested, "◷ pending"), theme.warning);
     assert_ne!(colored(none, "—"), theme.warning);
 }
