@@ -1,8 +1,8 @@
 site_name: stack-stat
-site_url: https://tcamise-gpsw.github.io/stack-stat/
+site_url: https://cam1se.github.io/stack-stat/
 site_description: Status for GitHub stacked pull requests in the terminal.
-repo_name: tcamise-gpsw/stack-stat
-repo_url: https://github.com/tcamise-gpsw/stack-stat
+repo_name: cam1se/stack-stat
+repo_url: https://github.com/cam1se/stack-stat
 edit_uri: edit/main/docs/user/
 docs_dir: docs/user
 site_dir: site

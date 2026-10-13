@@ -16,7 +16,7 @@
 | Location | Content | Lifetime |
 |---|---|---|
 | Root [README](../README.md) | Summary and install pointer | Living |
-| [User docs](user/) | Installation, usage, configuration; published on [GitHub Pages](https://tcamise-gpsw.github.io/stack-stat/) | Living |
+| [User docs](user/) | Installation, usage, configuration; published on [GitHub Pages](https://cam1se.github.io/stack-stat/) | Living |
 | Root [AGENTS.md](../AGENTS.md) | Contributor and agent workflow | Living |
 | [Architecture](architecture/01-l1-context.md) | Context, crate boundaries, rationale, extending recipes | Living |
 | [ADRs](adr/README.md) | Significant decisions and alternatives | Append-only |

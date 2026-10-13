@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 # Install stack-stat from a checksum-verified GitHub Release.
 $ErrorActionPreference = 'Stop'
-$Repo = 'tcamise-gpsw/stack-stat'
+$Repo = 'cam1se/stack-stat'
 $BinaryName = 'stack-stat'
 $Target = 'x86_64-pc-windows-msvc'
 $InstallDir = $env:INSTALL_DIR
