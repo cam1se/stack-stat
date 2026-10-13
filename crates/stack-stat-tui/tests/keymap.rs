@@ -5,12 +5,20 @@ use stack_stat_core::providers::ProviderAction;
 use stack_stat_tui::{
     action::{Action, KEYMAP},
     app::Mode,
-    message::{Effect, Source},
+    message::{ActionSteps, Effect, Source},
 };
 use support::{PrBuilder, TestScenario};
 
 fn key(ch: char) -> KeyEvent {
     KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE)
+}
+
+fn confirmation_action(app: &support::FakeApp) -> &ProviderAction {
+    let Mode::Confirm(prompt) = app.mode() else {
+        panic!("expected confirmation");
+    };
+    assert!(prompt.steps.before.is_none());
+    &prompt.steps.action
 }
 
 #[tokio::test]
@@ -26,17 +34,17 @@ async fn help_blocks_navigation_and_filter_treats_q_as_text() {
     app.poll_once(Source::GitHub).await;
     assert_eq!(app.selected_branch(), Some("auth"));
     app.handle_key(key('?'));
-    assert_eq!(app.mode(), Mode::Help);
+    assert_eq!(app.mode(), &Mode::Help);
     app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("auth"));
-    assert_eq!(app.mode(), Mode::Normal);
+    assert_eq!(app.mode(), &Mode::Normal);
     app.handle_key(key('/'));
     app.handle_key(key('q'));
     assert_eq!(app.filter(), "q");
-    assert_eq!(app.mode(), Mode::Filter);
+    assert_eq!(app.mode(), &Mode::Filter);
     app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
     assert_eq!(app.filter(), "");
-    assert_eq!(app.mode(), Mode::Normal);
+    assert_eq!(app.mode(), &Mode::Normal);
     assert_eq!(
         app.handle_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)),
         vec![Effect::Quit]
@@ -69,7 +77,9 @@ async fn navigation_refresh_and_unbound_enter_tab_have_distinct_actions() {
     assert_eq!(app.handle_key(key('R')), vec![Effect::Refresh(Source::All)]);
     assert_eq!(
         app.handle_key(key('o')),
-        vec![Effect::Mutate(ProviderAction::OpenPr(42))]
+        vec![Effect::Mutate(ActionSteps::single(ProviderAction::OpenPr(
+            42
+        )))]
     );
     assert!(handles.github.recorded_actions().is_empty());
     app.handle_key(key('b'));
@@ -132,15 +142,18 @@ async fn checkout_and_sync_require_distinct_confirmations_and_arrows_navigate() 
     app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("api"));
     app.handle_key(key('c'));
-    assert!(
-        matches!(app.mode(), Mode::Confirm(ProviderAction::Checkout(ref name)) if name == "api")
+    assert_eq!(
+        confirmation_action(&app),
+        &ProviderAction::Checkout("api".into())
     );
     assert!(app.handle_key(key('n')).is_empty());
     app.handle_key(key('S'));
-    assert_eq!(app.mode(), Mode::Confirm(ProviderAction::SyncStack));
+    assert_eq!(confirmation_action(&app), &ProviderAction::SyncStack);
     assert_eq!(
         app.handle_key(key('y')),
-        vec![Effect::Mutate(ProviderAction::SyncStack)]
+        vec![Effect::Mutate(ActionSteps::single(
+            ProviderAction::SyncStack
+        ))]
     );
     app.handle_key(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
     assert_eq!(
@@ -176,25 +189,30 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
             Action::DetailPageDown | Action::DetailPageUp => {
                 assert_eq!(app.selected_branch(), Some("auth"), "{:?}", binding.key);
             }
-            Action::OpenPr => assert_eq!(effects, [Effect::Mutate(ProviderAction::OpenPr(42))]),
-            Action::Checkout => assert_eq!(
-                app.mode(),
-                Mode::Confirm(ProviderAction::Checkout("auth".into()))
+            Action::OpenPr => assert_eq!(
+                effects,
+                [Effect::Mutate(ActionSteps::single(ProviderAction::OpenPr(
+                    42
+                )))]
             ),
-            Action::Push => assert_eq!(app.mode(), Mode::Confirm(ProviderAction::PushStack)),
-            Action::Sync => assert_eq!(app.mode(), Mode::Confirm(ProviderAction::SyncStack)),
+            Action::Checkout => assert_eq!(
+                confirmation_action(&app),
+                &ProviderAction::Checkout("auth".into())
+            ),
+            Action::Push => assert_eq!(confirmation_action(&app), &ProviderAction::PushStack),
+            Action::Sync => assert_eq!(confirmation_action(&app), &ProviderAction::SyncStack),
             Action::ToggleDraft => assert_eq!(
-                app.mode(),
-                Mode::Confirm(ProviderAction::ToggleDraft {
+                confirmation_action(&app),
+                &ProviderAction::ToggleDraft {
                     number: 42,
-                    make_ready: true
-                })
+                    make_ready: true,
+                }
             ),
             Action::Refresh => assert_eq!(effects, [Effect::Refresh(Source::All)]),
-            Action::Filter => assert_eq!(app.mode(), Mode::Filter),
+            Action::Filter => assert_eq!(app.mode(), &Mode::Filter),
             Action::Sort => assert_eq!(app.sort(), stack_stat_tui::app::SortOrder::PrNumber),
             Action::ToggleBots => assert!(app.show_bots()),
-            Action::Help => assert_eq!(app.mode(), Mode::Help),
+            Action::Help => assert_eq!(app.mode(), &Mode::Help),
             Action::Quit => assert_eq!(effects, [Effect::Quit]),
         }
     }

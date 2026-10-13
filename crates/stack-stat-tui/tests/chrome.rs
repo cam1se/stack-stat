@@ -34,9 +34,6 @@ fn merged_stack() -> StackViewResponse {
         .into_iter()
         .map(|(name, number, is_merged)| StackBranch {
             name: name.into(),
-            head: Some(format!("{number:040x}")),
-            base: "0".repeat(40),
-            is_current: name == "go",
             is_merged,
             is_queued: false,
             pr: Some(StackPr {

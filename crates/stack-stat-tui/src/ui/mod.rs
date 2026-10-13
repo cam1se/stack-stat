@@ -44,7 +44,7 @@ pub struct UiRegions {
     pub table: Rect,
     /// Optional selected-branch details.
     pub detail: Option<Rect>,
-    /// Footer hints and feedback.
+    /// Confirmation content plus separate footer hints and feedback.
     pub status: Rect,
 }
 
@@ -63,10 +63,13 @@ pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     } else {
         5
     };
+    let footer_height = status_bar::height(app.mode()).min(area.height);
+    let header_height =
+        header_height.min(area.height.saturating_sub(footer_height).saturating_sub(1));
     let chunks = Layout::vertical([
         Constraint::Length(header_height),
-        Constraint::Min(1),
-        Constraint::Length(1),
+        Constraint::Min(0),
+        Constraint::Length(footer_height),
     ])
     .split(area);
     let body = chunks[1];
@@ -106,7 +109,7 @@ pub fn hit_test<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     x: u16,
     y: u16,
 ) -> PointerTarget {
-    if app.mode() == Mode::Help {
+    if matches!(app.mode(), Mode::Help) {
         return PointerTarget::Outside;
     }
     let layout = regions(area, app);
@@ -142,13 +145,17 @@ pub fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         return;
     }
     let layout = regions(area, app);
-    header::render(frame, layout.header, app, theme);
-    table::render(frame, layout.table, app, theme);
+    if !layout.header.is_empty() {
+        header::render(frame, layout.header, app, theme);
+    }
+    if !layout.table.is_empty() {
+        table::render(frame, layout.table, app, theme);
+    }
     if let Some(detail) = layout.detail {
         detail::render(frame, detail, app, theme);
     }
     status_bar::render(frame, layout.status, app, theme);
-    if app.mode() == Mode::Help {
+    if matches!(app.mode(), Mode::Help) {
         help::render(frame, area, theme);
     }
 }

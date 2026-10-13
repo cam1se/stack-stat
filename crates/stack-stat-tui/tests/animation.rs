@@ -68,18 +68,12 @@ async fn rebase_change_flashes_the_rebase_column() {
         branches: vec![
             StackBranch {
                 name: "base".into(),
-                head: Some(format!("{:040x}", 1)),
-                base: "0".repeat(40),
-                is_current: false,
                 is_merged: false,
                 is_queued: false,
                 pr: None,
             },
             StackBranch {
                 name: "feature".into(),
-                head: Some(format!("{:040x}", 2)),
-                base: "0".repeat(40),
-                is_current: true,
                 is_merged: false,
                 is_queued: false,
                 pr: None,
