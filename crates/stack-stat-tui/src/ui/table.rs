@@ -255,7 +255,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             Block::default()
                 .borders(Borders::ALL)
                 .title(super::title(" Stack ", theme))
-                .border_style(Style::default().fg(theme.muted)),
+                .border_style(Style::default().fg(theme.border)),
         );
     frame.render_widget(table, area);
 }
@@ -267,7 +267,7 @@ fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::sty
         PrLifecycle::Open => match branch.pr.as_ref() {
             Some(pr) if pr.is_draft => ("Draft".into(), theme.error),
             Some(_) => ("Open".into(), theme.success),
-            None if branch.pr_number.is_some() => ("…".into(), theme.warning),
+            None if branch.pr_number.is_some() => ("◷".into(), theme.warning),
             None => ("—".into(), theme.muted),
         },
     }
@@ -309,7 +309,7 @@ fn check_label(branch: &BranchState, spinner: char) -> (String, Health) {
     };
     // A merged layer's CI is history: keep the glyph but drop the color and animation.
     if branch.lifecycle == PrLifecycle::Merged {
-        let icon = if summary.running > 0 { '…' } else { icon };
+        let icon = if summary.running > 0 { '◷' } else { icon };
         return (
             format!("{icon} {}/{}", summary.passed, summary.total),
             Health::Muted,
@@ -350,7 +350,7 @@ fn review_label(
         && summary != ReviewSummary::ChangesRequested
     {
         (
-            "…",
+            "◷",
             if requested { "pending" } else { "required" },
             Health::Running,
         )
@@ -358,7 +358,7 @@ fn review_label(
         match summary {
             ReviewSummary::Approved => ("✔", "approved", Health::Success),
             ReviewSummary::ChangesRequested => ("↺", "changes", Health::Failure),
-            ReviewSummary::Pending => ("…", "pending", Health::Running),
+            ReviewSummary::Pending => ("◷", "pending", Health::Running),
             ReviewSummary::None => ("—", "", Health::Muted),
         }
     };
@@ -374,7 +374,7 @@ fn review_label(
                 let icon = match review.state {
                     ReviewState::Approved => "✔",
                     ReviewState::ChangesRequested => "↺",
-                    ReviewState::Pending => "…",
+                    ReviewState::Pending => "◷",
                     _ => "·",
                 };
                 format!("{icon}{}", review.author)
@@ -404,7 +404,7 @@ fn thread_label(branch: &BranchState) -> (String, Health) {
     if pr.threads_gate {
         return (format!("✖ {}", pr.unresolved_threads), Health::Failure);
     }
-    (format!("… {}", pr.unresolved_threads), Health::Running)
+    (format!("◷ {}", pr.unresolved_threads), Health::Running)
 }
 
 fn rebase_label(branch: &BranchState, full: bool) -> (String, Health) {
@@ -450,7 +450,7 @@ fn local_label(branch: &BranchState, full: bool) -> (String, Health) {
         };
         let icon = match health {
             Health::Failure => "✖",
-            Health::Running => "…",
+            Health::Running => "◷",
             Health::Success => "✔",
             Health::Muted => "░░",
         };
@@ -461,13 +461,13 @@ fn local_label(branch: &BranchState, full: bool) -> (String, Health) {
         .iter()
         .map(|check| {
             let icon = if check.is_stale {
-                "…"
+                "◷"
             } else {
                 match check.state {
                     LocalCheckState::Pass => "✔",
                     LocalCheckState::Fail => "✖",
                     LocalCheckState::Skip => "░░",
-                    LocalCheckState::Missing => "…",
+                    LocalCheckState::Missing => "◷",
                 }
             };
             format!("{icon} {}", check.name)

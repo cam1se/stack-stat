@@ -44,18 +44,29 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         StackStatus::Ready => {
             let layers = state.branches.len();
             let layer_label = if layers == 1 { "layer" } else { "layers" };
-            let identity = if state.repo.is_empty() {
-                format!("{} · {} {layer_label}", state.trunk, layers)
-            } else {
-                format!(
-                    "{} · {} · {} {layer_label}",
-                    state.repo, state.trunk, layers
-                )
-            };
-            (
-                Line::styled(identity, Style::default().add_modifier(Modifier::BOLD)),
-                Some(state.summary()),
-            )
+            let separator = || Span::styled(" · ", Style::default().fg(theme.muted));
+            let mut spans = Vec::new();
+            if !state.repo.is_empty() {
+                spans.push(Span::styled(
+                    state.repo.clone(),
+                    Style::default()
+                        .fg(theme.header_title)
+                        .add_modifier(Modifier::BOLD),
+                ));
+                spans.push(separator());
+            }
+            spans.push(Span::styled(
+                state.trunk.clone(),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ));
+            spans.push(separator());
+            spans.push(Span::styled(
+                format!("{layers} {layer_label}"),
+                Style::default().fg(theme.muted),
+            ));
+            (Line::from(spans), Some(state.summary()))
         }
     };
     let chart_area = chart_area(area, stack_summary, !state.branches.is_empty());
@@ -83,7 +94,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             theme.muted
         }
     } else {
-        ratatui::style::Color::Reset
+        theme.muted
     };
     let icon = if app.is_fetching() {
         app.animation().spinner_char()
@@ -91,7 +102,9 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         '↻'
     };
     let status_line = Line::from(vec![
-        Span::raw(format!("worktree: {branch}    {icon} ")),
+        Span::styled("worktree: ", Style::default().fg(theme.muted)),
+        Span::styled(branch.to_owned(), Style::default().fg(theme.accent)),
+        Span::styled(format!("    {icon} "), Style::default().fg(theme.muted)),
         Span::styled(age, Style::default().fg(age_color)),
     ]);
     let summary = match stack_summary {
@@ -161,7 +174,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let block = Block::default()
         .borders(Borders::ALL)
         .title(super::title(" stack-stat ", theme))
-        .border_style(Style::default().fg(theme.muted));
+        .border_style(Style::default().fg(theme.border));
     frame.render_widget(Paragraph::new(lines).block(block), area);
 
     if let (Some(chart_area), Some(summary)) = (chart_area, stack_summary) {
@@ -207,7 +220,9 @@ fn next_to_merge_lines(state: &StackState, theme: &Theme) -> (Line<'static>, Vec
     let issues = next.issues();
     let mut head = vec![
         Span::styled(glyph, Style::default().fg(verdict_color)),
-        Span::raw(format!(" Next: {number}{}", next.name)),
+        Span::styled(" Next: ", Style::default().fg(theme.muted)),
+        Span::styled(number.clone(), Style::default().fg(theme.accent)),
+        Span::raw(next.name.clone()),
     ];
     if issues.is_empty() {
         head.push(Span::raw(" — "));
@@ -243,7 +258,10 @@ fn blocker_line(state: &StackState, theme: &Theme) -> Option<Line<'static>> {
         ("local", summary.local, theme.warning),
         ("draft", summary.draft, theme.error),
     ];
-    let mut spans = vec![Span::raw("Blocked by: ")];
+    let mut spans = vec![Span::styled(
+        "Blocked by: ",
+        Style::default().fg(theme.muted),
+    )];
     let mut has_category = false;
     for (name, count, color) in categories {
         if count == 0 {

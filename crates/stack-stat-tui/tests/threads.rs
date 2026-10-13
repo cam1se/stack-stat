@@ -97,8 +97,8 @@ async fn non_gating_unresolved_threads_warn_without_blocking_the_branch() {
         .collect();
     let verdict = line.split("auth").next().expect("branch prefix");
 
-    assert_row_contains(&buffer, row, &["… 3"]);
-    assert_eq!(color_for_text(&buffer, row, "… 3"), theme.warning);
+    assert_row_contains(&buffer, row, &["◷ 3"]);
+    assert_eq!(color_for_text(&buffer, row, "◷ 3"), theme.warning);
     assert!(verdict.contains('✔'));
     let detail_row = find_row(&buffer, "Unresolved threads: 3").expect("thread detail");
     assert_eq!(

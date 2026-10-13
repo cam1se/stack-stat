@@ -44,11 +44,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         }
         if !key.is_empty() {
             spans.push(Span::styled(
-                format!(" {key} "),
+                key.clone(),
                 Style::default()
-                    .fg(theme.muted)
-                    .bg(theme.selected)
-                    .add_modifier(Modifier::REVERSED),
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ));
             spans.push(Span::raw(" "));
         }

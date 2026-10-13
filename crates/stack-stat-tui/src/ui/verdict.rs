@@ -11,7 +11,7 @@ use crate::theme::Theme;
 pub(super) fn style(verdict: Verdict, theme: &Theme) -> (&'static str, Color) {
     match verdict {
         Verdict::Go => ("✔", theme.success),
-        Verdict::Wait => ("…", theme.warning),
+        Verdict::Wait => ("◷", theme.warning),
         Verdict::NoGo => ("✖", theme.error),
         Verdict::Merged => ("✓", theme.muted),
         Verdict::Queued => ("»", theme.success),
