@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/cam1se/stack-stat/compare/v0.5.1...v0.6.0) (2026-10-13)
+
+
+### Features
+
+* **providers:** read stack structure from GitHub GraphQL ([dd20316](https://github.com/cam1se/stack-stat/commit/dd20316d68dbe235b5de5fd8748a8f67c90930cb)), closes [#16](https://github.com/cam1se/stack-stat/issues/16)
+* **tui:** add leveled expiring notices and separate confirm prompt ([f0388e9](https://github.com/cam1se/stack-stat/commit/f0388e9c67d8a7dacdd994d32bdad2733818be7f)), closes [#16](https://github.com/cam1se/stack-stat/issues/16)
+* **tui:** use GitHub stack discovery and link before actions ([4e5d7e3](https://github.com/cam1se/stack-stat/commit/4e5d7e335ea655f16e122dd200db805d904b5826)), closes [#16](https://github.com/cam1se/stack-stat/issues/16)
+
+
+### Bug Fixes
+
+* **providers:** ignore fork PRs when discovering the branch stack ([3de6a60](https://github.com/cam1se/stack-stat/commit/3de6a6020c961cbacdc19d90c18980c47b624e65)), closes [#16](https://github.com/cam1se/stack-stat/issues/16)
+
 ## [0.5.1](https://github.com/cam1se/stack-stat/compare/v0.5.0...v0.5.1) (2026-10-13)
 
 
