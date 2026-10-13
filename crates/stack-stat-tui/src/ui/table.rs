@@ -130,9 +130,8 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 let threads = thread_label(branch);
                 let local = local_label(branch, full_local);
                 let branch_name = format!(
-                    "{}{}{}",
+                    "{}{}",
                     branch.name,
-                    if branch.is_current { " ←wt" } else { "" },
                     if branch.needs_rebase { " !" } else { "" }
                 );
                 let title = branch.pr.as_ref().map_or("", |pr| pr.title.as_str());
@@ -144,7 +143,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         style
                     }
                 };
-                let marker = if selected { "►" } else { " " };
+                let marker = if branch.is_current { "*" } else { " " };
                 let connector = if start + offset + 1 == visible_count {
                     " "
                 } else {
@@ -210,16 +209,14 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         style(Column::Local, local.1.color(theme)),
                     )));
                 }
-                let bg = if branch.is_current {
+                let bg = if selected {
                     app.animation()
                         .pulse_color(theme.active_base, theme.active_peak, 20)
-                } else if selected {
-                    theme.selected
                 } else {
                     ratatui::style::Color::Reset
                 };
                 let mut row_style = Style::default().bg(bg);
-                if branch.is_current
+                if selected
                     && theme.depth == ColorDepth::Basic16
                     && app.animation().phase(20) >= 0.5
                 {
