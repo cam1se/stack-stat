@@ -35,7 +35,7 @@ const WORKTREE_BRANCH: &str = "alex/offline-cache";
 const BOT: &str = "review-bot[bot]";
 /// Delay before the worktree layer's running checks complete.
 const CHECKS_FINISH_AFTER: Duration = Duration::from_secs(6);
-/// Simulated `gh stack view` latency for the first fetch, so the startup intro is visible.
+/// Simulated GitHub stack-read latency for the first fetch, so the startup intro is visible.
 const FIRST_FETCH_LATENCY: Duration = Duration::from_millis(2500);
 
 /// Lifecycle of a fictional layer as reported by `gh stack`.
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
         .enumerate()
         .map(|(index, layer)| (layer.branch.to_owned(), format!("{:040x}", index + 1)))
         .collect();
-    let github = FakeGitHubProvider::new(stack(&initial, &shas), prs(&initial));
+    let github = FakeGitHubProvider::new(stack(&initial), prs(&initial));
     github.set_remote_rebase_branches(
         initial
             .iter()
@@ -101,11 +101,11 @@ struct SlowFirstFetch {
 
 #[async_trait]
 impl GitHubProvider for SlowFirstFetch {
-    async fn stack_view(&self) -> Result<StackViewResponse, GitHubError> {
+    async fn stack_view(&self, current_branch: &str) -> Result<StackViewResponse, GitHubError> {
         if !self.fetched.swap(true, Ordering::SeqCst) {
             tokio::time::sleep(FIRST_FETCH_LATENCY).await;
         }
-        self.inner.stack_view().await
+        self.inner.stack_view(current_branch).await
     }
     fn repo(&self) -> String {
         self.inner.repo()
@@ -347,7 +347,7 @@ fn report_local_checks(
     Ok(())
 }
 
-fn stack(layers: &[Layer], shas: &HashMap<String, String>) -> StackViewResponse {
+fn stack(layers: &[Layer]) -> StackViewResponse {
     StackViewResponse {
         trunk: "main".into(),
         current_branch: WORKTREE_BRANCH.into(),
@@ -355,9 +355,6 @@ fn stack(layers: &[Layer], shas: &HashMap<String, String>) -> StackViewResponse 
             .iter()
             .map(|layer| StackBranch {
                 name: layer.branch.into(),
-                head: shas.get(layer.branch).cloned(),
-                base: "0".repeat(40),
-                is_current: layer.branch == WORKTREE_BRANCH,
                 is_merged: layer.lifecycle == Lifecycle::Merged,
                 is_queued: layer.lifecycle == Lifecycle::Queued,
                 pr: Some(StackPr {

@@ -40,7 +40,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     if app.state().stack_status == StackStatus::NotInStack {
         frame.render_widget(
             Paragraph::new(
-                "Not in a stack\nSwitch to a stacked branch or run gh stack init <branch>.",
+                "Not in a stack\nOpen and stack PRs on GitHub, or\nSwitch to a stacked branch.",
             )
             .block(
                 Block::default()

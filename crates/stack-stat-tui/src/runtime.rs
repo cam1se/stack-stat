@@ -199,12 +199,12 @@ async fn execute_effect<H: GitHubProvider + 'static>(
             pollers.refresh_all();
             Ok(false)
         }
-        Effect::Mutate(action) => {
+        Effect::Mutate(steps) => {
             let github = Arc::clone(github);
             let tx = tx.clone();
             tokio::spawn(async move {
-                let result = crate::app::execute(github.as_ref(), &action).await;
-                let _ = tx.send(AppMessage::MutationDone { action, result });
+                let result = crate::app::execute(github.as_ref(), &steps).await;
+                let _ = tx.send(AppMessage::MutationDone { steps, result });
             });
             Ok(false)
         }

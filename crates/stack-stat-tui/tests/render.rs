@@ -247,7 +247,14 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
     handles.github.set_stack_error(GitHubError::NotInStack);
     app.poll_once(Source::GitHub).await;
     assert_eq!(app.state().stack_status, StackStatus::NotInStack);
-    assert!(find_row(&draw(&app, 120, 26), "Not in a stack").is_some());
+    let empty_stack = draw(&app, 120, 26);
+    assert!(find_row(&empty_stack, "Not in a stack").is_some());
+    let github_guidance = find_row(&empty_stack, "GitHub").unwrap();
+    assert_row_contains(&empty_stack, github_guidance, &["PR"]);
+    assert_row_contains(&empty_stack, github_guidance, &["stack"]);
+    let branch_guidance = find_row(&empty_stack, "Switch").unwrap();
+    assert_row_contains(&empty_stack, branch_guidance, &["stacked", "branch"]);
+    assert!(find_row(&empty_stack, "gh stack init").is_none());
 }
 
 #[tokio::test]

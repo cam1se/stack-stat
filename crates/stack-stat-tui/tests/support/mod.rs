@@ -221,9 +221,6 @@ impl TestScenario {
                 .iter()
                 .map(|name| StackBranch {
                     name: name.clone(),
-                    head: shas.get(name).cloned(),
-                    base: "0".repeat(40),
-                    is_current: name == &self.current_branch,
                     is_merged: false,
                     is_queued: false,
                     pr: self

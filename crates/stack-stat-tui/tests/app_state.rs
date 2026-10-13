@@ -6,8 +6,8 @@ use stack_stat_core::{
     providers::{CheckResult, GitHubError, ProviderAction, ReportedState, StatusStoreProvider},
 };
 use stack_stat_tui::{
-    app::{Mode, SortOrder},
-    message::{Effect, Source},
+    app::{Mode, NoticeLevel, SortOrder},
+    message::{ActionSteps, Effect, Source},
 };
 use support::{PrBuilder, TestScenario};
 
@@ -120,10 +120,10 @@ async fn draft_toggle_requires_confirmation_and_records_effect() {
     assert!(app.handle_key(key('m')).is_empty());
     assert!(matches!(
         app.mode(),
-        Mode::Confirm(ProviderAction::ToggleDraft {
+        Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::ToggleDraft {
             number: 43,
-            make_ready: true
-        })
+            make_ready: true,
+        }
     ));
     let effects = app.handle_key(key('y'));
     assert_eq!(effects.len(), 1);
@@ -137,7 +137,7 @@ async fn draft_toggle_requires_confirmation_and_records_effect() {
                 make_ready: true
             })
     );
-    assert!(app.status_line().text.contains("ready"));
+    assert!(app.notice().unwrap().text.contains("ready"));
 }
 
 #[tokio::test]
@@ -150,7 +150,7 @@ async fn off_stack_replaces_rows_but_network_failure_retains_last_good_rows() {
         .set_stack_error(GitHubError::Network("connection refused".into()));
     app.poll_once(Source::GitHub).await;
     assert_eq!(app.state().branches.len(), 3);
-    assert!(app.status_line().text.contains("connection refused"));
+    assert!(app.notice().unwrap().text.contains("connection refused"));
     handles.git.set_current_branch("api");
     app.poll_once(Source::Git).await;
     assert!(app.state().branches[1].is_current);
@@ -173,7 +173,7 @@ async fn off_stack_replaces_rows_but_network_failure_retains_last_good_rows() {
         LocalCheckState::Pass
     );
     assert!(
-        app.status_line().text.contains("connection refused"),
+        app.notice().unwrap().text.contains("connection refused"),
         "local refresh must not hide GitHub failure"
     );
     handles.github.set_stack_error(GitHubError::NotInStack);
@@ -202,11 +202,11 @@ async fn selection_survives_refresh_and_filter_sort_and_cancel_are_predictable()
     app.handle_key(key('p'));
     assert!(matches!(
         app.mode(),
-        Mode::Confirm(ProviderAction::PushStack)
+        Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::PushStack
     ));
     assert!(app.handle_key(key('n')).is_empty());
-    assert_eq!(app.mode(), Mode::Normal);
-    assert!(app.status_line().text.contains("cancelled"));
+    assert_eq!(app.mode(), &Mode::Normal);
+    assert!(app.notice().unwrap().text.contains("cancelled"));
 }
 
 #[tokio::test]
@@ -219,16 +219,19 @@ async fn busy_mutation_and_pr_less_row_do_not_launch_commands() {
     app.poll_once(Source::Git).await;
     app.poll_once(Source::GitHub).await;
     assert!(app.handle_key(key('o')).is_empty());
-    assert!(app.status_line().text.contains("no PR"));
+    assert!(app.notice().unwrap().text.contains("no PR"));
     assert!(app.handle_key(key('m')).is_empty());
     assert!(app.handle_key(key('p')).is_empty());
     let effects = app.handle_key(key('y'));
     assert!(matches!(
         effects.as_slice(),
-        [Effect::Mutate(ProviderAction::PushStack)]
+        [Effect::Mutate(ActionSteps {
+            before: None,
+            action: ProviderAction::PushStack
+        })]
     ));
     assert!(app.handle_key(key('c')).is_empty());
-    assert!(app.status_line().text.contains("busy"));
+    assert_eq!(app.notice().unwrap().level, NoticeLevel::Progress);
     assert!(handles.github.recorded_actions().is_empty());
 }
 
@@ -251,25 +254,25 @@ fn active_checks_shorten_github_interval_and_rate_limit_reset_is_bounded() {
 }
 
 #[tokio::test]
-async fn failed_mutation_is_transient_and_does_not_hide_new_remote_failures() {
+async fn failed_mutation_persists_and_new_remote_failure_replaces_it() {
     let (mut app, _) = scenario();
     app.poll_once(Source::Git).await;
     app.poll_once(Source::GitHub).await;
     app.apply(stack_stat_tui::message::AppMessage::MutationDone {
-        action: ProviderAction::PushStack,
+        steps: ActionSteps::single(ProviderAction::PushStack),
         result: Err(GitHubError::Network("push denied".into())),
     });
-    assert!(app.status_line().text.contains("push denied"));
+    assert!(app.notice().unwrap().text.contains("push denied"));
     app.poll_once(Source::Git).await;
     assert!(
-        !app.status_line().text.contains("push denied"),
-        "transient mutation errors clear on fresh local data"
+        app.notice().unwrap().text.contains("push denied"),
+        "source refresh cannot clear a mutation failure"
     );
     app.apply(stack_stat_tui::message::AppMessage::GitHub(Err(
         GitHubError::Network("remote offline".into()),
     )));
     app.poll_once(Source::Git).await;
-    assert!(app.status_line().text.contains("remote offline"));
+    assert!(app.notice().unwrap().text.contains("remote offline"));
 }
 
 #[tokio::test]
@@ -281,10 +284,14 @@ async fn confirmation_prompt_survives_unrelated_local_refresh() {
         GitHubError::Network("remote offline".into()),
     )));
     app.handle_key(key('p'));
-    assert_eq!(app.mode(), Mode::Confirm(ProviderAction::PushStack));
+    assert!(
+        matches!(app.mode(), Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::PushStack)
+    );
     app.poll_once(Source::Git).await;
-    assert!(app.status_line().text.contains("Push stack? y/n"));
-    assert_eq!(app.mode(), Mode::Confirm(ProviderAction::PushStack));
+    assert!(app.notice().unwrap().text.contains("remote offline"));
+    assert!(
+        matches!(app.mode(), Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::PushStack)
+    );
 }
 
 #[tokio::test]
@@ -295,16 +302,20 @@ async fn open_pr_completion_cannot_unlock_an_in_flight_push() {
     app.handle_key(key('p'));
     assert_eq!(
         app.handle_key(key('y')),
-        [Effect::Mutate(ProviderAction::PushStack)]
+        [Effect::Mutate(ActionSteps::single(
+            ProviderAction::PushStack
+        ))]
     );
     assert_eq!(
         app.handle_key(key('o')),
-        [Effect::Mutate(ProviderAction::OpenPr(42))]
+        [Effect::Mutate(ActionSteps::single(ProviderAction::OpenPr(
+            42
+        )))]
     );
     app.apply(stack_stat_tui::message::AppMessage::MutationDone {
-        action: ProviderAction::OpenPr(42),
+        steps: ActionSteps::single(ProviderAction::OpenPr(42)),
         result: Ok(String::new()),
     });
     assert!(app.handle_key(key('S')).is_empty());
-    assert!(app.status_line().text.contains("busy"));
+    assert_eq!(app.notice().unwrap().level, NoticeLevel::Progress);
 }
