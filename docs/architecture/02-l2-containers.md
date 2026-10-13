@@ -17,7 +17,7 @@ flowchart LR
     UserConfig[User config directory]
   end
   subgraph Remote
-    Gh[gh CLI: gh stack + gh api graphql]
+    Gh[gh CLI: GraphQL reads, gh stack actions]
   end
   TUI --> Core
   Core --> Git

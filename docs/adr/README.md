@@ -9,6 +9,7 @@ Number ADRs chronologically with zero-padded permanent IDs (`0001-short-slug.md`
 | ADR | Title | Status |
 |---|---|---|
 |[ADR-0001](0001-remote-rebase-status.md)|Derive rebase status from remote state|Proposed|
+|[ADR-0002](0002-read-stack-from-github.md)|Read stack structure from GitHub; use gh stack only for actions|Accepted|
 
 ## Template
 

@@ -25,7 +25,7 @@ A non-merged layer needs a rebase only when GitHub shows that its parent ref has
 - **Data:** the existing aliased GraphQL poll gains one comparison per layer, `repository.ref(qualifiedName: <parent>) { compare(headRef: <layer>) { behindBy } }`. A positive `behindBy` means the layer needs a rebase.
 - **Failure:** a missing ref, failed comparison, or null result means no rebase need. The dashboard never reports a rebase it cannot show evidence for.
 - **Cascade:** layers above a layer that needs a rebase are marked as moving with it, with the same `Stacked` semantics as before.
-- **Removed input:** `StackBranch.needs_rebase` is deleted. `gh stack view --json` still supplies layer order, PR identity, and merged/queued state.
+- **Removed input:** `StackBranch.needs_rebase` is deleted. At this decision's introduction, `gh stack view --json` still supplied layer order, PR identity, and merged/queued state; [ADR-0002](0002-read-stack-from-github.md) replaces that remaining local read with GitHub stack data.
 - **Local drift:** the worktree's branch is compared with its remote-tracking ref and shown as a muted gutter marker (`*↑`, `*↓`, `*⇅`, `*?`) and in the details pane. It never affects the verdict.
 
 ## Consequences

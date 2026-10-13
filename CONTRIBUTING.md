@@ -2,7 +2,7 @@
 
 ## First-time setup
 
-Install Rust, git, and an authenticated GitHub CLI with the `gh stack` extension. Then run `make dev-setup` to check prerequisites and install the versioned pre-commit hook.
+Install Rust, git, and an authenticated GitHub CLI. The `gh stack` extension is needed only for checkout, push, and sync actions, not for reading stacks. Then run `make dev-setup` to check prerequisites and install the versioned pre-commit hook.
 
 ## Day-to-day
 
