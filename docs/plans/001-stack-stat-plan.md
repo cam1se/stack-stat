@@ -231,9 +231,9 @@
 - [x] Cover: fixture deserialization, including StatusContext normalization and bot detection from `__typename`; fake GitHub records each mutation; `pr_details` filters by number; `NotInStack` round-trips; retention helper keeps the current-SHA file plus the newest other file, and drops deleted branches
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 5: Provider traits, wire types, and fakes` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 5: Provider traits, wire types, and fakes` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 6: Git CLI provider and file status store
 
@@ -262,16 +262,16 @@
 - Shared by both worktrees: two `CliGitProvider`s discovered from different worktrees of one repo resolve the same common dir.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Branch names with `/` round-trip through encode/decode and produce one directory level
-- [ ] Atomic write: a concurrent reader never observes a partially written file (write via temp + rename)
-- [ ] Malformed JSON file is skipped with a warning; other entries still returned
-- [ ] Detached HEAD handled without error
-- [ ] Worktree and main checkout resolve the same store root
+- [x] Branch names with `/` round-trip through encode/decode and produce one directory level
+- [x] Atomic write: a concurrent reader never observes a partially written file (write via temp + rename)
+- [x] Malformed JSON file is skipped with a warning; other entries still returned
+- [x] Detached HEAD handled without error
+- [x] Worktree and main checkout resolve the same store root
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-core --test git_cli` and `--test file_store`
-- [ ] Git tests create a real temp repo with `git init` + commits + branches + `git worktree add` (git is a declared prerequisite; CI runners have it). Cover: current branch, branch SHAs, detached HEAD, common dir equality across worktrees, `resolve_rev` for short SHA and `HEAD~1`, error outside a repo
-- [ ] Store tests use `tempfile` dirs. Cover: write/read round-trip, merge of a second check into the same file, slash branch names, malformed-file skip, clear, gc with branch deleted and with three SHAs on one branch (keeps current + newest other)
+- [x] `cargo test -p stack-stat-core --test git_cli` and `--test file_store`
+- [x] Git tests create a real temp repo with `git init` + commits + branches + `git worktree add` (git is a declared prerequisite; CI runners have it). Cover: current branch, branch SHAs, detached HEAD, common dir equality across worktrees, `resolve_rev` for short SHA and `HEAD~1`, error outside a repo
+- [x] Store tests use `tempfile` dirs. Cover: write/read round-trip, merge of a second check into the same file, slash branch names, malformed-file skip, clear, gc with branch deleted and with three SHAs on one branch (keeps current + newest other)
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

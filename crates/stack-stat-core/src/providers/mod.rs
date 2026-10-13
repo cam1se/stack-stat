@@ -5,6 +5,12 @@ use std::{collections::HashMap, path::Path};
 use anyhow::Result;
 use async_trait::async_trait;
 
+pub mod branch_dir;
+mod file_store;
+mod git_cli;
+pub use file_store::FileStatusStore;
+pub use git_cli::{CliGitProvider, DETACHED_HEAD};
+
 mod retention;
 mod types;
 pub use retention::retained;

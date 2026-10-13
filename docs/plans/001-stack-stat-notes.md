@@ -26,3 +26,8 @@ N/A
 
 - GraphQL and stack fixtures are hand-authored from the documented response shapes; the actual `gh stack view --json` payload must be checked against a live stack in Task 7. No active stack exists in this repo yet.
 - `types.rs` was split so the aliased GraphQL response and normalization live in `providers/types/graphql.rs` rather than a monolithic wire file.
+
+### Task 6: Git CLI provider and file status store
+
+- macOS resolves temporary worktrees under `/private/var` even when the test created them under `/var`. The test compares canonical paths; provider discovery keeps Git's returned worktree path and canonicalizes only the common dir.
+- The file store exposes `read_all_with_warnings()` in addition to the trait's `read_all()` so the polling layer can surface corrupt/unreadable files without discarding valid entries.

@@ -36,6 +36,7 @@ Read in this order:
 | [02 Containers](architecture/02-l2-containers.md) | Binary, library, and local data |
 | [03 Distribution](architecture/03-distribution.md) | Versioning, packages, and documentation site |
 | [04 Domain and config](architecture/04-domain-and-config.md) | Model vocabulary and configuration precedence |
+| [05 Providers and store](architecture/05-providers-and-store.md) | CLI adapters and local check retention |
 
 The first two pages follow the [C4 model](https://c4model.com); later numbered pages cover subsystems. Put extending recipes beside their subsystem. Do not hand-model generated schemas or public Rust signatures. Link to rustdoc instead.
 
