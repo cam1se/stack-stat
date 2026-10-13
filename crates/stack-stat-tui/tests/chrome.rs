@@ -166,6 +166,39 @@ async fn merged_layers_show_checks_without_status_color() {
 }
 
 #[tokio::test]
+async fn merged_rows_are_dim_in_every_column_and_draft_is_red() {
+    let app = dashboard().await;
+    let theme = Theme::for_depth(ColorDepth::TrueColor);
+    let buffer = draw_at(&app, 140, 44);
+
+    let merged = find_body_row(&buffer, "#4").expect("merged layer row");
+    for row in [merged, merged + 1] {
+        for x in 1..buffer.area.width - 1 {
+            let cell = &buffer[(x, row)];
+            if cell.symbol().trim().is_empty() {
+                continue;
+            }
+            assert_eq!(
+                cell.fg,
+                theme.muted,
+                "merged row cell {x} ({:?}) must be dim",
+                cell.symbol()
+            );
+        }
+    }
+
+    let draft = find_body_row(&buffer, "#3").expect("draft layer row");
+    let line: String = (0..buffer.area.width)
+        .map(|x| buffer[(x, draft)].symbol())
+        .collect();
+    let column = line.find("Draft").expect("Draft state");
+    assert_eq!(
+        buffer[(line[..column].chars().count() as u16, draft)].fg,
+        theme.error
+    );
+}
+
+#[tokio::test]
 async fn footer_keeps_quit_hint_at_compact_widths() {
     let app = dashboard().await;
     for width in [80, 60] {
