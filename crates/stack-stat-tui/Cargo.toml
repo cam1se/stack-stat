@@ -24,6 +24,7 @@ clap.workspace = true
 futures-util = "0.3"
 stack-stat-core = { path = "../stack-stat-core" }
 tar.workspace = true
+tachyonfx.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
