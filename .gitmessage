@@ -1,0 +1,21 @@
+# <type>(<scope>): <subject>
+#
+# Types: feat, fix, docs, style, refactor, perf, test, chore, revert
+# Scopes:
+#   core
+#   config
+#   providers
+#   store
+#   tui
+#   report
+#   update
+#   build
+#   ci
+#   deps
+#   ai-infra
+#
+# - imperative mood, lowercase, no trailing period
+# - body: explain what and why (blank line after subject)
+# - footer: BREAKING CHANGE: <desc>, Closes: #NN
+# - breaking change: use ! after type/scope or BREAKING CHANGE: footer
+# - release-please: feat bumps minor; fix bumps patch; breaking bumps minor until 1.0

@@ -1,0 +1,19 @@
+[package]
+name = "stack-stat-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "stack-stat"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+stack-stat-core = { path = "../stack-stat-core" }
+
+[dev-dependencies]
+stack-stat-core = { path = "../stack-stat-core", features = ["test-fakes"] }
+
+[lints]
+workspace = true

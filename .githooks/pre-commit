@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Check staged Rust changes before committing.
+set -euo pipefail
+
+if git diff --cached --name-only | grep -q '\.rs$'; then
+    cargo fmt --all -- --check
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+fi

@@ -57,16 +57,16 @@
 - All cross-doc references are markdown links, not backticked paths. No counts of code things in docs.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Workspace builds with `cargo build` and the binary reports its version
-- [ ] `make dev-setup` installs the hook and fails clearly if `gh` is missing
-- [ ] `AGENTS.md` contains the exact format/lint/test commands listed in this plan's conventions
-- [ ] `.gitmessage` Types and Scopes blocks parse with the logviewer commit-lint extraction logic (indented `#   scope` lines)
-- [ ] Architecture docs 01 and 02 render valid Mermaid and link to each other and to the spec
-- [ ] No logviewer-specific content (capture, adb, codegen, fixtures, GLAAD) remains. A case-insensitive search for `gopro|glaad|logviewer|app-gp` across the repo, excluding `docs/specs/` and `docs/plans/`, returns nothing. Ported files are rewritten for stack-stat, not copied with names swapped
+- [x] Workspace builds with `cargo build` and the binary reports its version
+- [x] `make dev-setup` installs the hook and fails clearly if `gh` is missing
+- [x] `AGENTS.md` contains the exact format/lint/test commands listed in this plan's conventions
+- [x] `.gitmessage` Types and Scopes blocks parse with the logviewer commit-lint extraction logic (indented `#   scope` lines)
+- [x] Architecture docs 01 and 02 render valid Mermaid and link to each other and to the spec
+- [x] No logviewer-specific content (capture, adb, codegen, fixtures, GLAAD) remains. A case-insensitive search for `gopro|glaad|logviewer|app-gp` across the repo, excluding `docs/specs/` and `docs/plans/`, returns nothing. Ported files are rewritten for stack-stat, not copied with names swapped
 
 **Tests:**
-- [ ] Run `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked --no-fail-fast`
-- [ ] No permanent tests in this task (scaffold only). Smoke: `cargo run -- --version` and `make help`
+- [x] Run `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked --no-fail-fast`
+- [x] No permanent tests in this task (scaffold only). Smoke: `cargo run -- --version` and `make help`
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. This is the repo's first commit and goes on `main`: push with `git push -u origin main` so `main` exists as the PR base. Then create the work branch `feat/001-stack-stat` (`git switch -c feat/001-stack-stat`). All later tasks commit there.

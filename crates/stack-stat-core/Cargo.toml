@@ -1,0 +1,14 @@
+[package]
+name = "stack-stat-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+test-fakes = []
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+stack-stat-core = { path = ".", features = ["test-fakes"] }
