@@ -69,9 +69,9 @@
 - [x] No permanent tests in this task (scaffold only). Smoke: `cargo run -- --version` and `make help`
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. This is the repo's first commit and goes on `main`: push with `git push -u origin main` so `main` exists as the PR base. Then create the work branch `feat/001-stack-stat` (`git switch -c feat/001-stack-stat`). All later tasks commit there.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 1: Workspace skeleton, contributor conventions, and living-docs scaffold` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. This is the repo's first commit and goes on `main`: push with `git push -u origin main` so `main` exists as the PR base. Then create the work branch `feat/001-stack-stat` (`git switch -c feat/001-stack-stat`). All later tasks commit there.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 1: Workspace skeleton, contributor conventions, and living-docs scaffold` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 
 ### Task 2: AI agent skills
@@ -94,13 +94,13 @@
 - Do not port the logviewer skills that do not apply: `glaad-cpu-profile`, `glaad-observability`, `glaad-tui-debug`, `glaad-unknown-events`.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] All seven skills exist with valid front matter and stack-stat-specific paths and commands
-- [ ] No skill references logviewer-only commands (`make benchmark`, `make codegen-*`, fixtures, adb)
-- [ ] Commit skill's scope table covers every scope in `.gitmessage`
+- [x] All seven skills exist with valid front matter and stack-stat-specific paths and commands
+- [x] No skill references logviewer-only commands (`make benchmark`, `make codegen-*`, fixtures, adb)
+- [x] Commit skill's scope table covers every scope in `.gitmessage`
 
 **Tests:**
-- [ ] No code changes. Run `cargo fmt --all -- --check` to confirm nothing regressed
-- [ ] Validate each SKILL.md front matter parses as YAML (throwaway check; do not commit it)
+- [x] No code changes. Run `cargo fmt --all -- --check` to confirm nothing regressed
+- [x] Validate each SKILL.md front matter parses as YAML (throwaway check; do not commit it)
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then push the work branch with `git push -u origin feat/001-stack-stat` and open the draft PR once with `gh pr create --draft --base main --head feat/001-stack-stat --fill`. Later tasks just `git push` so the draft PR stays current.

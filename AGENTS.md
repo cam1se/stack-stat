@@ -58,6 +58,8 @@ Avoid monolithic Rust files. Around 300 lines, look for a cohesive seam; when a 
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) with types and scopes from [`.gitmessage`](.gitmessage). Use an imperative lowercase subject without a trailing period. Explain non-obvious changes in the body; use `BREAKING CHANGE:` and `Closes:` in the footer where applicable. Keep one concern per commit.
 
+Agents should follow [commit guidance](.agents/skills/stack-stat-commit/SKILL.md) when preparing a commit; [reflow](.agents/skills/stack-stat-reflow/SKILL.md) and [ship](.agents/skills/stack-stat-ship/SKILL.md) cover PR preparation.
+
 ## Pull requests
 
 Branch from `main`, keep each PR focused, and update documentation with code. Before pushing, run `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked --no-fail-fast`. Investigate failed CI checks rather than ignoring them.
@@ -66,6 +68,8 @@ Branch from `main`, keep each PR focused, and update documentation with code. Be
 
 Documentation moves with code. Structural changes update [architecture](docs/architecture/); hard-to-reverse decisions get an [ADR](docs/adr/README.md). The [docs conventions](docs/README.md) define one source of truth per fact, navigable links, and living versus point-in-time documents.
 
+For a full documentation audit, use [docs refresh](.agents/skills/stack-stat-docs-refresh/SKILL.md); [ADR authoring](.agents/skills/stack-stat-docs-create-adr/SKILL.md) and [plan absorption](.agents/skills/stack-stat-docs-absorb-plan/SKILL.md) explain durable decision records.
+
 ## Notes for coding agents
 
 Read [docs conventions](docs/README.md) before writing docs. Verify behavior with a command or test rather than an assertion. Run full lint/test once when a change is complete, not after every edit.
@@ -73,6 +77,8 @@ Read [docs conventions](docs/README.md) before writing docs. Verify behavior wit
 ## Testing discipline
 
 A bug fix or feature needs tests for its observable contract. A bug regression test must fail before the fix and pass afterward. Cover behavior, boundaries, and error paths for new APIs; do not add tests for mechanical wiring or duplicate coverage. Tests must be deterministic, isolated, and resilient to wording changes. Avoid wall-clock sleeps and shared mutable fixtures.
+
+See the [testing skill](.agents/skills/stack-stat-testing/SKILL.md) for the layer-specific brittleness checklist.
 
 Do not change production invariants or expose broad internals solely for tests. Prefer pure functions and narrow interfaces. Never delete a test without explicit user approval; investigate or rewrite a brittle test first.
 
