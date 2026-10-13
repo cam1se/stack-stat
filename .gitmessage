@@ -19,3 +19,5 @@
 # - footer: BREAKING CHANGE: <desc>, Closes: #NN
 # - breaking change: use ! after type/scope or BREAKING CHANGE: footer
 # - release-please: feat bumps minor; fix bumps patch; breaking bumps minor until 1.0
+# - rebase merges: every commit lands on main individually and release-please reads each one,
+#   so each commit subject becomes a changelog entry; keep commits meaningful and one concern each
