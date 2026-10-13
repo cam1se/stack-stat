@@ -3,7 +3,7 @@
 use crate::providers::{DETACHED_HEAD, GitHubError, StackBranch, StackPr, StackViewResponse};
 
 mod wire;
-use wire::{LookupData, NodeData, StackPage, parse_response};
+use wire::{Candidate, LookupData, NodeData, StackPage, parse_response};
 
 /// Incremental GraphQL reader for the GitHub stack containing a Git branch.
 ///
@@ -14,6 +14,7 @@ use wire::{LookupData, NodeData, StackPage, parse_response};
 #[derive(Debug)]
 pub struct StackDiscovery<'a> {
     current_branch: &'a str,
+    head_owner: Option<String>,
     stack: Option<StackIdentity>,
     entries: Vec<(u32, StackBranch)>,
     cursor: Option<String>,
@@ -36,17 +37,29 @@ impl<'a> StackDiscovery<'a> {
         }
         Ok(Self {
             current_branch,
+            head_owner: None,
             stack: None,
             entries: Vec::new(),
             cursor: None,
         })
     }
 
+    /// Accept only PRs whose head repository is owned by `owner` (compared
+    /// case-insensitively), so a fork PR that reuses the branch name is never
+    /// mistaken for this checkout's PR. Without this, any head repository
+    /// matches.
+    #[must_use]
+    pub fn with_head_owner(mut self, owner: impl Into<String>) -> Self {
+        self.head_owner = Some(owner.into());
+        self
+    }
+
     /// Build the initial branch lookup or the next stack-entry page query.
     ///
     /// The initial request selects the newest open PR and the newest PR across
-    /// all lifecycle states, both ordered by creation time. Two `first:1`
-    /// connections preserve open-PR preference without truncating branch history.
+    /// all lifecycle states, both ordered by creation time. Each connection
+    /// returns a few candidates so PRs from other head repositories can be
+    /// skipped; open-PR preference is kept without truncating branch history.
     /// Continuations use the selected stack's node ID and entry cursor.
     #[must_use]
     pub fn query(&self, owner: &str, repo: &str) -> String {
@@ -63,10 +76,10 @@ impl<'a> StackDiscovery<'a> {
         let order = "orderBy:{field:CREATED_AT,direction:DESC}";
         format!(
             "query {{ repository(owner:{owner},name:{repo}) {{ \
-             openPullRequests: pullRequests(first:1,headRefName:{branch},states:[OPEN],{order}) \
-             {{ nodes {{ stack {{ {fields} }} }} }} \
-             pullRequests(first:1,headRefName:{branch},states:[OPEN,MERGED,CLOSED],{order}) \
-             {{ nodes {{ stack {{ {fields} }} }} }} }} }}"
+             openPullRequests: pullRequests(first:{CANDIDATES},headRefName:{branch},states:[OPEN],{order}) \
+             {{ nodes {{ headRepository {{ owner {{ login }} }} stack {{ {fields} }} }} }} \
+             pullRequests(first:{CANDIDATES},headRefName:{branch},states:[OPEN,MERGED,CLOSED],{order}) \
+             {{ nodes {{ headRepository {{ owner {{ login }} }} stack {{ {fields} }} }} }} }} }}"
         )
     }
 
@@ -93,14 +106,13 @@ impl<'a> StackDiscovery<'a> {
             let repository = data.repository.ok_or_else(|| {
                 GitHubError::Parse("GraphQL stack discovery had no repository data".into())
             })?;
-            let candidate = repository
-                .open_pull_requests
-                .nodes
-                .into_iter()
-                .next()
-                .or_else(|| repository.pull_requests.nodes.into_iter().next())
-                .ok_or(GitHubError::NotInStack)?
-                .ok_or_else(|| GitHubError::Parse("GraphQL branch lookup had a null PR".into()))?;
+            let head_owner = self.head_owner.as_deref();
+            let candidate = select_candidate(repository.open_pull_requests.nodes, head_owner)?
+                .map_or_else(
+                    || select_candidate(repository.pull_requests.nodes, head_owner),
+                    |candidate| Ok(Some(candidate)),
+                )?
+                .ok_or(GitHubError::NotInStack)?;
             candidate.stack.ok_or(GitHubError::NotInStack)?
         };
         self.accept_page(page)
@@ -197,6 +209,31 @@ impl<'a> StackDiscovery<'a> {
                 .collect(),
         }))
     }
+}
+
+/// Maximum PRs fetched per connection when skipping foreign head repositories.
+const CANDIDATES: u8 = 10;
+
+/// First candidate whose head repository matches, or `None` when none does.
+/// A null node is malformed data rather than absence.
+fn select_candidate(
+    nodes: Vec<Option<Candidate>>,
+    head_owner: Option<&str>,
+) -> Result<Option<Candidate>, GitHubError> {
+    for node in nodes {
+        let candidate =
+            node.ok_or_else(|| GitHubError::Parse("GraphQL branch lookup had a null PR".into()))?;
+        let matches = head_owner.is_none_or(|owner| {
+            candidate
+                .head_repository
+                .as_ref()
+                .is_some_and(|repository| repository.owner.login.eq_ignore_ascii_case(owner))
+        });
+        if matches {
+            return Ok(Some(candidate));
+        }
+    }
+    Ok(None)
 }
 
 fn quoted(value: &str) -> String {

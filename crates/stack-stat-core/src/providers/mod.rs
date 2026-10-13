@@ -12,6 +12,7 @@ mod file_store;
 mod git_cli;
 mod github_cli;
 pub mod graphql;
+mod push_remote;
 pub use file_store::FileStatusStore;
 pub use git_cli::{CliGitProvider, DETACHED_HEAD};
 pub use github_cli::{CliGitHubProvider, classify_graphql_result, classify_sync_output};

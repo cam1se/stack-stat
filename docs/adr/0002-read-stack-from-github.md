@@ -17,7 +17,7 @@ A read-only GraphQL spike against `cam1se/stack-stat` confirmed the following:
 1. **Stack API:** `PullRequest.stack` exposes `PullRequestStack` with `id`, `number`, `size`, `baseRefName`, and ordered entries. Each `PullRequestStackEntry` has a `position` and its `pullRequest`. Entry PRs expose their number, URL, head/base ref names, lifecycle state, and `isInMergeQueue`. An unstacked PR returns `stack: null`. There is no need to reconstruct membership from PR bases or rely on a REST chain walk.
 2. **Base-chain counterexample:** both merged PRs #13 and #14 still belong to stack #15, but both report `baseRefName: main`. Walking bases would treat them as siblings and lose the real layer order. Entry positions preserve that order.
 
-The branch lookup can select `repository.pullRequests(headRefName: <local branch>, states: [OPEN, MERGED, CLOSED])` and request each PR's `stack`. Looking up a known PR number through `repository.pullRequest(number: <number>)` exposes the same stack field. Including merged and closed PRs matters for completed stacks.
+The branch lookup can select `repository.pullRequests(headRefName: <local branch>, states: [OPEN, MERGED, CLOSED])` and request each PR's `stack`. Looking up a known PR number through `repository.pullRequest(number: <number>)` exposes the same stack field. Including merged and closed PRs matters for completed stacks. Because `headRefName` is only a branch name, PRs from forks can share it; each candidate's `headRepository.owner.login` is compared with the owner of the branch's push remote (falling back to the base repository owner), and non-matching or deleted-fork PRs are skipped.
 
 Other base-chain edge cases were not separate live spike tests, but reinforce why base refs are not a membership protocol:
 

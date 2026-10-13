@@ -68,9 +68,24 @@ pub(super) struct Candidates {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct Candidate {
+    /// Absent from fixtures that predate head-repository filtering; real
+    /// GitHub responses always include it, with null for a deleted fork.
+    #[serde(default)]
+    pub head_repository: Option<HeadRepository>,
     #[serde(deserialize_with = "required_nullable")]
     pub stack: Option<StackPage>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct HeadRepository {
+    pub owner: RepositoryOwner,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct RepositoryOwner {
+    pub login: String,
 }
 
 // deserialize_with makes the field required while still accepting explicit null.
