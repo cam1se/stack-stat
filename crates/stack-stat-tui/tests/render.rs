@@ -284,6 +284,10 @@ async fn keyboard_scroll_reaches_reviews_after_many_checks_without_changing_sele
     let first = draw(&app, 100, 28);
     assert!(find_row(&first, "ci/check-0").is_some());
     assert!(find_row(&first, "Reviews:").is_none());
+    let detail = ui::regions(ratatui::layout::Rect::new(0, 0, 100, 28), &app)
+        .detail
+        .expect("selected branch has details");
+    app.set_detail_viewport_rows(usize::from(detail.height.saturating_sub(2)));
     for _ in 0..8 {
         app.handle_key(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
     }
@@ -342,7 +346,7 @@ async fn mouse_wheel_scrolls_hovered_pane_and_click_selects_branch() {
     let row = MouseEvent {
         kind: MouseEventKind::Down(MouseButton::Left),
         column: regions.table.x + 3,
-        row: regions.table.y + 3,
+        row: regions.table.y + 4,
         modifiers: KeyModifiers::NONE,
     };
     let target = ui::hit_test(area, &app, row.column, row.row);

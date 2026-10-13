@@ -71,7 +71,7 @@ async fn clicking_a_branch_title_line_selects_its_branch() {
 
     let area = Rect::new(0, 0, 100, 28);
     let regions = ui::regions(area, &app);
-    let title_line = regions.table.y + 4;
+    let title_line = regions.table.y + 5;
     assert_eq!(
         ui::hit_test(area, &app, regions.table.x + 4, title_line),
         PointerTarget::TableRow(0)
