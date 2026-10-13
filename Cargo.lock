@@ -521,8 +521,14 @@ dependencies = [
 name = "stack-stat-tui"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "chrono",
  "clap",
+ "serde",
+ "serde_json",
  "stack-stat-core",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

@@ -349,9 +349,9 @@
 - [x] Cover: git-only (loading), full happy path, NotInStack, stale local checks after HEAD moves, missing declared check, skip filter excluded from counts, bot via typename, bot via config, pending reviewer from request, merged/queued lifecycle, worktree on a branch outside the stack (no row marked current)
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 8: Compositor` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 8: Compositor` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 9: CLI entry point, startup preflight, and `report` subcommand
 
@@ -377,15 +377,15 @@
 - `--clear`: removes the branch's entries and prints how many files were removed.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Each preflight failure yields its exact spec message and exit code 1
-- [ ] `report` defaults (branch, sha) behave as described, including `--branch` without `--sha`
-- [ ] `--list --json` output is stable, machine-readable JSON
-- [ ] Clap rejects conflicting flags with exit code 2 (clap default)
+- [x] Each preflight failure yields its exact spec message and exit code 1
+- [x] `report` defaults (branch, sha) behave as described, including `--branch` without `--sha`
+- [x] `--list --json` output is stable, machine-readable JSON
+- [x] Clap rejects conflicting flags with exit code 2 (clap default)
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-tui --test report` and `--test preflight`
-- [ ] Report tests run the real `stack-stat` binary (`env!("CARGO_BIN_EXE_stack-stat")`) inside a temp `git init` repo with commits. This is spec E2E scenario 14: write → `--list --json` round-trip → `--clear` → empty. Also cover `--branch` with a slash name, `--sha HEAD~1` producing a stale entry in `--list`, and detached HEAD without `--branch` erroring
-- [ ] Preflight tests use a fake `CommandRunner` to cover each failure and the success path
+- [x] `cargo test -p stack-stat-tui --test report` and `--test preflight`
+- [x] Report tests run the real `stack-stat` binary (`env!("CARGO_BIN_EXE_stack-stat")`) inside a temp `git init` repo with commits. This is spec E2E scenario 14: write → `--list --json` round-trip → `--clear` → empty. Also cover `--branch` with a slash name, `--sha HEAD~1` producing a stale entry in `--list`, and detached HEAD without `--branch` erroring
+- [x] Preflight tests use a fake `CommandRunner` to cover each failure and the success path
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

@@ -9,11 +9,17 @@ name = "stack-stat"
 path = "src/main.rs"
 
 [dependencies]
+anyhow.workspace = true
+chrono.workspace = true
 clap.workspace = true
 stack-stat-core = { path = "../stack-stat-core" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 stack-stat-core = { path = "../stack-stat-core", features = ["test-fakes"] }
+tempfile.workspace = true
 
 [lints]
 workspace = true

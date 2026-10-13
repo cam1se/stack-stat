@@ -41,3 +41,8 @@ N/A
 
 - `BranchState.pr_number` preserves a PR number from stack metadata even if a GraphQL alias is inaccessible or missing. Detailed PR fields stay absent rather than falsely labeling that row Ready.
 - `LocalCheckResult.recorded_at` remains absent for never-reported configured checks. The compositor does not infer a timestamp from the poll time.
+
+### Task 9: CLI entry point, startup preflight, and `report` subcommand
+
+- `CommandRunner::run` returns `io::Result<CommandOutput>` instead of a bare `Output` so a missing `gh` executable can be represented without panicking. The startup CLI still prints the spec's actionable error and exits 1.
+- The report command's underlying Git adapter is concrete, as planned, because `resolve_rev` is not part of the read-only `GitProvider` trait.
