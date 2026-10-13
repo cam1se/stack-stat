@@ -78,6 +78,7 @@ pub struct App<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> {
     config: Config,
     git: Option<GitSnapshot>,
     github: Option<GitHubSnapshot>,
+    github_initial_result: bool,
     store: Option<StoreSnapshot>,
     state: StackState,
     selected_name: Option<String>,
@@ -123,6 +124,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             config,
             git: None,
             github: None,
+            github_initial_result: false,
             store: None,
             state: StackState::default(),
             selected_name: None,
@@ -160,6 +162,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 }
             }
             AppMessage::GitHub(result) => {
+                self.github_initial_result = true;
                 self.fetching.remove(&Source::GitHub);
                 match result {
                     Ok(snapshot) => {

@@ -83,6 +83,11 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     pub fn state(&self) -> &StackState {
         &self.state
     }
+    /// Whether the first GitHub fetch has completed with any outcome.
+    #[must_use]
+    pub fn has_initial_github_result(&self) -> bool {
+        self.github_initial_result
+    }
     /// Selected branch, if any is visible.
     #[must_use]
     pub fn selected_branch(&self) -> Option<&str> {

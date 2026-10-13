@@ -18,6 +18,8 @@ pub mod animation;
 mod detail;
 mod header;
 mod help;
+/// Startup-only splash and dashboard reveal animation.
+pub mod intro;
 mod issues;
 mod pie;
 mod status_bar;

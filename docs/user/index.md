@@ -30,6 +30,8 @@ gh extension install github/gh-stack
 
 From a Git repository, run `stack-stat`. The tool follows **only the current branch's stack**; on a branch outside a stack it shows "Not in a stack" rather than guessing. GitHub CLI and the extension are required at startup.
 
+At launch, an animated wordmark and indeterminate loading indicator wait for the first GitHub result before revealing the dashboard. Press any key to skip it; `q` and Ctrl-C still quit immediately.
+
 ## Install and update
 
 After a stable release is published, macOS/Linux users can run the checksum-verifying installer:
