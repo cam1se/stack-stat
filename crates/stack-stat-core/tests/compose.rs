@@ -24,6 +24,7 @@ fn git(current: &str) -> GitSnapshot {
 }
 fn github() -> GitHubSnapshot {
     GitHubSnapshot {
+        repo: String::new(),
         stack: StackOutcome::InStack(
             serde_json::from_str::<StackViewResponse>(include_str!("fixtures/stack_view.json"))
                 .unwrap(),
@@ -47,6 +48,22 @@ fn local(branch: &str, sha: &str) -> StatusEntry {
             },
         )]),
     }
+}
+
+#[test]
+fn composition_retains_repository_identity_when_available() {
+    let mut snapshot = github();
+    snapshot.repo = "acme/web".into();
+
+    assert_eq!(
+        compose(Some(&git("api")), Some(&snapshot), None, &Config::default()).repo,
+        "acme/web"
+    );
+    assert!(
+        compose(Some(&git("api")), Some(&github()), None, &Config::default())
+            .repo
+            .is_empty()
+    );
 }
 
 #[test]
@@ -173,6 +190,7 @@ fn previous_commit_result_is_stale_and_declared_unreported_check_is_missing() {
 #[test]
 fn no_stack_and_off_stack_branch_do_not_mark_any_row_current() {
     let not_in_stack = GitHubSnapshot {
+        repo: String::new(),
         stack: StackOutcome::NotInStack,
         prs: vec![],
         fetched_at: now(),

@@ -71,7 +71,7 @@ async fn four_layer_healthy_stack_has_passing_status_without_staleness() {
     }
     let (mut app, _) = scenario.build().into_app();
     app.poll_once(Source::All).await;
-    let buf = draw(&app, 120, 32);
+    let buf = draw(&app, 120, 40);
     for number in [42, 43, 44, 45] {
         let row = find_row(&buf, &format!("#{number}")).unwrap();
         assert_row_contains(&buf, row, &["✔", "Open", "✔", "1/1", "approved"]);
@@ -82,7 +82,7 @@ async fn four_layer_healthy_stack_has_passing_status_without_staleness() {
 #[tokio::test]
 async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
     let (app, _) = ready().await;
-    let buf = draw(&app, 120, 32);
+    let buf = draw(&app, 120, 40);
     let auth = find_row(&buf, "#42").unwrap();
     assert_row_contains(
         &buf,
@@ -108,7 +108,7 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
 #[tokio::test]
 async fn details_are_visible_without_a_toggle_and_reserve_table_height() {
     let (app, _) = ready().await;
-    let buf = draw(&app, 120, 32);
+    let buf = draw(&app, 120, 40);
     let table_border = (5..buf.area.height)
         .find(|&y| buf[(0, y)].symbol() == "└")
         .unwrap();

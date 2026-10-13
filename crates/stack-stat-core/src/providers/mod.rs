@@ -48,6 +48,8 @@ pub trait GitProvider: Send + Sync {
 pub trait GitHubProvider: Send + Sync {
     /// Fetch the stack containing the checked-out branch.
     async fn stack_view(&self) -> std::result::Result<StackViewResponse, GitHubError>;
+    /// `owner/name` of the GitHub repository, empty when unknown.
+    fn repo(&self) -> String;
     /// Fetch PR details by their numbers (not by open-PR listing).
     async fn pr_details(
         &self,

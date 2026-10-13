@@ -10,7 +10,11 @@ use stack_stat_tui::{
 use support::{FakeApp, PrBuilder, TestScenario, find_row};
 
 fn draw(app: &FakeApp, width: u16) -> ratatui::buffer::Buffer {
-    let mut terminal = Terminal::new(TestBackend::new(width, 28)).unwrap();
+    draw_at(app, width, 28)
+}
+
+fn draw_at(app: &FakeApp, width: u16, height: u16) -> ratatui::buffer::Buffer {
+    let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
     terminal
         .draw(|frame| ui::render(frame, app, &Theme::for_depth(ColorDepth::TrueColor)))
         .unwrap();
@@ -48,6 +52,7 @@ fn merged_stack() -> StackViewResponse {
 
 async fn dashboard() -> FakeApp {
     let (mut app, handles) = TestScenario::builder()
+        .repo("owner/name")
         .stack("main", &["go", "wait", "blocked", "merged"])
         .pr("go", PrBuilder::new(1).ready().checks_all_pass().approved())
         .pr("wait", PrBuilder::new(2).check("ci", "IN_PROGRESS", None))
@@ -62,6 +67,63 @@ async fn dashboard() -> FakeApp {
     handles.github.set_stack(merged_stack());
     app.poll_once(Source::All).await;
     app
+}
+
+#[tokio::test]
+async fn header_shows_compact_stack_identity_without_branch_chain() {
+    let app = dashboard().await;
+    let buffer = draw_at(&app, 120, 40);
+    let identity = (0..buffer.area.width)
+        .map(|x| buffer[(x, 1)].symbol())
+        .collect::<String>();
+
+    assert!(identity.contains("owner/name · main · 4 layers"));
+    assert!(!identity.contains('←'));
+    for branch in ["go", "wait", "blocked", "merged"] {
+        assert!(
+            !identity.contains(branch),
+            "header includes branch {branch}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn pie_uses_each_verdict_color_in_a_tall_wide_header() {
+    let app = dashboard().await;
+    let theme = Theme::for_depth(ColorDepth::TrueColor);
+    let buffer = draw_at(&app, 120, 40);
+    let buffer = &buffer;
+    let pie_cells = (100..120).flat_map(|x| (1..6).map(move |y| &buffer[(x, y)]));
+    let colors = pie_cells
+        .filter(|cell| {
+            cell.symbol()
+                .chars()
+                .next()
+                .is_some_and(|symbol| ('\u{2800}'..='\u{28ff}').contains(&symbol))
+        })
+        .map(|cell| cell.fg)
+        .collect::<Vec<_>>();
+
+    for color in [theme.success, theme.warning, theme.error] {
+        assert!(colors.contains(&color), "missing pie slice color {color:?}");
+    }
+}
+
+#[tokio::test]
+async fn pie_is_absent_from_a_compact_header() {
+    let app = dashboard().await;
+    let buffer = &draw_at(&app, 80, 24);
+
+    assert!(
+        !(0..80)
+            .flat_map(|x| (0..5).map(move |y| &buffer[(x, y)]))
+            .any(|cell| {
+                cell.symbol()
+                    .chars()
+                    .next()
+                    .is_some_and(|symbol| ('\u{2800}'..='\u{28ff}').contains(&symbol))
+            })
+    );
 }
 
 #[tokio::test]

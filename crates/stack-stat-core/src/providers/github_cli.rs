@@ -114,6 +114,10 @@ impl GitHubProvider for CliGitHubProvider {
             .map_err(|error| GitHubError::Parse(format!("gh stack view: {error}")))
     }
 
+    fn repo(&self) -> String {
+        format!("{}/{}", self.owner, self.repo)
+    }
+
     async fn pr_details(&self, numbers: &[u32]) -> Result<Vec<PrResponse>, GitHubError> {
         if numbers.is_empty() {
             return Ok(Vec::new());

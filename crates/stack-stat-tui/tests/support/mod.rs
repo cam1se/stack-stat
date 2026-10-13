@@ -128,6 +128,7 @@ pub struct TestScenario {
     branches: Vec<String>,
     prs: Vec<(String, PrResponse)>,
     current_branch: String,
+    repo: String,
     local: Vec<(String, String, String, ReportedState)>,
     config: Config,
 }
@@ -139,6 +140,7 @@ impl TestScenario {
             prs: vec![],
             current_branch: String::new(),
             local: vec![],
+            repo: String::new(),
             config: Config::default(),
         }
     }
@@ -153,6 +155,10 @@ impl TestScenario {
     }
     pub fn current_branch(mut self, branch: &str) -> Self {
         self.current_branch = branch.into();
+        self
+    }
+    pub fn repo(mut self, repo: &str) -> Self {
+        self.repo = repo.into();
         self
     }
     pub fn local_check(
@@ -208,6 +214,7 @@ impl TestScenario {
         };
         let github =
             FakeGitHubProvider::new(stack, self.prs.into_iter().map(|(_, pr)| pr).collect());
+        github.set_repo(self.repo);
         let git = FakeGitProvider::new(
             &self.current_branch,
             shas,

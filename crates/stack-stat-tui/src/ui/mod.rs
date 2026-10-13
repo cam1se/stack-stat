@@ -18,10 +18,10 @@ pub mod animation;
 mod detail;
 mod header;
 mod help;
+mod pie;
 mod status_bar;
 mod table;
 mod verdict;
-
 /// Bold accent-colored title shared by every bordered pane.
 fn title(text: impl Into<std::borrow::Cow<'static, str>>, theme: &Theme) -> Span<'static> {
     Span::styled(
@@ -51,8 +51,13 @@ pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     area: Rect,
     app: &App<G, H, S>,
 ) -> UiRegions {
+    let header_height = if area.height >= 30 && area.width >= 70 {
+        7
+    } else {
+        5
+    };
     let chunks = Layout::vertical([
-        Constraint::Length(5),
+        Constraint::Length(header_height),
         Constraint::Min(1),
         Constraint::Length(1),
     ])

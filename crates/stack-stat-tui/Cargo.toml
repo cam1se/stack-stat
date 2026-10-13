@@ -14,6 +14,7 @@ chrono.workspace = true
 crossterm.workspace = true
 flate2.workspace = true
 ratatui.workspace = true
+tui-piechart.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
