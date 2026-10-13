@@ -1,6 +1,6 @@
 //! Serialized external records and typed provider failures.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -34,8 +34,6 @@ pub struct StackBranch {
     pub is_merged: bool,
     /// Whether it is queued for merge.
     pub is_queued: bool,
-    /// Whether the parent moved since the last rebase.
-    pub needs_rebase: bool,
     /// Linked PR, if one exists.
     pub pr: Option<StackPr>,
 }
@@ -72,6 +70,18 @@ pub struct PrResponse {
     pub unresolved_threads: usize,
     /// Normalized check runs and status contexts for the head commit.
     pub checks: Vec<PrCheckResponse>,
+}
+
+/// Remote PR details and rebase comparisons for a stack.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct StackDetailsResponse {
+    /// PR details for linked stack PRs.
+    pub prs: Vec<PrResponse>,
+    /// Non-merged branches whose remote heads are behind their remote parents.
+    ///
+    /// A branch is absent when its comparison is missing, failed, or has no
+    /// commits behind its parent.
+    pub remote_rebase_branches: BTreeSet<String>,
 }
 
 /// Individual GitHub review with author type preserved.

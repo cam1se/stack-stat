@@ -1,11 +1,19 @@
+use std::collections::BTreeSet;
+
 use stack_stat_core::providers::{
-    GitHubError, classify_graphql_result, classify_sync_output,
-    graphql::{build_pr_query, classify_gh_failure, parse_pr_response},
+    GitHubError, StackViewResponse, classify_graphql_result, classify_sync_output,
+    graphql::{build_stack_query, classify_gh_failure, parse_stack_response},
 };
 
+fn stack() -> StackViewResponse {
+    serde_json::from_str(include_str!("fixtures/stack_view.json")).unwrap()
+}
+
 #[test]
-fn query_is_sorted_deduplicated_and_selects_check_and_review_fields() {
-    let query = build_pr_query("example", "project", &[43, 42, 43]);
+fn query_is_sorted_deduplicated_and_compares_each_non_merged_layer() {
+    let mut stack = stack();
+    stack.branches[2].pr.as_mut().unwrap().number = 43;
+    let query = build_stack_query("example", "project", &stack);
     let p42 = query.find("pr42: pullRequest(number: 42)").unwrap();
     let p43 = query.find("pr43: pullRequest(number: 43)").unwrap();
     assert!(p42 < p43);
@@ -21,25 +29,93 @@ fn query_is_sorted_deduplicated_and_selects_check_and_review_fields() {
     ] {
         assert!(query.contains(field), "missing {field}: {query}");
     }
+    assert!(query.contains(
+        "rebase0: ref(qualifiedName:\"refs/heads/main\") { compare(headRef:\"api\") { behindBy } }"
+    ));
+    assert!(query.contains(
+        "rebase1: ref(qualifiedName:\"refs/heads/api\") { compare(headRef:\"ui\") { behindBy } }"
+    ));
+    assert!(!query.contains("rebase2:"));
+    assert!(!query.contains("needsRebase"));
 }
 
 #[test]
 fn parser_keeps_partial_data_and_omits_inaccessible_pr() {
-    let prs = parse_pr_response(include_str!("fixtures/pr_partial.json")).unwrap();
-    assert_eq!(prs.len(), 1);
-    assert_eq!(prs[0].number, 42);
-    assert!(prs[0].checks.is_empty());
-    assert_eq!(prs[0].review_decision, None);
-    assert_eq!(prs[0].unresolved_threads, 0);
-    assert_eq!(prs[0].review_requests[0].author, "reviewers");
+    let details = parse_stack_response(include_str!("fixtures/pr_partial.json"), &stack()).unwrap();
+    assert_eq!(details.prs.len(), 1);
+    assert_eq!(details.prs[0].number, 42);
+    assert!(details.prs[0].checks.is_empty());
+    assert_eq!(details.prs[0].review_decision, None);
+    assert_eq!(details.prs[0].unresolved_threads, 0);
+    assert_eq!(details.prs[0].review_requests[0].author, "reviewers");
+}
+
+#[test]
+fn parser_marks_layer_for_positive_remote_behind_by() {
+    let raw = include_str!("fixtures/pr_details.json").replacen(
+        "\"repository\": {",
+        "\"repository\": {\"rebase1\": {\"compare\": {\"behindBy\": 1}},",
+        1,
+    );
+
+    let details = parse_stack_response(&raw, &stack()).unwrap();
+
+    assert_eq!(
+        details.prs.iter().map(|pr| pr.number).collect::<Vec<_>>(),
+        [42, 43]
+    );
+    assert_eq!(
+        details.remote_rebase_branches,
+        BTreeSet::from(["ui".into()])
+    );
+}
+
+#[test]
+fn parser_treats_zero_behind_by_as_no_rebase() {
+    let raw = include_str!("fixtures/pr_details.json").replacen(
+        "\"repository\": {",
+        "\"repository\": {\"rebase1\": {\"compare\": {\"behindBy\": 0}},",
+        1,
+    );
+
+    let details = parse_stack_response(&raw, &stack()).unwrap();
+
+    assert!(details.remote_rebase_branches.is_empty());
+}
+
+#[test]
+fn parser_treats_null_behind_by_as_no_rebase() {
+    let raw = include_str!("fixtures/pr_details.json").replacen(
+        "\"repository\": {",
+        "\"repository\": {\"rebase1\": {\"compare\": {\"behindBy\": null}},",
+        1,
+    );
+
+    let details = parse_stack_response(&raw, &stack()).unwrap();
+
+    assert!(details.remote_rebase_branches.is_empty());
+}
+
+#[test]
+fn parser_treats_missing_comparison_with_graphql_error_as_no_rebase() {
+    let raw =
+        r#"{"data":{"repository":{"rebase1":null}},"errors":[{"message":"comparison denied"}]}"#;
+
+    let details = parse_stack_response(raw, &stack()).unwrap();
+
+    assert!(details.remote_rebase_branches.is_empty());
 }
 
 #[test]
 fn parser_rejects_responses_without_data_and_preserves_bot_and_context() {
-    let err = parse_pr_response(r#"{"data":null,"errors":[{"message":"bad query"}]}"#).unwrap_err();
-    assert!(matches!(err, GitHubError::Parse(_)));
-    let prs = parse_pr_response(include_str!("fixtures/pr_details.json")).unwrap();
-    let draft = prs.iter().find(|pr| pr.number == 43).unwrap();
+    let error = parse_stack_response(
+        r#"{"data":null,"errors":[{"message":"bad query"}]}"#,
+        &stack(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, GitHubError::Parse(_)));
+    let details = parse_stack_response(include_str!("fixtures/pr_details.json"), &stack()).unwrap();
+    let draft = details.prs.iter().find(|pr| pr.number == 43).unwrap();
     assert_eq!(draft.unresolved_threads, 2);
     assert!(draft.reviews[0].is_bot);
     assert_eq!(
@@ -97,17 +173,23 @@ fn sync_aborted_with_exit_zero_is_not_reported_as_success() {
 
 #[test]
 fn graphql_exit_one_with_partial_data_keeps_accessible_pr() {
-    let prs = classify_graphql_result(
+    let stack = stack();
+    let details = classify_graphql_result(
         1,
         include_str!("fixtures/pr_partial.json"),
         "GraphQL: one PR inaccessible",
+        &stack,
     )
     .unwrap();
-    assert_eq!(prs.iter().map(|pr| pr.number).collect::<Vec<_>>(), [42]);
+    assert_eq!(
+        details.prs.iter().map(|pr| pr.number).collect::<Vec<_>>(),
+        [42]
+    );
     let failure = classify_graphql_result(
         1,
         r#"{"data":null,"errors":[{"message":"denied"}]}"#,
         "GraphQL request failed",
+        &stack,
     );
     assert!(failure.is_err());
 }

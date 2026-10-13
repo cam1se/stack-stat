@@ -4,7 +4,10 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 
-use super::{GitHubError, GitHubProvider, PrResponse, ProviderAction, StackViewResponse};
+use super::{
+    GitHubError, GitHubProvider, PrResponse, ProviderAction, StackDetailsResponse,
+    StackViewResponse,
+};
 
 /// Mutable fake GitHub stack and PR responses.
 #[derive(Clone, Debug)]
@@ -17,8 +20,8 @@ pub struct FakeGitHubProvider {
 pub struct FakeGitHubState {
     /// Current stack fetch result.
     pub stack: Result<StackViewResponse, GitHubError>,
-    /// PRs returned by the details query.
-    pub prs: Vec<PrResponse>,
+    /// Remote PR details and rebase comparisons returned by the details query.
+    pub details: StackDetailsResponse,
     /// `owner/name` of the GitHub repository, empty when unknown.
     pub repo: String,
     /// Mutations and browser-open actions in invocation order.
@@ -34,7 +37,10 @@ impl FakeGitHubProvider {
         Self {
             state: Arc::new(Mutex::new(FakeGitHubState {
                 stack: Ok(stack),
-                prs,
+                details: StackDetailsResponse {
+                    prs,
+                    ..StackDetailsResponse::default()
+                },
                 actions: Vec::new(),
                 repo: String::new(),
                 mutation_result: Ok(String::new()),
@@ -54,7 +60,20 @@ impl FakeGitHubProvider {
 
     /// Replace the PR details seen at the next fetch.
     pub fn set_prs(&self, prs: Vec<PrResponse>) {
-        self.state.lock().expect("fake GitHub mutex poisoned").prs = prs;
+        self.state
+            .lock()
+            .expect("fake GitHub mutex poisoned")
+            .details
+            .prs = prs;
+    }
+
+    /// Replace branches whose remote heads need a rebase at the next fetch.
+    pub fn set_remote_rebase_branches(&self, branches: impl IntoIterator<Item = String>) {
+        self.state
+            .lock()
+            .expect("fake GitHub mutex poisoned")
+            .details
+            .remote_rebase_branches = branches.into_iter().collect();
     }
 
     /// Change the repository identity seen at the next fetch.
@@ -105,14 +124,27 @@ impl GitHubProvider for FakeGitHubProvider {
             .clone()
     }
 
-    async fn pr_details(&self, numbers: &[u32]) -> Result<Vec<PrResponse>, GitHubError> {
+    async fn pr_details(
+        &self,
+        stack: &StackViewResponse,
+    ) -> Result<StackDetailsResponse, GitHubError> {
         let state = self.state.lock().expect("fake GitHub mutex poisoned");
-        Ok(state
-            .prs
-            .iter()
-            .filter(|pr| numbers.contains(&pr.number))
-            .cloned()
-            .collect())
+        let mut details = state.details.clone();
+        details.prs.retain(|pr| {
+            stack.branches.iter().any(|branch| {
+                branch
+                    .pr
+                    .as_ref()
+                    .is_some_and(|candidate| candidate.number == pr.number)
+            })
+        });
+        details.remote_rebase_branches.retain(|name| {
+            stack
+                .branches
+                .iter()
+                .any(|branch| !branch.is_merged && branch.name == *name)
+        });
+        Ok(details)
     }
 
     async fn open_pr_in_browser(&self, number: u32) -> Result<(), GitHubError> {

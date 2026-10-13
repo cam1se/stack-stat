@@ -177,7 +177,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                             .unwrap_or_default();
                         self.github = Some(GitHubSnapshot {
                             stack: stack_stat_core::compose::StackOutcome::NotInStack,
-                            prs: vec![],
+                            details: Default::default(),
                             repo,
                             fetched_at: self.now,
                         });

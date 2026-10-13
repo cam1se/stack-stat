@@ -8,10 +8,10 @@ use crate::{
     config::Config,
     model::{
         BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState,
-        PrInfo, PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState, StackState,
-        StackStatus,
+        LocalSync, PrInfo, PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState,
+        StackState, StackStatus,
     },
-    providers::{PrResponse, ReportedState, StackViewResponse, StatusEntry},
+    providers::{PrResponse, ReportedState, StackDetailsResponse, StackViewResponse, StatusEntry},
 };
 
 /// Successful local Git poll result.
@@ -19,6 +19,8 @@ use crate::{
 pub struct GitSnapshot {
     /// Checked-out worktree branch.
     pub current_branch: String,
+    /// Current branch's state relative to its remote-tracking ref.
+    pub current_sync: LocalSync,
     /// Local branch to full tip SHA.
     pub branch_shas: HashMap<String, String>,
     /// Poll completion time.
@@ -41,8 +43,8 @@ pub struct GitHubSnapshot {
     pub repo: String,
     /// Local stack view or off-stack condition.
     pub stack: StackOutcome,
-    /// PR details fetched by exact number.
-    pub prs: Vec<PrResponse>,
+    /// Remote PR details and rebase comparisons for this stack.
+    pub details: StackDetailsResponse,
     /// Poll completion time.
     pub fetched_at: DateTime<Utc>,
 }
@@ -83,7 +85,12 @@ pub fn compose(
     };
     state.stack_status = StackStatus::Ready;
     state.trunk = stack.trunk.clone();
-    let prs: HashMap<_, _> = github.prs.iter().map(|pr| (pr.number, pr)).collect();
+    let prs: HashMap<_, _> = github
+        .details
+        .prs
+        .iter()
+        .map(|pr| (pr.number, pr))
+        .collect();
     let mut found_non_merged_layer = false;
     let mut rebase_cascading = false;
     for branch in &stack.branches {
@@ -91,6 +98,10 @@ pub fn compose(
             .and_then(|git| git.branch_shas.get(&branch.name))
             .cloned()
             .unwrap_or_default();
+        let (is_current, local_sync) = match git {
+            Some(git) if git.current_branch == branch.name => (true, git.current_sync),
+            _ => (false, LocalSync::InSync),
+        };
         let pr_number = branch.pr.as_ref().map(|pr| pr.number);
         let pr = pr_number
             .and_then(|number| prs.get(&number))
@@ -102,13 +113,14 @@ pub fn compose(
         } else {
             PrLifecycle::Open
         };
-        let own_rebase = if branch.is_merged || !branch.needs_rebase {
-            RebaseNeed::None
-        } else if found_non_merged_layer {
-            RebaseNeed::Parent
-        } else {
-            RebaseNeed::Trunk
-        };
+        let own_rebase =
+            if branch.is_merged || !github.details.remote_rebase_branches.contains(&branch.name) {
+                RebaseNeed::None
+            } else if found_non_merged_layer {
+                RebaseNeed::Parent
+            } else {
+                RebaseNeed::Trunk
+            };
         let rebase = match own_rebase {
             RebaseNeed::None | RebaseNeed::Trunk if rebase_cascading && !branch.is_merged => {
                 RebaseNeed::Stacked
@@ -123,7 +135,8 @@ pub fn compose(
             head_sha: head_sha.clone(),
             rebase,
             trunk_rebase_gates: config.rebase.onto_trunk,
-            is_current: git.is_some_and(|git| git.current_branch == branch.name),
+            is_current,
+            local_sync,
             lifecycle,
             pr_number,
             pr,

@@ -9,6 +9,8 @@ use std::{
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 
+use crate::model::LocalSync;
+
 use super::GitProvider;
 
 /// A cloneable fake for current branch and branch ref updates.
@@ -25,6 +27,8 @@ pub struct FakeGitState {
     pub current_branch: String,
     /// Branch tip SHA by name.
     pub branches: HashMap<String, String>,
+    /// Local-to-remote state for the checked-out branch.
+    pub current_sync: LocalSync,
     /// Error returned once by the next query.
     pub fail_next: Option<String>,
 }
@@ -37,6 +41,7 @@ impl FakeGitProvider {
             state: Arc::new(Mutex::new(FakeGitState {
                 current_branch: branch.into(),
                 branches,
+                current_sync: LocalSync::InSync,
                 fail_next: None,
             })),
             common_dir,
@@ -49,6 +54,14 @@ impl FakeGitProvider {
             .lock()
             .expect("fake Git mutex poisoned")
             .current_branch = branch.into();
+    }
+
+    /// Set the local-to-remote state returned for the checked-out branch.
+    pub fn set_current_sync(&self, current_sync: LocalSync) {
+        self.state
+            .lock()
+            .expect("fake Git mutex poisoned")
+            .current_sync = current_sync;
     }
 
     /// Change a branch's tip SHA.
@@ -85,6 +98,14 @@ impl GitProvider for FakeGitProvider {
             return Err(anyhow!(message));
         }
         Ok(state.branches.clone())
+    }
+
+    async fn current_sync(&self, _branch: &str) -> Result<LocalSync> {
+        let mut state = self.state.lock().expect("fake Git mutex poisoned");
+        if let Some(message) = state.fail_next.take() {
+            return Err(anyhow!(message));
+        }
+        Ok(state.current_sync)
     }
 
     fn common_dir(&self) -> &Path {

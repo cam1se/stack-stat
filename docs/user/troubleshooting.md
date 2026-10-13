@@ -21,6 +21,8 @@ The footer shows fetch failures; the last successful GitHub data remains visible
 
 Local checks apply to a commit SHA, not merely a branch name. If a report is **stale**, run the check again on the branch's current commit and issue a fresh [`stack-stat report`](local-checks.md). An expected check marked **missing** has not been reported for this commit. A malformed local JSON file is skipped with a warning rather than hiding other reports. Reporting that check again for the same commit replaces the damaged file; `stack-stat report --clear --branch <name>` removes all entries for that branch.
 
+The muted suffix beside the `*` worktree marker is local sync information only: `↑` means commits have not been pushed, `↓` means the remote-tracking ref has commits to incorporate, `⇅` means both sides have unique commits, and `?` means no upstream or `origin/<branch>` ref exists. It does not affect the layer verdict. Push, fetch, rebase, or configure an upstream as appropriate.
+
 ## Mutations and rebase conflicts
 
 `c`, `p`, `S`, and `m` require a `y` confirmation. Only one operation runs at once. A `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. A sync that prints `Sync aborted` despite exiting 0 means local and remote stack chains diverge; stack-stat treats it as an abort, not as a successful sync. Inspect the two chains before retrying. stack-stat never silently resolves conflicts.

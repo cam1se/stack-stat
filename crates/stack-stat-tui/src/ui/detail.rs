@@ -10,7 +10,7 @@ use ratatui::{
 use stack_stat_core::{
     model::{
         BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState,
-        PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState,
+        LocalSync, PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState,
     },
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
@@ -50,12 +50,16 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 _ => theme.muted,
             }),
         ),
-        Span::raw(if branch.is_current {
-            "   * current worktree"
-        } else {
-            ""
-        }),
     ]);
+    if branch.is_current {
+        header.extend([
+            Span::raw("   * current worktree · "),
+            Span::styled(
+                local_sync_text(branch.local_sync),
+                Style::default().fg(theme.muted),
+            ),
+        ]);
+    }
     let mut lines = vec![Line::from(header)];
     lines.extend(
         wrap::wrap(&branch.name, content_width)
@@ -186,6 +190,16 @@ fn lifecycle_word(branch: &BranchState) -> &'static str {
         PrLifecycle::Open if branch.pr.as_ref().is_some_and(|pr| pr.is_draft) => "Draft",
         PrLifecycle::Open if branch.pr.is_some() => "Open",
         PrLifecycle::Open => "No PR details",
+    }
+}
+
+fn local_sync_text(local_sync: LocalSync) -> &'static str {
+    match local_sync {
+        LocalSync::InSync => "local in sync with remote",
+        LocalSync::Ahead => "local ahead of remote",
+        LocalSync::Behind => "local behind remote",
+        LocalSync::Diverged => "local diverged from remote",
+        LocalSync::Unpushed => "local branch not pushed",
     }
 }
 

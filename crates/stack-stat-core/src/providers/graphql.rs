@@ -1,13 +1,17 @@
 //! Pure GraphQL query generation, response parsing, and gh error classification.
 
-use super::{GitHubError, GraphqlResponse, PrResponse};
+use super::{GitHubError, GraphqlResponse, StackDetailsResponse, StackViewResponse};
 
-/// Build one aliased PR selection per distinct number in ascending order.
+/// Build aliased PR and remote parent-comparison selections for a stack.
 #[must_use]
-pub fn build_pr_query(owner: &str, repo: &str, numbers: &[u32]) -> String {
-    let mut sorted = numbers.to_vec();
-    sorted.sort_unstable();
-    sorted.dedup();
+pub fn build_stack_query(owner: &str, repo: &str, stack: &StackViewResponse) -> String {
+    let mut numbers: Vec<_> = stack
+        .branches
+        .iter()
+        .filter_map(|branch| branch.pr.as_ref().map(|pr| pr.number))
+        .collect();
+    numbers.sort_unstable();
+    numbers.dedup();
     let owner = serde_json::to_string(owner).expect("serializing an owned string cannot fail");
     let repo = serde_json::to_string(repo).expect("serializing an owned string cannot fail");
     let mut query = format!("query {{ repository(owner:{owner}, name:{repo}) {{ ");
@@ -18,17 +22,36 @@ pub fn build_pr_query(owner: &str, repo: &str, numbers: &[u32]) -> String {
         commits(last:1) { nodes { commit { statusCheckRollup { contexts(first:100) { nodes { __typename \
         ... on CheckRun { name status conclusion startedAt completedAt detailsUrl checkSuite { workflowRun { workflow { name } } } } \
         ... on StatusContext { context state targetUrl createdAt } } } } } } }";
-    for number in sorted {
+    for number in numbers {
         query.push_str(&format!(
             "pr{number}: pullRequest(number: {number}) {{ {FIELDS} }} "
         ));
+    }
+    let mut parent = stack.trunk.as_str();
+    for (index, branch) in stack
+        .branches
+        .iter()
+        .filter(|branch| !branch.is_merged)
+        .enumerate()
+    {
+        let parent_ref = serde_json::to_string(&format!("refs/heads/{parent}"))
+            .expect("serializing an owned string cannot fail");
+        let child_ref =
+            serde_json::to_string(&branch.name).expect("serializing an owned string cannot fail");
+        query.push_str(&format!(
+            "rebase{index}: ref(qualifiedName:{parent_ref}) {{ compare(headRef:{child_ref}) {{ behindBy }} }} "
+        ));
+        parent = &branch.name;
     }
     query.push_str("} }");
     query
 }
 
-/// Parse an aliased GraphQL response, keeping partial data when some PRs fail.
-pub fn parse_pr_response(raw: &str) -> Result<Vec<PrResponse>, GitHubError> {
+/// Parse an aliased stack query response while retaining available partial data.
+pub fn parse_stack_response(
+    raw: &str,
+    stack: &StackViewResponse,
+) -> Result<StackDetailsResponse, GitHubError> {
     let response: GraphqlResponse =
         serde_json::from_str(raw).map_err(|error| GitHubError::Parse(error.to_string()))?;
     if response
@@ -49,7 +72,7 @@ pub fn parse_pr_response(raw: &str) -> Result<Vec<PrResponse>, GitHubError> {
             detail
         }));
     }
-    Ok(response.into_prs())
+    Ok(response.into_stack_details(stack))
 }
 
 /// Classify a nonzero gh exit into an actionable error without relying on stdout.

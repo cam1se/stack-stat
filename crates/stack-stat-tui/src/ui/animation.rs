@@ -164,7 +164,7 @@ pub fn diff_cells(old: &StackState, new: &StackState) -> Vec<CellId> {
 
 fn compare_branch(old: &BranchState, new: &BranchState, changed: &mut Vec<CellId>) {
     let name = &new.name;
-    if old.is_current != new.is_current {
+    if old.is_current != new.is_current || old.local_sync != new.local_sync {
         changed.push(CellId::new(name, Column::Branch));
     }
     if old.rebase != new.rebase || old.trunk_rebase_gates != new.trunk_rebase_gates {

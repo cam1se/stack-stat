@@ -1,7 +1,10 @@
 mod support;
 
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
-use stack_stat_core::providers::{PrResponse, StackBranch, StackViewResponse};
+use stack_stat_core::{
+    model::LocalSync,
+    providers::{PrResponse, StackBranch, StackViewResponse},
+};
 use stack_stat_tui::{
     message::{AppMessage, Source},
     ui::animation::{AnimationState, CellId, Column, diff_cells, stale_after},
@@ -56,6 +59,9 @@ async fn rebase_change_flashes_the_rebase_column() {
         .into_app();
     app.poll_once(Source::All).await;
     let old = app.state().clone();
+    handles
+        .github
+        .set_remote_rebase_branches(["feature".into()]);
     handles.github.set_stack(StackViewResponse {
         trunk: "main".into(),
         current_branch: "feature".into(),
@@ -67,7 +73,6 @@ async fn rebase_change_flashes_the_rebase_column() {
                 is_current: false,
                 is_merged: false,
                 is_queued: false,
-                needs_rebase: false,
                 pr: None,
             },
             StackBranch {
@@ -77,7 +82,6 @@ async fn rebase_change_flashes_the_rebase_column() {
                 is_current: true,
                 is_merged: false,
                 is_queued: false,
-                needs_rebase: true,
                 pr: None,
             },
         ],
@@ -91,6 +95,25 @@ async fn rebase_change_flashes_the_rebase_column() {
         app.animation()
             .is_flashing(&CellId::new("feature", Column::Rebase))
     );
+}
+
+#[tokio::test]
+async fn local_sync_change_flashes_the_branch_marker() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &["auth"])
+        .pr("auth", PrBuilder::new(42))
+        .current_branch("auth")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    let old = app.state().clone();
+
+    handles.git.set_current_sync(LocalSync::Ahead);
+    app.poll_once(Source::Git).await;
+
+    let id = CellId::new("auth", Column::Branch);
+    assert_eq!(diff_cells(&old, app.state()), vec![id.clone()]);
+    assert!(app.animation().is_flashing(&id));
 }
 
 #[test]

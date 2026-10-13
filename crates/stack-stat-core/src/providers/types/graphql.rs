@@ -4,8 +4,8 @@ use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+mod normalize;
 
-use super::{PrCheckResponse, PrResponse, ReviewRequest, ReviewResponse};
 /// Top-level aliased `gh api graphql` reply.
 #[derive(Clone, Debug, Deserialize)]
 pub struct GraphqlResponse {
@@ -30,12 +30,32 @@ pub struct GraphqlData {
     pub repository: Option<GraphqlRepository>,
 }
 
-/// Aliased PR nodes keyed by query alias.
+/// Aliased PR and remote reference nodes returned by the query.
 #[derive(Clone, Debug, Deserialize)]
 pub struct GraphqlRepository {
-    /// Alias to PR (null for deleted or inaccessible PRs).
     #[serde(flatten)]
-    pub prs: BTreeMap<String, Option<RawPr>>,
+    aliases: BTreeMap<String, Option<RawRepositoryAlias>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+enum RawRepositoryAlias {
+    Pr(RawPr),
+    Ref(RawReference),
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RawReference {
+    #[serde(default)]
+    compare: Option<RawComparison>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawComparison {
+    #[serde(default)]
+    behind_by: Option<u32>,
 }
 
 /// Raw GraphQL fields for one PR.
@@ -193,132 +213,4 @@ pub struct RawWorkflowRun {
 pub struct RawWorkflow {
     /// Human-readable workflow name.
     pub name: String,
-}
-
-impl GraphqlResponse {
-    /// Normalize available PRs; missing/deleted aliased PRs are omitted.
-    #[must_use]
-    pub fn into_prs(self) -> Vec<PrResponse> {
-        let Some(repository) = self.data.and_then(|data| data.repository) else {
-            return Vec::new();
-        };
-        repository
-            .prs
-            .into_values()
-            .flatten()
-            .map(RawPr::normalize)
-            .collect()
-    }
-}
-
-impl RawPr {
-    fn normalize(self) -> PrResponse {
-        let reviews = self
-            .latest_reviews
-            .into_iter()
-            .flat_map(|value| value.nodes)
-            .flatten()
-            .filter_map(|review| {
-                let author = review.author?;
-                Some(ReviewResponse {
-                    author: author.login.or(author.name)?,
-                    state: review.state,
-                    is_bot: author.typename == "Bot",
-                    submitted_at: review.submitted_at,
-                })
-            })
-            .collect();
-        let review_requests = self
-            .review_requests
-            .into_iter()
-            .flat_map(|value| value.nodes)
-            .flatten()
-            .filter_map(|request| {
-                let reviewer = request.requested_reviewer?;
-                Some(ReviewRequest {
-                    author: reviewer.login.or(reviewer.name)?,
-                    is_bot: reviewer.typename == "Bot",
-                })
-            })
-            .collect();
-        let unresolved_threads = self
-            .review_threads
-            .into_iter()
-            .flat_map(|value| value.nodes)
-            .flatten()
-            .filter(|thread| !thread.is_resolved)
-            .count();
-        let checks = self
-            .commits
-            .into_iter()
-            .flat_map(|value| value.nodes)
-            .flatten()
-            .filter_map(|node| node.commit.status_check_rollup)
-            .flat_map(|rollup| rollup.contexts.nodes)
-            .flatten()
-            .map(RawCheck::normalize)
-            .collect();
-        PrResponse {
-            number: self.number,
-            url: self.url,
-            title: self.title,
-            is_draft: self.is_draft,
-            review_decision: self.review_decision,
-            reviews,
-            review_requests,
-            unresolved_threads,
-            checks,
-        }
-    }
-}
-
-impl RawCheck {
-    fn normalize(self) -> PrCheckResponse {
-        match self {
-            Self::CheckRun {
-                name,
-                status,
-                conclusion,
-                started_at,
-                completed_at,
-                details_url,
-                check_suite,
-            } => {
-                let workflow = check_suite
-                    .and_then(|suite| suite.workflow_run)
-                    .and_then(|run| run.workflow)
-                    .map_or_else(String::new, |workflow| workflow.name);
-                PrCheckResponse {
-                    name,
-                    workflow,
-                    status,
-                    conclusion,
-                    started_at,
-                    completed_at,
-                    details_url: details_url.unwrap_or_default(),
-                }
-            }
-            Self::StatusContext {
-                context,
-                state,
-                target_url,
-                created_at,
-            } => {
-                let (status, conclusion) = if state == "PENDING" {
-                    ("IN_PROGRESS".into(), None)
-                } else {
-                    ("COMPLETED".into(), Some(state))
-                };
-                PrCheckResponse {
-                    name: context,
-                    workflow: String::new(),
-                    status,
-                    conclusion,
-                    started_at: created_at,
-                    completed_at: None,
-                    details_url: target_url.unwrap_or_default(),
-                }
-            }
-        }
-    }
 }

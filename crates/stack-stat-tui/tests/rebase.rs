@@ -33,7 +33,7 @@ fn text_color(buffer: &Buffer, row: u16, text: &str) -> Color {
 async fn app_with_rebase(branch: &str, gate_trunk_rebase: bool, current: &str) -> FakeApp {
     let (mut app, _) = TestScenario::builder()
         .stack("main", &["base", "feature"])
-        .needs_rebase(branch)
+        .remote_rebase(branch)
         .pr("base", PrBuilder::new(1).checks_all_pass().approved())
         .pr("feature", PrBuilder::new(2).checks_all_pass().approved())
         .current_branch(current)
@@ -77,7 +77,7 @@ async fn parent_rebase_is_blocking_and_names_the_layer_below() {
 async fn rebase_trigger_and_every_layer_above_it_are_blocked() {
     let (mut app, _) = TestScenario::builder()
         .stack("main", &["a", "b", "c"])
-        .needs_rebase("b")
+        .remote_rebase("b")
         .pr("a", PrBuilder::new(1).checks_all_pass().approved())
         .pr("b", PrBuilder::new(2).checks_all_pass().approved())
         .pr("c", PrBuilder::new(3).checks_all_pass().approved())

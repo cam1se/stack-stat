@@ -9,8 +9,8 @@ use ratatui::{
 };
 use stack_stat_core::{
     model::{
-        BranchState, CheckHealth, LocalCheckState, PrLifecycle, RebaseNeed, ReviewDecision,
-        ReviewState, ReviewSummary, StackStatus,
+        BranchState, CheckHealth, LocalCheckState, LocalSync, PrLifecycle, RebaseNeed,
+        ReviewDecision, ReviewState, ReviewSummary, StackStatus,
     },
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
@@ -67,7 +67,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         .iter()
         .any(|branch| !branch.local_checks.is_empty());
     let mut widths = vec![
-        Constraint::Length(1),
+        Constraint::Length(2),
         Constraint::Length(1),
         Constraint::Min(10),
         Constraint::Length(6),
@@ -153,7 +153,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         style
                     }
                 };
-                let marker = if branch.is_current { "*" } else { " " };
+                let (marker, sync_marker) = worktree_marker(branch);
                 let connector = if start + offset + 1 == visible_count {
                     " "
                 } else {
@@ -164,7 +164,13 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     _ => verdict_color,
                 };
                 let mut cells = vec![
-                    Cell::from(vec![Line::from(marker), Line::from(" ")]),
+                    Cell::from(vec![
+                        Line::from(vec![
+                            Span::raw(marker),
+                            Span::styled(sync_marker, Style::default().fg(theme.muted)),
+                        ]),
+                        Line::from(""),
+                    ]),
                     Cell::from(vec![
                         Line::styled(glyph, Style::default().fg(verdict_color)),
                         Line::styled(connector, Style::default().fg(verdict_color)),
@@ -258,6 +264,20 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 .border_style(Style::default().fg(theme.border)),
         );
     frame.render_widget(table, area);
+}
+
+fn worktree_marker(branch: &BranchState) -> (&'static str, &'static str) {
+    if !branch.is_current {
+        return (" ", "");
+    }
+    let suffix = match branch.local_sync {
+        LocalSync::InSync => "",
+        LocalSync::Ahead => "↑",
+        LocalSync::Behind => "↓",
+        LocalSync::Diverged => "⇅",
+        LocalSync::Unpushed => "?",
+    };
+    ("*", suffix)
 }
 
 fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::style::Color) {

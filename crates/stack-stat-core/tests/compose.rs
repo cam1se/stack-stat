@@ -1,11 +1,15 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use chrono::{TimeZone, Utc};
 use stack_stat_core::{
     compose::{GitHubSnapshot, GitSnapshot, StackOutcome, StoreSnapshot, compose},
     config::{Config, LocalCheckConfig},
-    model::{CheckHealth, LocalCheckState, PrLifecycle, RebaseNeed, ReviewState, StackStatus},
-    providers::{CheckResult, GraphqlResponse, ReportedState, StackViewResponse, StatusEntry},
+    model::{
+        CheckHealth, LocalCheckState, LocalSync, PrLifecycle, RebaseNeed, ReviewState, StackStatus,
+    },
+    providers::{
+        CheckResult, ReportedState, StackViewResponse, StatusEntry, graphql::parse_stack_response,
+    },
 };
 
 fn now() -> chrono::DateTime<Utc> {
@@ -14,6 +18,7 @@ fn now() -> chrono::DateTime<Utc> {
 fn git(current: &str) -> GitSnapshot {
     GitSnapshot {
         current_branch: current.into(),
+        current_sync: LocalSync::InSync,
         branch_shas: HashMap::from([
             ("auth".into(), "a".repeat(40)),
             ("api".into(), "c".repeat(40)),
@@ -23,15 +28,13 @@ fn git(current: &str) -> GitSnapshot {
     }
 }
 fn github() -> GitHubSnapshot {
+    let stack = serde_json::from_str::<StackViewResponse>(include_str!("fixtures/stack_view.json"))
+        .unwrap();
+    let details = parse_stack_response(include_str!("fixtures/pr_details.json"), &stack).unwrap();
     GitHubSnapshot {
         repo: String::new(),
-        stack: StackOutcome::InStack(
-            serde_json::from_str::<StackViewResponse>(include_str!("fixtures/stack_view.json"))
-                .unwrap(),
-        ),
-        prs: serde_json::from_str::<GraphqlResponse>(include_str!("fixtures/pr_details.json"))
-            .unwrap()
-            .into_prs(),
+        stack: StackOutcome::InStack(stack),
+        details,
         fetched_at: now(),
     }
 }
@@ -77,6 +80,27 @@ fn git_only_loading_retains_worktree_identity_without_guessing_rows() {
 }
 
 #[test]
+fn composition_applies_local_sync_to_current_branch_only() {
+    let mut snapshot = git("api");
+    snapshot.current_sync = LocalSync::Diverged;
+
+    let state = compose(Some(&snapshot), Some(&github()), None, &Config::default());
+
+    assert_eq!(
+        state
+            .branches
+            .iter()
+            .map(|branch| (branch.name.as_str(), branch.local_sync))
+            .collect::<Vec<_>>(),
+        [
+            ("auth", LocalSync::InSync),
+            ("api", LocalSync::Diverged),
+            ("ui", LocalSync::InSync),
+        ]
+    );
+}
+
+#[test]
 fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
     let mut config = Config::default();
     config.checks.skip.names.push("coverage".into());
@@ -112,7 +136,7 @@ fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
     );
     assert_eq!(state.branches[0].lifecycle, PrLifecycle::Merged);
     assert_eq!(state.branches[1].rebase, RebaseNeed::None);
-    assert_eq!(state.branches[2].rebase, RebaseNeed::Parent);
+    assert_eq!(state.branches[2].rebase, RebaseNeed::None);
     let api = &state.branches[1];
     assert!(api.is_current);
     assert_eq!(api.pr.as_ref().unwrap().unresolved_threads, 2);
@@ -171,13 +195,37 @@ fn composition_keeps_unresolved_threads_non_gating_by_default() {
 }
 
 #[test]
-fn composition_classifies_rebase_targets_from_stack_order() {
+fn composition_treats_missing_remote_comparison_as_no_rebase() {
+    let state = compose(Some(&git("api")), Some(&github()), None, &Config::default());
+
+    assert_eq!(state.branches[2].rebase, RebaseNeed::None);
+}
+
+#[test]
+fn composition_treats_zero_remote_behind_by_as_no_rebase() {
     let mut snapshot = github();
-    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
-        unreachable!();
+    let raw = include_str!("fixtures/pr_details.json").replacen(
+        "\"repository\": {",
+        "\"repository\": {\"rebase1\": {\"compare\": {\"behindBy\": 0}},",
+        1,
+    );
+    let details = {
+        let StackOutcome::InStack(stack) = &snapshot.stack else {
+            unreachable!();
+        };
+        parse_stack_response(&raw, stack).unwrap()
     };
-    stack.branches[1].needs_rebase = true;
-    stack.branches[2].needs_rebase = true;
+    snapshot.details = details;
+
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
+
+    assert_eq!(state.branches[2].rebase, RebaseNeed::None);
+}
+
+#[test]
+fn composition_classifies_remote_rebase_targets_from_stack_order() {
+    let mut snapshot = github();
+    snapshot.details.remote_rebase_branches = BTreeSet::from(["api".into(), "ui".into()]);
 
     let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
 
@@ -195,11 +243,7 @@ fn composition_classifies_rebase_targets_from_stack_order() {
 #[test]
 fn rebase_trigger_cascades_to_later_open_layers_but_not_merged_ones() {
     let mut snapshot = github();
-    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
-        unreachable!();
-    };
-    stack.branches[1].needs_rebase = true;
-    stack.branches[2].needs_rebase = false;
+    snapshot.details.remote_rebase_branches = BTreeSet::from(["api".into()]);
     let mut config = Config::default();
     config.rebase.onto_trunk = true;
 
@@ -220,10 +264,9 @@ fn composition_makes_first_open_layer_trunk_target_after_merged_layers() {
     let StackOutcome::InStack(stack) = &mut snapshot.stack else {
         unreachable!();
     };
-    stack.branches[0].needs_rebase = true;
     stack.branches[1].is_merged = true;
-    stack.branches[1].needs_rebase = true;
-    stack.branches[2].needs_rebase = true;
+    snapshot.details.remote_rebase_branches =
+        BTreeSet::from(["auth".into(), "api".into(), "ui".into()]);
     let mut config = Config::default();
     config.rebase.onto_trunk = true;
 
@@ -273,7 +316,7 @@ fn no_stack_and_off_stack_branch_do_not_mark_any_row_current() {
     let not_in_stack = GitHubSnapshot {
         repo: String::new(),
         stack: StackOutcome::NotInStack,
-        prs: vec![],
+        details: Default::default(),
         fetched_at: now(),
     };
     let state = compose(
@@ -319,7 +362,7 @@ fn remote_only_branch_has_missing_local_checks() {
 #[test]
 fn missing_pr_details_retain_number_without_claiming_ready() {
     let mut github = github();
-    github.prs.retain(|pr| pr.number != 43);
+    github.details.prs.retain(|pr| pr.number != 43);
     let state = compose(Some(&git("api")), Some(&github), None, &Config::default());
     assert_eq!(state.branches[1].pr_number, Some(43));
     assert!(state.branches[1].pr.is_none());
@@ -338,7 +381,12 @@ fn queued_stack_layer_is_not_mistaken_for_open() {
 #[test]
 fn workflow_startup_failure_is_a_failing_check_not_neutral() {
     let mut snapshot = github();
-    let pr = snapshot.prs.iter_mut().find(|pr| pr.number == 43).unwrap();
+    let pr = snapshot
+        .details
+        .prs
+        .iter_mut()
+        .find(|pr| pr.number == 43)
+        .unwrap();
     pr.checks[0].status = "COMPLETED".into();
     pr.checks[0].conclusion = Some("STARTUP_FAILURE".into());
     pr.checks.truncate(1);
@@ -350,7 +398,12 @@ fn workflow_startup_failure_is_a_failing_check_not_neutral() {
 #[test]
 fn unrecognized_completed_conclusion_is_not_false_green() {
     let mut snapshot = github();
-    let pr = snapshot.prs.iter_mut().find(|pr| pr.number == 43).unwrap();
+    let pr = snapshot
+        .details
+        .prs
+        .iter_mut()
+        .find(|pr| pr.number == 43)
+        .unwrap();
     pr.checks.truncate(1);
     pr.checks[0].status = "COMPLETED".into();
     pr.checks[0].conclusion = Some("FUTURE_ERROR".into());

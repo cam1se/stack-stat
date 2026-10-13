@@ -1,7 +1,7 @@
 use stack_stat_core::model::{
     BlockerSummary, BranchState, CheckConclusion, CheckStatus, CiCheck, Issue, LocalCheckResult,
-    LocalCheckState, PrInfo, PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState,
-    StackState, Verdict,
+    LocalCheckState, LocalSync, PrInfo, PrLifecycle, RebaseNeed, Review, ReviewDecision,
+    ReviewState, StackState, Verdict,
 };
 
 fn check(status: CheckStatus, conclusion: Option<CheckConclusion>) -> CiCheck {
@@ -35,6 +35,7 @@ fn ready_branch(name: &str) -> BranchState {
         rebase: RebaseNeed::None,
         trunk_rebase_gates: false,
         is_current: false,
+        local_sync: LocalSync::InSync,
         lifecycle: PrLifecycle::Open,
         pr_number: Some(1),
         pr: Some(PrInfo {

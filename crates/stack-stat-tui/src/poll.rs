@@ -20,36 +20,33 @@ use crate::message::{AppMessage, Source};
 pub async fn fetch_git<G: GitProvider>(git: &G, now: DateTime<Utc>) -> anyhow::Result<GitSnapshot> {
     let current_branch = git.current_branch().await?;
     let branch_shas = git.branch_shas().await?;
+    let current_sync = git.current_sync(&current_branch).await?;
     Ok(GitSnapshot {
         current_branch,
+        current_sync,
         branch_shas,
         fetched_at: now,
     })
 }
 
-/// Load stack and exact PR details, treating off-stack as a successful outcome.
+/// Load remote stack details, treating off-stack as a successful outcome.
 pub async fn fetch_github<H: GitHubProvider>(
     github: &H,
     now: DateTime<Utc>,
 ) -> Result<GitHubSnapshot, GitHubError> {
     match github.stack_view().await {
         Ok(stack) => {
-            let numbers: Vec<_> = stack
-                .branches
-                .iter()
-                .filter_map(|branch| branch.pr.as_ref().map(|pr| pr.number))
-                .collect();
-            let prs = github.pr_details(&numbers).await?;
+            let details = github.pr_details(&stack).await?;
             Ok(GitHubSnapshot {
                 stack: StackOutcome::InStack(stack),
-                prs,
+                details,
                 repo: github.repo(),
                 fetched_at: now,
             })
         }
         Err(GitHubError::NotInStack) => Ok(GitHubSnapshot {
             stack: StackOutcome::NotInStack,
-            prs: vec![],
+            details: Default::default(),
             repo: github.repo(),
             fetched_at: now,
         }),

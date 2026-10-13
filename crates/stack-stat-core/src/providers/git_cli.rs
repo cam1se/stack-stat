@@ -10,6 +10,8 @@ use anyhow::{Context, Result, anyhow, bail};
 use async_trait::async_trait;
 use tokio::process::Command;
 
+use crate::model::LocalSync;
+
 use super::GitProvider;
 
 /// Marker returned by GitProvider when HEAD is detached.
@@ -137,6 +139,54 @@ impl GitProvider for CliGitProvider {
                 Ok((name.into(), sha.into()))
             })
             .collect()
+    }
+
+    async fn current_sync(&self, branch: &str) -> Result<LocalSync> {
+        if branch == DETACHED_HEAD {
+            return Ok(LocalSync::InSync);
+        }
+        let upstream = match self
+            .run(&[
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ])
+            .await
+        {
+            Ok(upstream) => upstream,
+            Err(_) => {
+                let fallback = format!("origin/{branch}");
+                if self.resolve_rev(&fallback).await.is_err() {
+                    return Ok(LocalSync::Unpushed);
+                }
+                fallback
+            }
+        };
+        let range = format!("HEAD...{upstream}");
+        let output = self
+            .run(&["rev-list", "--left-right", "--count", &range])
+            .await?;
+        let mut counts = output.split_whitespace();
+        let ahead = counts
+            .next()
+            .context("git rev-list did not report local-only commits")?
+            .parse::<u64>()
+            .context("git rev-list reported an invalid local count")?;
+        let behind = counts
+            .next()
+            .context("git rev-list did not report remote-only commits")?
+            .parse::<u64>()
+            .context("git rev-list reported an invalid remote count")?;
+        if counts.next().is_some() {
+            bail!("git rev-list returned too many counts");
+        }
+        Ok(match (ahead > 0, behind > 0) {
+            (false, false) => LocalSync::InSync,
+            (true, false) => LocalSync::Ahead,
+            (false, true) => LocalSync::Behind,
+            (true, true) => LocalSync::Diverged,
+        })
     }
 
     fn common_dir(&self) -> &Path {
