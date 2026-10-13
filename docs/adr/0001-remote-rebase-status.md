@@ -8,7 +8,7 @@
 
 The dashboard answers one question: can each layer of the stack merge? Checks, reviews, threads, and draft state all come from GitHub. Rebase status came from a different source, the `needsRebase` field of `gh stack view --json`. That field is true when the parent's current tip is not an ancestor of the *local* branch, so it reflects the checkout and the last `git fetch`, not GitHub.
 
-In a real stack (`gopro/infra-katalyst-platform`, PRs #1827 and eight layers above it), `gh stack` flagged every layer above the bottom open PR, so the dashboard marked them all as needing a rebase. GitHub's compare API reported `behind_by: 0` for every layer against its base. The verdict was wrong for anyone whose local branches were stale, and it blocked readiness for layers that were mergeable. A branch-hopping agent makes stale local state the common case.
+In a real stack of nine open PRs, `gh stack` flagged every layer above the bottom open PR, so the dashboard marked them all as needing a rebase. GitHub's compare API reported `behind_by: 0` for every layer against its base. The verdict was wrong for anyone whose local branches were stale, and it blocked readiness for layers that were mergeable. A branch-hopping agent makes stale local state the common case.
 
 Forces:
 
