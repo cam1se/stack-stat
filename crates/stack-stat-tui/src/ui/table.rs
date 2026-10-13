@@ -53,7 +53,13 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     }
     let full_reviews = area.width >= 100;
     let full_local = area.width >= 80;
-    let widths = [
+    // The Local column only appears once local checks are configured or reported for some branch.
+    let show_local = app
+        .state()
+        .branches
+        .iter()
+        .any(|branch| !branch.local_checks.is_empty());
+    let mut widths = vec![
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(10),
@@ -61,9 +67,8 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Constraint::Length(7),
         Constraint::Length(9),
         Constraint::Length(if full_reviews { 17 } else { 5 }),
-        Constraint::Length(if full_local { 22 } else { 4 }),
     ];
-    let header = Row::new([
+    let mut header = vec![
         "",
         "",
         "Branch",
@@ -71,9 +76,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         "State",
         "Checks",
         if full_reviews { "Reviews" } else { "Rev" },
-        if full_local { "Local" } else { "L" },
-    ])
-    .style(
+    ];
+    if show_local {
+        widths.push(Constraint::Length(if full_local { 22 } else { 4 }));
+        header.push(if full_local { "Local" } else { "L" });
+    }
+    let header = Row::new(header).style(
         Style::default()
             .fg(theme.muted)
             .add_modifier(Modifier::BOLD),
@@ -84,19 +92,16 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     } else {
         app.state().trunk.as_str()
     };
+    let mut trunk_cells = vec![
+        Cell::from(""),
+        Cell::from(vec![Line::from("○"), Line::from("│")]),
+        Cell::from(Span::styled(trunk, Style::default().fg(theme.muted))),
+    ];
+    trunk_cells.resize_with(widths.len(), || Cell::from(""));
     let mut rows = vec![
-        Row::new(vec![
-            Cell::from(""),
-            Cell::from(vec![Line::from("○"), Line::from("│")]),
-            Cell::from(Span::styled(trunk, Style::default().fg(theme.muted))),
-            Cell::from(""),
-            Cell::from(""),
-            Cell::from(""),
-            Cell::from(""),
-            Cell::from(""),
-        ])
-        .height(2)
-        .style(Style::default().fg(theme.muted)),
+        Row::new(trunk_cells)
+            .height(2)
+            .style(Style::default().fg(theme.muted)),
     ];
     let visible = app.visible_indices();
     let start = view_start(app, area);
@@ -146,7 +151,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     stack_stat_core::model::Verdict::Merged => ratatui::style::Color::Reset,
                     _ => verdict_color,
                 };
-                let cells = vec![
+                let mut cells = vec![
                     Cell::from(vec![Line::from(marker), Line::from(" ")]),
                     Cell::from(vec![
                         Line::styled(glyph, Style::default().fg(verdict_color)),
@@ -184,11 +189,13 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         reviews.0,
                         style(Column::Reviews, reviews.1.color(theme)),
                     )),
-                    Cell::from(Span::styled(
+                ];
+                if show_local {
+                    cells.push(Cell::from(Span::styled(
                         local.0,
                         style(Column::Local, local.1.color(theme)),
-                    )),
-                ];
+                    )));
+                }
                 let bg = if branch.is_current {
                     app.animation()
                         .pulse_color(theme.active_base, theme.active_peak, 20)
@@ -209,19 +216,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     );
     if app.state().stack_status == StackStatus::Loading {
         let shimmer = |column| app.animation().skeleton_char(column).to_string();
+        let mut skeleton: Vec<String> = vec![" ".into()];
+        skeleton.extend((0..widths.len() - 1).map(shimmer));
         rows.push(
-            Row::new([
-                " ".into(),
-                shimmer(0),
-                shimmer(1),
-                shimmer(2),
-                shimmer(3),
-                shimmer(4),
-                shimmer(5),
-                shimmer(6),
-            ])
-            .height(2)
-            .style(Style::default().fg(theme.skeleton)),
+            Row::new(skeleton)
+                .height(2)
+                .style(Style::default().fg(theme.skeleton)),
         );
     }
     let table = Table::new(rows, widths)
