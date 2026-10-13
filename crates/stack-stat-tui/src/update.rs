@@ -12,7 +12,7 @@ pub use archive::extract_verified;
 pub use release::{ReleaseTag, asset_name, expected_checksum, is_newer, latest_stable};
 
 /// GitHub repository that publishes stack-stat binaries.
-pub const RELEASE_REPO: &str = "tcamise-gpsw/stack-stat";
+pub const RELEASE_REPO: &str = "cam1se/stack-stat";
 
 /// Target triple embedded at compile time for release asset selection.
 #[must_use]

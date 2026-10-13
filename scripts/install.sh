@@ -3,7 +3,7 @@
 # STACK_STAT_VERSION pins a stable vX.Y.Z tag; INSTALL_DIR defaults to ~/.local/bin.
 set -euo pipefail
 
-REPO=tcamise-gpsw/stack-stat
+REPO=cam1se/stack-stat
 BINARY=stack-stat
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 case "$INSTALL_DIR" in

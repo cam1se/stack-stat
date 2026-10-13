@@ -5,8 +5,8 @@
 <p align="center">
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-stable-DEA584?style=flat&colorA=222222&logo=rust&logoColor=white" alt="Rust"></a>
   <a href="https://ratatui.rs"><img src="https://img.shields.io/badge/TUI-ratatui-222222?style=flat&colorA=222222" alt="Built with ratatui"></a>
-  <a href="https://github.com/tcamise-gpsw/stack-stat/releases"><img src="https://img.shields.io/badge/release-latest-4CAF50?style=flat&colorA=222222" alt="Releases"></a>
-  <a href="https://github.com/tcamise-gpsw/stack-stat"><img src="https://img.shields.io/badge/source-GitHub-222222?style=flat&logo=github" alt="GitHub"></a>
+  <a href="https://github.com/cam1se/stack-stat/releases"><img src="https://img.shields.io/badge/release-latest-4CAF50?style=flat&colorA=222222" alt="Releases"></a>
+  <a href="https://github.com/cam1se/stack-stat"><img src="https://img.shields.io/badge/source-GitHub-222222?style=flat&logo=github" alt="GitHub"></a>
 </p>
 
 # stack-stat
@@ -37,10 +37,10 @@ At launch, an animated wordmark and indeterminate loading indicator wait for the
 After a stable release is published, macOS/Linux users can run the checksum-verifying installer:
 
 ```sh
-bash <(gh api repos/tcamise-gpsw/stack-stat/contents/scripts/install.sh -H 'Accept: application/vnd.github.raw')
+bash <(gh api repos/cam1se/stack-stat/contents/scripts/install.sh -H 'Accept: application/vnd.github.raw')
 ```
 
-Windows users can run [install.ps1](https://github.com/tcamise-gpsw/stack-stat/blob/main/scripts/install.ps1) in PowerShell. `STACK_STAT_VERSION=vX.Y.Z` pins a stable release; `INSTALL_DIR` changes the destination. Both installers verify `checksums.sha256` before installing.
+Windows users can run [install.ps1](https://github.com/cam1se/stack-stat/blob/main/scripts/install.ps1) in PowerShell. `STACK_STAT_VERSION=vX.Y.Z` pins a stable release; `INSTALL_DIR` changes the destination. Both installers verify `checksums.sha256` before installing.
 
 `stack-stat version` prints the version and target triple. `stack-stat update` checks GitHub Releases for a newer stable binary, verifies its checksum, and replaces the installed executable. It does not update on its own; the TUI only displays an availability notice. Until the first release exists, `update` exits with `no stable release found`.
 

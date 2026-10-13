@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    assignees: [tcamise-gpsw]
+    assignees: [cam1se]
     groups:
       stack-stat-prod:
         dependency-type: production
@@ -16,7 +16,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    assignees: [tcamise-gpsw]
+    assignees: [cam1se]
     groups:
       github-actions:
         patterns: ["*"]
