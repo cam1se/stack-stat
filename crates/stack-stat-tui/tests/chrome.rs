@@ -147,6 +147,25 @@ async fn summary_strip_hides_zero_merged_group() {
 }
 
 #[tokio::test]
+async fn merged_layers_show_checks_without_status_color() {
+    let app = dashboard().await;
+    let theme = Theme::for_depth(ColorDepth::TrueColor);
+    let buffer = draw_at(&app, 140, 40);
+    let row = find_row(&buffer, "#4").expect("merged layer row");
+    let line: Vec<&str> = (0..buffer.area.width)
+        .map(|x| buffer[(x, row)].symbol())
+        .collect();
+    // The Checks cell follows the 7-wide State column ("Merged") plus one column of spacing.
+    let state = line
+        .iter()
+        .position(|symbol| *symbol == "M")
+        .expect("Merged state");
+    let checks = state + 8;
+    assert_eq!(line[checks], "✔");
+    assert_eq!(buffer[(checks as u16, row)].fg, theme.muted);
+}
+
+#[tokio::test]
 async fn footer_keeps_quit_hint_at_compact_widths() {
     let app = dashboard().await;
     for width in [80, 60] {

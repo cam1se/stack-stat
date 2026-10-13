@@ -85,7 +85,6 @@ fn normal_hints(width: u16, status: &str) -> Vec<(String, String)> {
             Action::DetailPageDown,
             Action::OpenPr,
             Action::Checkout,
-            Action::Refresh,
             Action::Help,
             Action::Quit,
         ]
