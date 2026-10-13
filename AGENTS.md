@@ -8,8 +8,8 @@ Build, test, and commit stack-stat. Read the [documentation conventions](docs/RE
 
 | Crate | Role |
 |---|---|
-| [`stack-stat-core`](crates/stack-stat-core) | Domain model, configuration, status store, git/GitHub providers |
-| [`stack-stat-tui`](crates/stack-stat-tui) | `stack-stat` binary, TUI, `report` and `update` commands |
+| [`stack-stat-core`](crates/stack-stat-core/Cargo.toml) | Domain model, configuration, status store, git/GitHub providers |
+| [`stack-stat-tui`](crates/stack-stat-tui/Cargo.toml) | `stack-stat` binary, TUI, `report` and `update` commands |
 
 Architecture starts with [system context](docs/architecture/01-l1-context.md).
 
@@ -29,7 +29,7 @@ cargo run -- --version
 cargo run
 ```
 
-The dashboard requires the current directory to be inside a git repository with an active stack. The version command does not.
+The dashboard requires the current directory to be inside a Git repository. An active stack supplies the layer rows; outside a stack, the dashboard shows a not-in-stack view. The version command does not require a repository.
 
 ## Test
 
@@ -66,9 +66,9 @@ Branch from `main`, keep each PR focused, and update documentation with code. Be
 
 ## Documentation discipline
 
-Documentation moves with code. Structural changes update [architecture](docs/architecture/); hard-to-reverse decisions get an [ADR](docs/adr/README.md). The [docs conventions](docs/README.md) define one source of truth per fact, navigable links, and living versus point-in-time documents.
+Documentation moves with code. Structural changes update [architecture](docs/architecture/01-l1-context.md); hard-to-reverse decisions get an [ADR](docs/adr/README.md). The [docs conventions](docs/README.md) define one source of truth per fact, navigable links, and living versus point-in-time documents.
 
-For a full documentation audit, use [docs refresh](.agents/skills/stack-stat-docs-refresh/SKILL.md); [ADR authoring](.agents/skills/stack-stat-docs-create-adr/SKILL.md) and [plan absorption](.agents/skills/stack-stat-docs-absorb-plan/SKILL.md) explain durable decision records.
+For a full documentation audit, use [docs refresh](.agents/skills/stack-stat-docs-refresh/SKILL.md); [ADR authoring](.agents/skills/stack-stat-docs-create-adr/SKILL.md) and [plan absorption](.agents/skills/stack-stat-docs-absorb-plan/SKILL.md) explain durable decisions.
 
 ## Notes for coding agents
 

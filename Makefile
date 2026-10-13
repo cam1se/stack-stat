@@ -24,14 +24,14 @@ format: ## Apply Rust formatting
 lint: ## Check formatting and Clippy
 	cargo fmt --all -- --check
 	cargo clippy --workspace --all-targets --locked -- -D warnings
-
 tests: ## Run the full suite
 	cargo test --workspace --locked --no-fail-fast
 
 preflight: lint tests ## Run the CI-equivalent checks
 
 rustdoc: ## Build rustdoc and open it
-	cargo doc --workspace --no-deps && open target/doc/stack_stat_core/index.html
+	cargo doc --workspace --no-deps --locked
+	@echo "Rustdoc built in target/doc; open stack_stat_core/index.html with your platform's browser."
 
 docs-serve: ## Preview the documentation site
 	@bash scripts/serve-docs.sh --watch

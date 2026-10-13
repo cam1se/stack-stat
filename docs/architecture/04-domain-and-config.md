@@ -1,6 +1,6 @@
 # 04 — Domain state and configuration
 
-[stack-stat-core](../../crates/stack-stat-core/) separates data fetched from Git and GitHub from the view rendered in the terminal. The domain model describes stack order, the current worktree branch, each layer's PR lifecycle, CI status, reviews, and local checks. Provider responses are mapped into the model by the compositor; the TUI reads the resulting state without depending on JSON response shapes.
+[stack-stat-core](../../crates/stack-stat-core/Cargo.toml) separates data fetched from Git and GitHub from the view rendered in the terminal. The domain model describes stack order, the current worktree branch, each layer's PR lifecycle, CI status, reviews, and local checks. Provider responses are mapped into the model by the compositor; the TUI reads the resulting state without depending on JSON response shapes.
 
 ## Composition
 
