@@ -31,4 +31,4 @@ flowchart LR
 
 The stack-stat binary does not replace `gh stack`; it uses that extension as the authority on stack membership. The dashboard follows the worktree's checked-out branch. When that branch is outside a stack, it displays a not-in-stack view rather than guessing a stack.
 
-See [container boundaries](02-l2-containers.md) for the binary and library responsibilities and [the design](../specs/001-stack-stat-design.md) for the planned UI.
+See [container boundaries](02-l2-containers.md) for binary and library responsibilities and [the terminal application](06-tui.md) for interaction behavior.

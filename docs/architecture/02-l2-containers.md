@@ -27,4 +27,4 @@ flowchart LR
 
 The library owns the provider contracts so the dashboard can be exercised with fake git, GitHub, and status-store providers. The store lives under Git's common directory to keep results shared among worktrees and out of tracked files. Per-repository configuration stays at the worktree root; user display preferences stay in the platform config directory.
 
-Read [system context](01-l1-context.md) for actors and external systems and [the design](../specs/001-stack-stat-design.md) for detailed planned behavior.
+Read [system context](01-l1-context.md) for actors, [providers and store](05-providers-and-store.md) for external boundaries, and [the terminal application](06-tui.md) for interaction behavior.
