@@ -5,7 +5,7 @@ description: Use when asked to ship stack-stat, open a pull request, or update a
 
 # Ship a change
 
-1. Run `make preflight` and `cargo doc --workspace --no-deps --locked`. Stop to fix failures. For runtime changes, launch the actual dashboard in a repo with an active stack, exercise the changed path, and report observed behavior; otherwise explain N/A.
+1. Run `make preflight` and `cargo doc --workspace --no-deps --locked`. Stop to fix failures. For runtime changes, smoke the real dashboard against the in-repo fixture: run `make demo` (the fictional stack in `crates/stack-stat-tui/examples/demo.rs`) under a terminal recorder such as VHS, exercise the changed path, inspect screenshots, and report observed behavior; otherwise explain N/A. Do not depend on a live repository or stack. If the change needs a state the demo stack lacks, add it to the example first; it also feeds the published gif, so re-record with `make demo-gif` when the dashboard's appearance changes.
 2. Invoke `stack-stat-docs-refresh` to inspect living docs against the final code. Commit needed changes before preparing PR text.
 3. Invoke `stack-stat-reflow` to consolidate fixup commits. Run `bash scripts/commit-lint.sh` on the final history. Verify the reflow did not change the tree.
 4. Detect an existing PR using `gh pr view --json number,url,title` on the current branch. Update it instead of opening a duplicate. For a new change, open a draft PR.
