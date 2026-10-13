@@ -75,7 +75,6 @@ impl PrInfo {
             worst: CheckHealth::None,
         };
         for check in self.checks.iter().filter(|check| !check.skipped_by_config) {
-            summary.total += 1;
             let health = match check.status {
                 CheckStatus::Queued | CheckStatus::InProgress => CheckHealth::Running,
                 CheckStatus::Completed => match check.conclusion {
@@ -89,6 +88,9 @@ impl PrInfo {
                     _ => CheckHealth::Failure,
                 },
             };
+            if health != CheckHealth::Skipped {
+                summary.total += 1;
+            }
             if priority(health) > priority(summary.worst) {
                 summary.worst = health;
             }
