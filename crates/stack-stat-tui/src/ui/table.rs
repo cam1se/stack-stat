@@ -410,7 +410,7 @@ fn thread_label(branch: &BranchState) -> (String, Health) {
 fn rebase_label(branch: &BranchState, full: bool) -> (String, Health) {
     match branch.rebase {
         RebaseNeed::None => (String::new(), Health::Muted),
-        RebaseNeed::Parent => (if full { "↻ below" } else { "↻" }.into(), Health::Failure),
+        RebaseNeed::Parent | RebaseNeed::Stacked => ("↻".into(), Health::Failure),
         RebaseNeed::Trunk => (
             if full { "↻ main" } else { "↻" }.into(),
             if branch.trunk_rebase_gates {

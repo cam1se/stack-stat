@@ -87,6 +87,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 Style::default().fg(theme.error),
             ));
         }
+        RebaseNeed::Stacked => {
+            lines.push(Line::styled(
+                "Rebase needed: a layer below needs a rebase",
+                Style::default().fg(theme.error),
+            ));
+        }
         RebaseNeed::Trunk => {
             let blocking = branch.trunk_rebase_gates;
             lines.push(Line::styled(

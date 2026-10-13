@@ -62,14 +62,38 @@ async fn parent_rebase_is_blocking_and_names_the_layer_below() {
     let app = app_with_rebase("feature", false, "feature").await;
     let (buffer, theme) = draw(&app, 120);
     let row = find_body_row(&buffer, "#2").expect("feature row");
-    assert!(row_text(&buffer, row).contains("↻ below"));
-    assert_eq!(text_color(&buffer, row, "↻ below"), theme.error);
+    assert!(row_text(&buffer, row).contains('↻'));
+    assert!(!row_text(&buffer, row).contains("below"));
+    assert_eq!(text_color(&buffer, row, "↻"), theme.error);
     assert!(row_text(&buffer, row).contains('✖'));
     let detail = find_row(&buffer, "Rebase needed: onto base").expect("parent rebase detail");
     assert_eq!(
         text_color(&buffer, detail, "Rebase needed: onto base"),
         theme.error
     );
+}
+
+#[tokio::test]
+async fn rebase_trigger_and_every_layer_above_it_are_blocked() {
+    let (mut app, _) = TestScenario::builder()
+        .stack("main", &["a", "b", "c"])
+        .needs_rebase("b")
+        .pr("a", PrBuilder::new(1).checks_all_pass().approved())
+        .pr("b", PrBuilder::new(2).checks_all_pass().approved())
+        .pr("c", PrBuilder::new(3).checks_all_pass().approved())
+        .current_branch("a")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    let (buffer, theme) = draw(&app, 120);
+
+    let below = find_body_row(&buffer, "#1").expect("a row");
+    assert!(!row_text(&buffer, below).contains('↻'));
+    for pr in ["#2", "#3"] {
+        let row = find_body_row(&buffer, pr).expect("row");
+        assert_eq!(text_color(&buffer, row, "↻"), theme.error, "{pr}");
+        assert!(row_text(&buffer, row).contains('✖'), "{pr}");
+    }
 }
 
 #[tokio::test]

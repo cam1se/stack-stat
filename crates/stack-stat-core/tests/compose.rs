@@ -193,6 +193,28 @@ fn composition_classifies_rebase_targets_from_stack_order() {
 }
 
 #[test]
+fn rebase_trigger_cascades_to_later_open_layers_but_not_merged_ones() {
+    let mut snapshot = github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.branches[1].needs_rebase = true;
+    stack.branches[2].needs_rebase = false;
+    let mut config = Config::default();
+    config.rebase.onto_trunk = true;
+
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &config);
+
+    assert_eq!(state.branches[0].rebase, RebaseNeed::None);
+    assert_eq!(state.branches[1].rebase, RebaseNeed::Trunk);
+    assert_eq!(state.branches[2].rebase, RebaseNeed::Stacked);
+
+    config.rebase.onto_trunk = false;
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &config);
+    assert_eq!(state.branches[2].rebase, RebaseNeed::None);
+}
+
+#[test]
 fn composition_makes_first_open_layer_trunk_target_after_merged_layers() {
     let mut snapshot = github();
     let StackOutcome::InStack(stack) = &mut snapshot.stack else {
