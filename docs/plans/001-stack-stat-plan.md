@@ -388,9 +388,9 @@
 - [x] Preflight tests use a fake `CommandRunner` to cover each failure and the success path
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 9: CLI entry point, startup preflight, and report subcommand` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 9: CLI entry point, startup preflight, and report subcommand` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 10: App state machine, effects, pollers, and test harness
 
@@ -429,23 +429,23 @@
 - Config warnings and store read warnings appear in the status line at startup / after a store poll.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] `App` is generic over the three provider traits and constructible with fakes
-- [ ] Every keymap entry dispatches the documented action in the right mode; table keys are ignored while Help is open
-- [ ] Confirm flow for `c`/`p`/`S`/`m`; `o`/`R` unconfirmed; single in-flight mutation
-- [ ] Last-good snapshot retention on errors; `NotInStack` replaces
-- [ ] Adaptive GitHub interval and rate-limit backoff implemented in the poller
-- [ ] Terminal is always restored (normal quit, error return, panic)
+- [x] `App` is generic over the three provider traits and constructible with fakes
+- [x] Every keymap entry dispatches the documented action in the right mode; table keys are ignored while Help is open
+- [x] Confirm flow for `c`/`p`/`S`/`m`; `o`/`R` unconfirmed; single in-flight mutation
+- [x] Last-good snapshot retention on errors; `NotInStack` replaces
+- [x] Adaptive GitHub interval and rate-limit backoff implemented in the poller
+- [x] Terminal is always restored (normal quit, error return, panic)
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-tui --test app_state` and `--test keymap`
-- [ ] Spec E2E scenarios implemented here, all driven through `TestScenario` + `poll_once`/`handle_key`/`run_effect` and asserted through accessors and fake handles:
-  - [ ] Scenario 3 — agent branch switch: fake git `current_branch` auth → api, `poll_once(Git)`, current row moves
-  - [ ] Scenario 4 — draft/ready toggle: select draft PR, `m`, `y`, run effect; fake records `ToggleDraft { number: 43, make_ready: true }`; status line shows success
-  - [ ] Scenario 9 — not in a stack: fake `stack_view` returns `NotInStack`; `stack_status == NotInStack`
-  - [ ] Scenario 10 — GitHub fetch failure: after one good poll, the fake returns `Network`; rows still present, status line shows the error, git/store still update
-  - [ ] Scenario 12 — keybinding dispatch: table-driven over the keymap for each mode
-- [ ] Also cover: selection persistence across recompose, filter mode editing, sort cycling order, confirm cancel, busy rejection, `o` on a PR-less row
-- [ ] Throwaway smoke (not committed): run `cargo run` in a repo with an active gh stack, confirm the loop starts, `q` quits, and the terminal is restored. Rendering lands in Task 11, so a minimal placeholder frame is acceptable here
+- [x] `cargo test -p stack-stat-tui --test app_state` and `--test keymap`
+- [x] Spec E2E scenarios implemented here, all driven through `TestScenario` + `poll_once`/`handle_key`/`run_effect` and asserted through accessors and fake handles:
+  - [x] Scenario 3 — agent branch switch: fake git `current_branch` auth → api, `poll_once(Git)`, current row moves
+  - [x] Scenario 4 — draft/ready toggle: select draft PR, `m`, `y`, run effect; fake records `ToggleDraft { number: 43, make_ready: true }`; status line shows success
+  - [x] Scenario 9 — not in a stack: fake `stack_view` returns `NotInStack`; `stack_status == NotInStack`
+  - [x] Scenario 10 — GitHub fetch failure: after one good poll, the fake returns `Network`; rows still present, status line shows the error, git/store still update
+  - [x] Scenario 12 — keybinding dispatch: table-driven over the keymap for each mode
+- [x] Also cover: selection persistence across recompose, filter mode editing, sort cycling order, confirm cancel, busy rejection, `o` on a PR-less row
+- [x] Throwaway smoke (not committed): run `cargo run` in a repo with an active gh stack, confirm the loop starts, `q` quits, and the terminal is restored. Rendering lands in Task 11, so a minimal placeholder frame is acceptable here
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

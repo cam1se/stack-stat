@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use std::process::ExitCode;
 
 use anyhow::Result;
@@ -57,7 +59,19 @@ async fn run() -> Result<()> {
         Some(Command::Update) => anyhow::bail!("stack-stat update is not yet available"),
         None => {
             preflight::run(&SystemCommandRunner)?;
-            println!("TUI not yet wired");
+            let git = CliGitProvider::discover(&std::env::current_dir()?)?;
+            let config = Config::load(git.worktree_root(), None)?;
+            let (owner, repo) =
+                stack_stat_core::providers::CliGitHubProvider::resolve_repo(git.worktree_root())
+                    .await?;
+            let github = stack_stat_core::providers::CliGitHubProvider::new(
+                git.worktree_root().into(),
+                owner,
+                repo,
+            );
+            let store = FileStatusStore::new(git.common_dir());
+            stack_stat_tui::runtime::run(Arc::new(git), Arc::new(github), Arc::new(store), config)
+                .await?;
         }
     }
     Ok(())

@@ -73,6 +73,10 @@ pub trait GitHubProvider: Send + Sync {
 pub trait StatusStoreProvider: Send + Sync {
     /// Read available entries (one per branch and SHA).
     fn read_all(&self) -> Result<Vec<StatusEntry>>;
+    /// Read valid entries alongside warnings for malformed or unreadable files.
+    fn read_with_warnings(&self) -> Result<(Vec<StatusEntry>, Vec<String>)> {
+        self.read_all().map(|entries| (entries, Vec::new()))
+    }
     /// Merge or replace one named check result for a branch and SHA.
     fn write(&self, branch: &str, sha: &str, check: &str, result: &CheckResult) -> Result<()>;
     /// Remove all entries for a branch (including stale entries).

@@ -127,6 +127,10 @@ impl StatusStoreProvider for FileStatusStore {
         self.read_all_with_warnings().map(|(entries, _)| entries)
     }
 
+    fn read_with_warnings(&self) -> Result<(Vec<StatusEntry>, Vec<String>)> {
+        self.read_all_with_warnings()
+    }
+
     fn write(&self, branch: &str, sha: &str, check: &str, result: &CheckResult) -> Result<()> {
         // SHA is used as a filename, so reject anything other than a full commit ID.
         anyhow::ensure!(

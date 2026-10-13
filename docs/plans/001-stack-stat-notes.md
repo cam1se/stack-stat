@@ -46,3 +46,10 @@ N/A
 
 - `CommandRunner::run` returns `io::Result<CommandOutput>` instead of a bare `Output` so a missing `gh` executable can be represented without panicking. The startup CLI still prints the spec's actionable error and exits 1.
 - The report command's underlying Git adapter is concrete, as planned, because `resolve_rev` is not part of the read-only `GitProvider` trait.
+
+### Task 10: App state machine, effects, pollers, and test harness
+
+- The fake store and file store now share a `read_with_warnings()` trait method with a default implementation so polling can show malformed-file diagnostics without dropping valid data.
+- A throwaway local stack (not pushed) launched the actual alternate-screen TUI; the minimal frame showed `test-layer`, and `q` exited with code 0 and restored the terminal. Full rendering follows in Task 11.
+- The file writer unexpectedly marked `tests/support/mod.rs` executable; its mode was reset to 0644 and the tool behavior was reported.
+- Tokio watch sends a change notification even for an identical value; the App handles frequent Git updates. The GitHub activity watch now publishes only transitions, avoiding accidental remote polling on every local Git tick.
