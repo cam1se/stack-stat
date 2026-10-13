@@ -82,7 +82,6 @@ pub struct App<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> {
     state: StackState,
     selected_name: Option<String>,
     selected_index: usize,
-    detail_open: bool,
     detail_scroll: usize,
     detail_viewport_rows: usize,
     mode: Mode,
@@ -125,7 +124,6 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             state: StackState::default(),
             selected_name: None,
             selected_index: 0,
-            detail_open: false,
             detail_scroll: 0,
             detail_viewport_rows: 12,
             mode: Mode::Normal,
@@ -153,7 +151,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                         self.git = Some(snapshot);
                         self.clear_error(Source::Git);
                     }
-                    Err(error) => self.error(Source::Git, format!("⚠ git fetch failed: {error}")),
+                    Err(error) => self.error(Source::Git, format!("! git fetch failed: {error}")),
                 }
             }
             AppMessage::GitHub(result) => {
@@ -174,11 +172,11 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     Err(GitHubError::RateLimited { reset_hint }) => self.error(
                         Source::GitHub,
                         format!(
-                            "⚠ rate limited, resumes in {}",
+                            "! rate limited, resumes in {}",
                             reset_hint.unwrap_or_else(|| "5m".into())
                         ),
                     ),
-                    Err(error) => self.error(Source::GitHub, format!("⚠ fetch failed: {error}")),
+                    Err(error) => self.error(Source::GitHub, format!("! fetch failed: {error}")),
                 }
             }
             AppMessage::Store(result) => {
@@ -186,13 +184,13 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 match result {
                     Ok(snapshot) => {
                         if let Some(warning) = snapshot.warnings.first() {
-                            self.error(Source::Store, format!("⚠ {warning}"));
+                            self.error(Source::Store, format!("! {warning}"));
                         } else {
                             self.clear_error(Source::Store);
                         }
                         self.store = Some(snapshot);
                     }
-                    Err(error) => self.error(Source::Store, format!("⚠ local checks: {error}")),
+                    Err(error) => self.error(Source::Store, format!("! local checks: {error}")),
                 }
             }
             AppMessage::FetchStarted(source) => {
@@ -221,14 +219,14 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     }
                     Err(GitHubError::RebaseConflict) => self.status = StatusLine {
                         text:
-                            "⚠ rebase conflict — resolve with gh stack rebase --continue or --abort"
+                            "! rebase conflict — resolve with gh stack rebase --continue or --abort"
                                 .into(),
                         is_error: true,
                     },
                     Err(error) => {
                         self.status = StatusLine {
                             text: format!(
-                                "⚠ {}",
+                                "! {}",
                                 error.to_string().lines().next().unwrap_or_default()
                             ),
                             is_error: true,

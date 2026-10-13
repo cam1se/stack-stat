@@ -58,6 +58,8 @@ pub struct Theme {
     pub selected: Color,
     /// Flash highlight on changed data.
     pub flash: Color,
+    /// Accent color for the header title.
+    pub header_title: Color,
     /// Loading placeholder shade.
     pub skeleton: Color,
 }
@@ -66,42 +68,55 @@ impl Theme {
     /// Construct semantic colors with indexed and 16-color fallbacks.
     #[must_use]
     pub fn for_depth(depth: ColorDepth) -> Self {
-        let (success, error, warning, muted, active_base, active_peak, selected, flash, skeleton) =
-            match depth {
-                ColorDepth::TrueColor => (
-                    Color::Rgb(0x3f, 0xb9, 0x50),
-                    Color::Rgb(0xf8, 0x51, 0x49),
-                    Color::Rgb(0xd2, 0x99, 0x22),
-                    Color::Rgb(0x8b, 0x94, 0x9e),
-                    Color::Rgb(0x1a, 0x28, 0x40),
-                    Color::Rgb(0x2a, 0x3f, 0x5f),
-                    Color::Rgb(0x2d, 0x33, 0x3b),
-                    Color::Rgb(0x58, 0xa6, 0xff),
-                    Color::Rgb(0x30, 0x36, 0x3d),
-                ),
-                ColorDepth::Ansi256 => (
-                    Color::Indexed(34),
-                    Color::Indexed(196),
-                    Color::Indexed(178),
-                    Color::Indexed(245),
-                    Color::Indexed(236),
-                    Color::Indexed(238),
-                    Color::Indexed(237),
-                    Color::Indexed(75),
-                    Color::Indexed(240),
-                ),
-                ColorDepth::Basic16 => (
-                    Color::Green,
-                    Color::Red,
-                    Color::Yellow,
-                    Color::Gray,
-                    Color::Blue,
-                    Color::Blue,
-                    Color::DarkGray,
-                    Color::Cyan,
-                    Color::DarkGray,
-                ),
-            };
+        let (
+            success,
+            error,
+            warning,
+            muted,
+            active_base,
+            active_peak,
+            selected,
+            flash,
+            header_title,
+            skeleton,
+        ) = match depth {
+            ColorDepth::TrueColor => (
+                Color::Rgb(0x1d, 0xe9, 0xb6),
+                Color::Rgb(0xff, 0x5c, 0x6c),
+                Color::Rgb(0xff, 0xb4, 0x54),
+                Color::Rgb(0x7b, 0x8c, 0xa5),
+                Color::Rgb(0x10, 0x2b, 0x3c),
+                Color::Rgb(0x16, 0x57, 0x70),
+                Color::Rgb(0x13, 0x3a, 0x52),
+                Color::Rgb(0x2f, 0x8c, 0xff),
+                Color::Rgb(0x2f, 0x8c, 0xff),
+                Color::Rgb(0x1a, 0x28, 0x38),
+            ),
+            ColorDepth::Ansi256 => (
+                Color::Indexed(50),
+                Color::Indexed(203),
+                Color::Indexed(215),
+                Color::Indexed(103),
+                Color::Indexed(23),
+                Color::Indexed(31),
+                Color::Indexed(24),
+                Color::Indexed(33),
+                Color::Indexed(33),
+                Color::Indexed(236),
+            ),
+            ColorDepth::Basic16 => (
+                Color::Cyan,
+                Color::Red,
+                Color::Yellow,
+                Color::Gray,
+                Color::Blue,
+                Color::Cyan,
+                Color::Blue,
+                Color::Blue,
+                Color::Blue,
+                Color::DarkGray,
+            ),
+        };
         Self {
             depth,
             success,
@@ -112,6 +127,7 @@ impl Theme {
             active_peak,
             selected,
             flash,
+            header_title,
             skeleton,
         }
     }

@@ -58,6 +58,8 @@ pub struct PrResponse {
     pub number: u32,
     /// URL to the PR.
     pub url: String,
+    /// PR title; empty when GitHub did not supply one.
+    pub title: String,
     /// Whether the PR is a draft.
     pub is_draft: bool,
     /// GitHub aggregate decision; absent when no decision exists.

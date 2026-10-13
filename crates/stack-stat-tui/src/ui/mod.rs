@@ -18,6 +18,7 @@ mod header;
 mod help;
 mod status_bar;
 mod table;
+mod verdict;
 
 /// Rectangles shared by pure drawing and mouse hit testing.
 #[derive(Clone, Copy, Debug)]
@@ -39,35 +40,32 @@ pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     app: &App<G, H, S>,
 ) -> UiRegions {
     let chunks = Layout::vertical([
-        Constraint::Length(4),
+        Constraint::Length(5),
         Constraint::Min(1),
         Constraint::Length(1),
     ])
     .split(area);
     let body = chunks[1];
-    let (table, detail) =
-        if app.detail_open() && app.selected_branch().is_some() && body.height >= 10 {
-            let table_min = (app.visible_indices().len() as u16 + 3).max(4);
-            let detail_height = body
-                .height
-                .saturating_sub(table_min)
-                .clamp(8, 18)
-                .min(body.height.saturating_sub(4));
-            let table_height = body.height - detail_height;
-            (
-                Rect {
-                    height: table_height,
-                    ..body
-                },
-                Some(Rect {
-                    y: body.y + table_height,
-                    height: detail_height,
-                    ..body
-                }),
-            )
-        } else {
-            (body, None)
-        };
+    let (table, detail) = if app.selected_branch().is_some() && body.height >= 14 {
+        let branch_rows = app.visible_indices().len().min(usize::from(u16::MAX)) as u16;
+        let required_table_height = branch_rows.saturating_mul(2).saturating_add(4);
+        let table_height = required_table_height
+            .min((body.height / 2).max(8))
+            .min(body.height.saturating_sub(8));
+        (
+            Rect {
+                height: table_height,
+                ..body
+            },
+            Some(Rect {
+                y: body.y.saturating_add(table_height),
+                height: body.height.saturating_sub(table_height),
+                ..body
+            }),
+        )
+    } else {
+        (body, None)
+    };
     UiRegions {
         header: chunks[0],
         table,
@@ -92,8 +90,9 @@ pub fn hit_test<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         return PointerTarget::Detail;
     }
     if contains(layout.table, x, y) {
-        let row = y.saturating_sub(layout.table.y + 2) as usize;
-        if y >= layout.table.y + 2 && y < layout.table.bottom().saturating_sub(1) {
+        let branch_top = layout.table.y.saturating_add(3);
+        if y >= branch_top && y < layout.table.bottom().saturating_sub(1) {
+            let row = y.saturating_sub(branch_top) as usize / 2;
             let index = table::view_start(app, layout.table) + row;
             if index < app.visible_indices().len() {
                 return PointerTarget::TableRow(index);

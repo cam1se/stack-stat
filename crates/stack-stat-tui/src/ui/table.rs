@@ -4,7 +4,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     style::{Modifier, Style},
-    text::Span,
+    text::{Line, Span},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
 use stack_stat_core::{
@@ -25,10 +25,10 @@ pub(super) fn view_start<G: GitProvider, H: GitHubProvider, S: StatusStoreProvid
     app: &App<G, H, S>,
     area: Rect,
 ) -> usize {
-    let capacity = area.height.saturating_sub(3).max(1) as usize;
+    let branch_capacity = usize::from(area.height.saturating_sub(4) / 2).max(1);
     app.selected_row_index()
         .saturating_add(1)
-        .saturating_sub(capacity)
+        .saturating_sub(branch_capacity)
 }
 
 pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
@@ -51,6 +51,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let full_local = area.width >= 80;
     let widths = [
         Constraint::Length(2),
+        Constraint::Length(1),
         Constraint::Min(10),
         Constraint::Length(6),
         Constraint::Length(7),
@@ -59,6 +60,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Constraint::Length(if full_local { 22 } else { 4 }),
     ];
     let header = Row::new([
+        "",
         "",
         "Branch",
         "PR",
@@ -72,82 +74,132 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             .fg(theme.muted)
             .add_modifier(Modifier::BOLD),
     );
-    let capacity = area.height.saturating_sub(3) as usize;
-    let mut rows: Vec<Row<'_>> = app
-        .visible_indices()
-        .into_iter()
-        .skip(view_start(app, area))
-        .take(capacity)
-        .map(|index| {
-            let branch = &app.state().branches[index];
-            let selected = app.selected_branch() == Some(branch.name.as_str());
-            let (state, state_color) = state_label(branch, theme);
-            let checks = check_label(branch, app.animation().spinner_char());
-            let reviews = review_label(
-                branch,
-                app.show_bots(),
-                app.reviews_expanded(),
-                full_reviews,
-            );
-            let local = local_label(branch, full_local);
-            let branch_name = format!(
-                "{}{}{}",
-                branch.name,
-                if branch.is_current { " ←wt" } else { "" },
-                if branch.needs_rebase { " ⚠" } else { "" }
-            );
-            let style = |column: Column, foreground| {
-                let style = Style::default().fg(foreground);
-                if app.animation().is_flashing_for(&branch.name, column) {
-                    style.bg(theme.flash)
+    let branch_capacity = usize::from(area.height.saturating_sub(4) / 2).max(1);
+    let trunk = if app.state().trunk.is_empty() {
+        "trunk"
+    } else {
+        app.state().trunk.as_str()
+    };
+    let mut rows = vec![
+        Row::new(vec![
+            Cell::from(Span::styled("●", Style::default().fg(theme.muted))),
+            Cell::from(""),
+            Cell::from(Span::styled(trunk, Style::default().fg(theme.muted))),
+            Cell::from(""),
+            Cell::from(""),
+            Cell::from(""),
+            Cell::from(""),
+            Cell::from(""),
+        ])
+        .style(Style::default().fg(theme.muted)),
+    ];
+    let visible = app.visible_indices();
+    let start = view_start(app, area);
+    let visible_count = visible.len();
+    rows.extend(
+        visible
+            .into_iter()
+            .skip(start)
+            .take(branch_capacity)
+            .enumerate()
+            .map(|(offset, index)| {
+                let branch = &app.state().branches[index];
+                let selected = app.selected_branch() == Some(branch.name.as_str());
+                let verdict = branch.verdict();
+                let (glyph, verdict_color) = super::verdict::style(verdict, theme);
+                let (lifecycle, lifecycle_color) = lifecycle_label(branch, theme);
+                let checks = check_label(branch, app.animation().spinner_char());
+                let reviews = review_label(
+                    branch,
+                    app.show_bots(),
+                    app.reviews_expanded(),
+                    full_reviews,
+                );
+                let local = local_label(branch, full_local);
+                let branch_name = format!(
+                    "{}{}{}",
+                    branch.name,
+                    if branch.is_current { " ←wt" } else { "" },
+                    if branch.needs_rebase { " !" } else { "" }
+                );
+                let title = branch.pr.as_ref().map_or("", |pr| pr.title.as_str());
+                let style = |column: Column, foreground| {
+                    let style = Style::default().fg(foreground);
+                    if app.animation().is_flashing_for(&branch.name, column) {
+                        style.bg(theme.flash)
+                    } else {
+                        style
+                    }
+                };
+                let marker = if selected { "►" } else { "│" };
+                let connector = if start + offset + 1 == visible_count {
+                    "╵"
                 } else {
-                    style
+                    "│"
+                };
+                let branch_color = match verdict {
+                    stack_stat_core::model::Verdict::Merged
+                    | stack_stat_core::model::Verdict::Queued => ratatui::style::Color::Reset,
+                    _ => verdict_color,
+                };
+                let cells = vec![
+                    Cell::from(vec![Line::from(marker), Line::from(connector)]),
+                    Cell::from(Span::styled(glyph, Style::default().fg(verdict_color))),
+                    Cell::from(vec![
+                        Line::from(Span::styled(
+                            branch_name,
+                            style(Column::Branch, branch_color).add_modifier(Modifier::BOLD),
+                        )),
+                        Line::styled(
+                            if title.is_empty() {
+                                String::new()
+                            } else {
+                                format!("  {title}")
+                            },
+                            Style::default().fg(theme.muted),
+                        ),
+                    ]),
+                    Cell::from(Span::styled(
+                        branch
+                            .pr_number
+                            .map_or_else(|| "—".into(), |number| format!("#{number}")),
+                        style(Column::Pr, ratatui::style::Color::Reset),
+                    )),
+                    Cell::from(Span::styled(
+                        lifecycle,
+                        style(Column::State, lifecycle_color),
+                    )),
+                    Cell::from(Span::styled(
+                        checks.0,
+                        style(Column::Checks, checks.1.color(theme)),
+                    )),
+                    Cell::from(Span::styled(
+                        reviews.0,
+                        style(Column::Reviews, reviews.1.color(theme)),
+                    )),
+                    Cell::from(Span::styled(
+                        local.0,
+                        style(Column::Local, local.1.color(theme)),
+                    )),
+                ];
+                let bg = if branch.is_current {
+                    app.animation()
+                        .pulse_color(theme.active_base, theme.active_peak, 20)
+                } else if selected {
+                    theme.selected
+                } else {
+                    ratatui::style::Color::Reset
+                };
+                let mut row_style = Style::default().bg(bg);
+                if branch.is_current
+                    && theme.depth == ColorDepth::Basic16
+                    && app.animation().phase(20) >= 0.5
+                {
+                    row_style = row_style.add_modifier(Modifier::BOLD);
                 }
-            };
-            let cells = vec![
-                Cell::from(if selected { "►" } else { " " }),
-                Cell::from(Span::styled(
-                    branch_name,
-                    style(Column::Branch, ratatui::style::Color::Reset),
-                )),
-                Cell::from(Span::styled(
-                    branch
-                        .pr_number
-                        .map_or_else(|| "—".into(), |number| format!("#{number}")),
-                    style(Column::Pr, ratatui::style::Color::Reset),
-                )),
-                Cell::from(Span::styled(state, style(Column::State, state_color))),
-                Cell::from(Span::styled(
-                    checks.0,
-                    style(Column::Checks, checks.1.color(theme)),
-                )),
-                Cell::from(Span::styled(
-                    reviews.0,
-                    style(Column::Reviews, reviews.1.color(theme)),
-                )),
-                Cell::from(Span::styled(
-                    local.0,
-                    style(Column::Local, local.1.color(theme)),
-                )),
-            ];
-            let bg = if branch.is_current {
-                app.animation()
-                    .pulse_color(theme.active_base, theme.active_peak, 20)
-            } else if selected {
-                theme.selected
-            } else {
-                ratatui::style::Color::Reset
-            };
-            let mut row_style = Style::default().bg(bg);
-            if branch.is_current
-                && theme.depth == ColorDepth::Basic16
-                && app.animation().phase(20) >= 0.5
-            {
-                row_style = row_style.add_modifier(Modifier::BOLD);
-            }
-            Row::new(cells).style(row_style)
-        })
-        .collect();
+                Row::new(cells).height(2).style(row_style)
+            }),
+    );
     if app.state().stack_status == StackStatus::Loading {
         let shimmer = |column| app.animation().skeleton_char(column).to_string();
         rows.push(
@@ -159,7 +211,9 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 shimmer(3),
                 shimmer(4),
                 shimmer(5),
+                shimmer(6),
             ])
+            .height(2)
             .style(Style::default().fg(theme.skeleton)),
         );
     }
@@ -175,13 +229,13 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame.render_widget(table, area);
 }
 
-fn state_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::style::Color) {
+fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::style::Color) {
     match branch.lifecycle {
-        PrLifecycle::Merged => ("Merged".into(), theme.success),
+        PrLifecycle::Merged => ("Merged".into(), theme.muted),
         PrLifecycle::Queued => ("Queued".into(), theme.warning),
         PrLifecycle::Open => match branch.pr.as_ref() {
             Some(pr) if pr.is_draft => ("Draft".into(), theme.muted),
-            Some(_) => ("Ready".into(), theme.success),
+            Some(_) => ("Open".into(), theme.muted),
             None if branch.pr_number.is_some() => ("…".into(), theme.warning),
             None => ("—".into(), theme.muted),
         },
@@ -215,9 +269,9 @@ fn check_label(branch: &BranchState, spinner: char) -> (String, Health) {
         return ("—".into(), Health::Muted);
     }
     let (icon, health) = match summary.worst {
-        CheckHealth::Failure => ('❌', Health::Failure),
+        CheckHealth::Failure => ('✖', Health::Failure),
         CheckHealth::Running => (spinner, Health::Running),
-        CheckHealth::Success => ('✅', Health::Success),
+        CheckHealth::Success => ('✔', Health::Success),
         CheckHealth::Skipped | CheckHealth::None => ('░', Health::Muted),
     };
     (
@@ -247,9 +301,9 @@ fn review_label(
         summary
     };
     let (icon, label, health) = match summary {
-        ReviewSummary::Approved => ("✅", "approved", Health::Success),
-        ReviewSummary::ChangesRequested => ("🔄", "changes", Health::Failure),
-        ReviewSummary::Pending => ("⏳", "pending", Health::Running),
+        ReviewSummary::Approved => ("✔", "approved", Health::Success),
+        ReviewSummary::ChangesRequested => ("↺", "changes", Health::Failure),
+        ReviewSummary::Pending => ("…", "pending", Health::Running),
         ReviewSummary::None => ("—", "", Health::Muted),
     };
     if !full {
@@ -262,9 +316,9 @@ fn review_label(
             .filter(|review| show_bots || !review.is_bot)
             .map(|review| {
                 let icon = match review.state {
-                    ReviewState::Approved => "✅",
-                    ReviewState::ChangesRequested => "🔄",
-                    ReviewState::Pending => "⏳",
+                    ReviewState::Approved => "✔",
+                    ReviewState::ChangesRequested => "↺",
+                    ReviewState::Pending => "…",
                     _ => "·",
                 };
                 format!("{icon}{}", review.author)
@@ -311,9 +365,9 @@ fn local_label(branch: &BranchState, full: bool) -> (String, Health) {
             Health::Muted
         };
         let icon = match health {
-            Health::Failure => "❌",
-            Health::Running => "⏳",
-            Health::Success => "✅",
+            Health::Failure => "✖",
+            Health::Running => "…",
+            Health::Success => "✔",
             Health::Muted => "░░",
         };
         return (icon.into(), health);
@@ -323,13 +377,13 @@ fn local_label(branch: &BranchState, full: bool) -> (String, Health) {
         .iter()
         .map(|check| {
             let icon = if check.is_stale {
-                "⏳"
+                "…"
             } else {
                 match check.state {
-                    LocalCheckState::Pass => "✅",
-                    LocalCheckState::Fail => "❌",
+                    LocalCheckState::Pass => "✔",
+                    LocalCheckState::Fail => "✖",
                     LocalCheckState::Skip => "░░",
-                    LocalCheckState::Missing => "⏳",
+                    LocalCheckState::Missing => "…",
                 }
             };
             format!("{icon} {}", check.name)

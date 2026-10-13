@@ -11,7 +11,7 @@ pub fn build_pr_query(owner: &str, repo: &str, numbers: &[u32]) -> String {
     let owner = serde_json::to_string(owner).expect("serializing an owned string cannot fail");
     let repo = serde_json::to_string(repo).expect("serializing an owned string cannot fail");
     let mut query = format!("query {{ repository(owner:{owner}, name:{repo}) {{ ");
-    const FIELDS: &str = "number url isDraft reviewDecision \
+    const FIELDS: &str = "number url title isDraft reviewDecision \
         latestReviews(first:50) { nodes { state submittedAt author { login __typename } } } \
         reviewRequests(first:50) { nodes { requestedReviewer { __typename ... on User { login } ... on Bot { login } ... on Team { name } } } } \
         commits(last:1) { nodes { commit { statusCheckRollup { contexts(first:100) { nodes { __typename \

@@ -160,7 +160,6 @@ async fn rendered_activity_spinner_and_loading_skeleton_advance() {
 
 #[tokio::test]
 async fn running_check_spinner_advances_in_table_and_detail() {
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use ratatui::{Terminal, backend::TestBackend};
     use stack_stat_tui::{
         theme::{ColorDepth, Theme},
@@ -176,7 +175,6 @@ async fn running_check_spinner_advances_in_table_and_detail() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     let mut terminal = Terminal::new(TestBackend::new(100, 28)).unwrap();
     let theme = Theme::for_depth(ColorDepth::TrueColor);
     terminal

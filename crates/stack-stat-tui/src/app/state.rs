@@ -23,8 +23,16 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 .iter()
                 .position(|&index| self.state.branches[index].name == *name)
         });
-        self.selected_index =
-            selected_position.unwrap_or_else(|| self.selected_index.min(visible.len() - 1));
+        self.selected_index = selected_position.unwrap_or_else(|| {
+            if self.selected_name.is_none() {
+                visible
+                    .iter()
+                    .position(|&index| self.state.branches[index].is_current)
+                    .unwrap_or(0)
+            } else {
+                self.selected_index.min(visible.len() - 1)
+            }
+        });
         let name = self.state.branches[visible[self.selected_index]]
             .name
             .clone();
@@ -75,11 +83,6 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     #[must_use]
     pub fn selected_branch(&self) -> Option<&str> {
         self.selected_name.as_deref()
-    }
-    /// Whether the selected row's details are visible.
-    #[must_use]
-    pub fn detail_open(&self) -> bool {
-        self.detail_open
     }
     /// Current input context.
     #[must_use]
@@ -161,9 +164,6 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     }
 
     pub(super) fn scroll_detail(&mut self, delta: isize) {
-        if !self.detail_open {
-            return;
-        }
         let next = self.detail_scroll.saturating_add_signed(delta);
         self.detail_scroll = next.min(self.detail_scroll_max());
     }
@@ -186,15 +186,29 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         }) else {
             return 0;
         };
-        let checks = branch.pr.as_ref().map_or(1, |pr| pr.checks.len().max(1));
+        let title = branch.pr.as_ref().is_some_and(|pr| !pr.title.is_empty());
+        let checks = branch
+            .pr
+            .as_ref()
+            .map_or(2, |pr| 1 + pr.checks.len().max(1));
         let reviews = branch.pr.as_ref().map_or(1, |pr| {
-            pr.reviews
+            1 + pr
+                .reviews
                 .iter()
                 .filter(|review| self.show_bots || !review.is_bot)
                 .count()
-                .max(1)
         });
         let local = branch.local_checks.len().max(1);
-        1 + usize::from(branch.needs_rebase) + 1 + 1 + checks + 1 + 1 + reviews + 1 + 1 + local
+        // header, optional title and rebase warning, then blank-separated checks, reviews, local sections
+        1 + usize::from(title)
+            + usize::from(branch.needs_rebase)
+            + 1
+            + checks
+            + 1
+            + 1
+            + reviews
+            + 1
+            + 1
+            + local
     }
 }

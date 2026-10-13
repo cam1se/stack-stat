@@ -46,6 +46,9 @@ pub struct RawPr {
     pub number: u32,
     /// PR URL.
     pub url: String,
+    /// PR title.
+    #[serde(default)]
+    pub title: String,
     /// Draft state.
     pub is_draft: bool,
     /// Optional aggregate review decision.
@@ -240,6 +243,7 @@ impl RawPr {
         PrResponse {
             number: self.number,
             url: self.url,
+            title: self.title,
             is_draft: self.is_draft,
             review_decision: self.review_decision,
             reviews,

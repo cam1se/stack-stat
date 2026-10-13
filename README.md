@@ -27,6 +27,6 @@ Windows users can run the [PowerShell installer](scripts/install.ps1). Alternati
 
 ## Use
 
-From a Git worktree whose branch belongs to a `gh stack` stack, run `stack-stat`. Use `j/k` to select a layer and Enter to open details; `J/K`, Page Up/Down, or the mouse wheel scroll the detail pane. The mouse wheel over the table moves branch selection. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation.
+From a Git worktree whose branch belongs to a `gh stack` stack, run `stack-stat`. Each layer shows a colored verdict glyph: `✔` ready to merge, `…` waiting on running CI, pending review or a missing local result, `✖` blocked. The detail pane for the selected layer is always open, starting on the worktree's branch. Use `j/k` to select a layer; `J/K`, Page Up/Down, or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation.
 
 External agents and scripts can publish local results with `stack-stat report lint pass`; see [local checks](docs/user/local-checks.md) and [configuration](docs/user/configuration.md). [User documentation](https://tcamise-gpsw.github.io/stack-stat/) covers the full UI and troubleshooting. Developers should read [AGENTS.md](AGENTS.md), the [contributor guide](CONTRIBUTING.md), and [architecture](docs/architecture/01-l1-context.md).

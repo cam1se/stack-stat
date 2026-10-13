@@ -99,7 +99,6 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             Action::Up => self.move_selection(-1),
             Action::Top => self.jump_selection(false),
             Action::Bottom => self.jump_selection(true),
-            Action::ToggleDetail => self.detail_open = !self.detail_open,
             Action::DetailDown => self.scroll_detail(1),
             Action::DetailUp => self.scroll_detail(-1),
             Action::DetailPageDown => self.scroll_detail(self.detail_page_step()),

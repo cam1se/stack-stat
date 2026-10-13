@@ -1,8 +1,70 @@
 //! Derived check and review summaries.
 
 use super::{
-    CheckConclusion, CheckHealth, CheckStatus, CheckSummary, PrInfo, ReviewState, ReviewSummary,
+    BranchState, CheckConclusion, CheckHealth, CheckStatus, CheckSummary, LocalCheckState, PrInfo,
+    PrLifecycle, ReviewDecision, ReviewState, ReviewSummary, StackState, StackSummary, Verdict,
 };
+
+impl StackState {
+    /// Count branches by verdict.
+    #[must_use]
+    pub fn summary(&self) -> StackSummary {
+        let mut summary = StackSummary::default();
+        for branch in &self.branches {
+            match branch.verdict() {
+                Verdict::Go => summary.go += 1,
+                Verdict::Wait => summary.wait += 1,
+                Verdict::NoGo => summary.no_go += 1,
+                Verdict::Merged => summary.merged += 1,
+                Verdict::Queued => summary.queued += 1,
+            }
+        }
+        summary
+    }
+}
+
+impl BranchState {
+    /// Go/no-go readiness. Failing or stale evidence outranks outstanding evidence; unknown evidence
+    /// is never `Go`. Reviews ignore the bot display filter so toggling it cannot change readiness.
+    #[must_use]
+    pub fn verdict(&self) -> Verdict {
+        match self.lifecycle {
+            PrLifecycle::Merged => return Verdict::Merged,
+            PrLifecycle::Queued => return Verdict::Queued,
+            PrLifecycle::Open => {}
+        }
+        let Some(pr) = &self.pr else {
+            return Verdict::Wait;
+        };
+        let reviews = pr.review_summary(true);
+        let checks = pr.check_summary().worst;
+        if pr.is_draft
+            || self.needs_rebase
+            || checks == CheckHealth::Failure
+            || pr.review_decision == ReviewDecision::ChangesRequested
+            || reviews == ReviewSummary::ChangesRequested
+            || self
+                .local_checks
+                .iter()
+                .any(|local| local.state == LocalCheckState::Fail || local.is_stale)
+        {
+            return Verdict::NoGo;
+        }
+        let review_outstanding = pr.review_decision == ReviewDecision::ReviewRequired
+            || (pr.review_decision == ReviewDecision::None && reviews == ReviewSummary::Pending);
+        if checks == CheckHealth::Running
+            || review_outstanding
+            || self
+                .local_checks
+                .iter()
+                .any(|local| local.state == LocalCheckState::Missing)
+        {
+            return Verdict::Wait;
+        }
+        Verdict::Go
+    }
+}
+
 impl PrInfo {
     /// Summarize checks after applying repository skip rules.
     #[must_use]
