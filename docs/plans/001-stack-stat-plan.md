@@ -103,9 +103,9 @@
 - [x] Validate each SKILL.md front matter parses as YAML (throwaway check; do not commit it)
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then push the work branch with `git push -u origin feat/001-stack-stat` and open the draft PR once with `gh pr create --draft --base main --head feat/001-stack-stat --fill`. Later tasks just `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 2: AI agent skills` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then push the work branch with `git push -u origin feat/001-stack-stat` and open the draft PR once with `gh pr create --draft --base main --head feat/001-stack-stat --fill`. Later tasks just `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 2: AI agent skills` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 3: CI, release automation, install scripts, and Pages site scaffold
 
@@ -141,18 +141,18 @@
 - The executing agent never creates, reads, or handles the token value. It only verifies the secret name exists with `gh secret list --repo tcamise-gpsw/stack-stat`. If it is missing, record that in notes and continue; it only blocks release-please on `main`, not CI or this plan's tasks.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] CI workflow runs fmt/clippy + 3-OS test matrix and nothing else
-- [ ] commit-lint workflow and script accept a valid subject such as `feat(tui): add header` and reject an invalid scope
-- [ ] release workflow builds package `stack-stat-tui` and ships binary `stack-stat` for all five targets
-- [ ] install scripts reference `tcamise-gpsw/stack-stat` and `stack-stat` everywhere
-- [ ] Manual repo-setup prerequisites (PAT scope/permissions/rotation, Pages source) documented in `CONTRIBUTING.md`
-- [ ] `gh secret list --repo tcamise-gpsw/stack-stat` shows `GH_ACCESS_TOKEN` (name only), or its absence is recorded in notes
+- [x] CI workflow runs fmt/clippy + 3-OS test matrix and nothing else
+- [x] commit-lint workflow and script accept a valid subject such as `feat(tui): add header` and reject an invalid scope
+- [x] release workflow builds package `stack-stat-tui` and ships binary `stack-stat` for all five targets
+- [x] install scripts reference `tcamise-gpsw/stack-stat` and `stack-stat` everywhere
+- [x] Manual repo-setup prerequisites (PAT scope/permissions/rotation, Pages source) documented in `CONTRIBUTING.md`
+- [x] `gh secret list --repo tcamise-gpsw/stack-stat` shows `GH_ACCESS_TOKEN` (name only), or its absence is recorded in notes
 
 **Tests:**
-- [ ] `bash scripts/commit-lint.sh` (or the script's documented invocation) against the existing commits passes
-- [ ] `bash -n scripts/install.sh` and `bash -n scripts/serve-docs.sh` parse cleanly
-- [ ] If `actionlint` is installed, run it on `.github/workflows/`. If not, note that in the notes file. Do not install it
-- [ ] `./scripts/serve-docs.sh --watch` builds the stub site if `uv` is available; otherwise note it as skipped
+- [x] `bash scripts/commit-lint.sh` (or the script's documented invocation) against the existing commits passes
+- [x] `bash -n scripts/install.sh` and `bash -n scripts/serve-docs.sh` parse cleanly
+- [x] If `actionlint` is installed, run it on `.github/workflows/`. If not, note that in the notes file. Do not install it
+- [x] `./scripts/serve-docs.sh --watch` builds the stub site if `uv` is available; otherwise note it as skipped
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

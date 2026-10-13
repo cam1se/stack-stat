@@ -10,3 +10,9 @@
 ### Task 2: AI agent skills
 
 N/A
+
+### Task 3: CI, release automation, install scripts, and Pages site scaffold
+
+- `Cross.toml` was not carried over: its only settings installed libudev, which this project does not use.
+- The MkDocs nav lists future user pages, so short accurate introductory pages were created now to keep strict site builds green; Task 14 will expand them.
+- Preview port 9000 was already occupied. `serve-docs.sh` now selects the first free port in 9000–9099 (or honors `PORT`); the site built and served at 9017.
