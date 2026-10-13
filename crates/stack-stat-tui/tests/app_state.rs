@@ -79,7 +79,7 @@ async fn draft_toggle_requires_confirmation_and_records_effect() {
     let (mut app, handles) = scenario();
     app.poll_once(Source::Git).await;
     app.poll_once(Source::GitHub).await;
-    app.handle_key(key('j'));
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("api"));
     assert!(app.handle_key(key('m')).is_empty());
     assert!(matches!(
@@ -151,7 +151,7 @@ async fn selection_survives_refresh_and_filter_sort_and_cancel_are_predictable()
     let (mut app, _handles) = scenario();
     app.poll_once(Source::Git).await;
     app.poll_once(Source::GitHub).await;
-    app.handle_key(key('j'));
+    app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     app.poll_once(Source::GitHub).await;
     assert_eq!(app.selected_branch(), Some("api"));
     app.handle_key(key('/'));

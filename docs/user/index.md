@@ -36,8 +36,8 @@ Windows users can run [install.ps1](https://github.com/tcamise-gpsw/stack-stat/b
 
 | Key or mouse gesture | Effect |
 |---|---|
-| `j/k`, ↑/↓, `g/G` | Select next/previous or first/last stack layer |
-| `J/K`, Page Down/Up | Scroll details by line or page; branch selection stays put |
+| ↑/↓, Home/End | Select next/previous or first/last stack layer |
+| Page Down/Up | Scroll the detail pane by page; branch selection stays put |
 | Wheel over table / detail | Move selected branch / scroll detail lines |
 | Click a table row | Select that branch |
 | `o` | Open the selected PR in a browser |

@@ -13,10 +13,6 @@ pub enum Action {
     Top,
     /// Select the last visible branch.
     Bottom,
-    /// Scroll the detail pane one line down.
-    DetailDown,
-    /// Scroll the detail pane one line up.
-    DetailUp,
     /// Scroll the detail pane one page down.
     DetailPageDown,
     /// Scroll the detail pane one page up.
@@ -84,24 +80,10 @@ macro_rules! binding {
 /// All normal-mode keys, also used to generate help and footer hints.
 pub const KEYMAP: &[KeyBinding] = &[
     binding!(
-        KeyCode::Char('j'),
-        KeyModifiers::NONE,
-        Action::Down,
-        "next branch",
-        "Table"
-    ),
-    binding!(
         KeyCode::Down,
         KeyModifiers::NONE,
         Action::Down,
         "next branch",
-        "Table"
-    ),
-    binding!(
-        KeyCode::Char('k'),
-        KeyModifiers::NONE,
-        Action::Up,
-        "previous branch",
         "Table"
     ),
     binding!(
@@ -112,15 +94,15 @@ pub const KEYMAP: &[KeyBinding] = &[
         "Table"
     ),
     binding!(
-        KeyCode::Char('g'),
+        KeyCode::Home,
         KeyModifiers::NONE,
         Action::Top,
         "first branch",
         "Table"
     ),
     binding!(
-        KeyCode::Char('G'),
-        KeyModifiers::SHIFT,
+        KeyCode::End,
+        KeyModifiers::NONE,
         Action::Bottom,
         "last branch",
         "Table"
@@ -159,20 +141,6 @@ pub const KEYMAP: &[KeyBinding] = &[
         Action::ToggleDraft,
         "toggle draft",
         "Table"
-    ),
-    binding!(
-        KeyCode::Char('J'),
-        KeyModifiers::SHIFT,
-        Action::DetailDown,
-        "scroll details down",
-        "Detail"
-    ),
-    binding!(
-        KeyCode::Char('K'),
-        KeyModifiers::SHIFT,
-        Action::DetailUp,
-        "scroll details up",
-        "Detail"
     ),
     binding!(
         KeyCode::PageDown,
@@ -252,7 +220,7 @@ pub fn lookup(key: KeyEvent) -> Option<Action> {
                 && (binding.key.modifiers == key.modifiers
                     || (binding.key.modifiers == KeyModifiers::SHIFT
                         && key.modifiers == KeyModifiers::NONE
-                        && matches!(key.code, KeyCode::Char('G' | 'S' | 'R' | '?' | 'J' | 'K'))))
+                        && matches!(key.code, KeyCode::Char('S' | 'R' | '?'))))
         })
         .map(|binding| binding.action)
 }
