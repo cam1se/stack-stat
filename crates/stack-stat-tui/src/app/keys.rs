@@ -204,6 +204,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         }
         self.selected_index = position;
         self.selected_name = Some(name);
+        self.follow_worktree = false;
     }
 }
 

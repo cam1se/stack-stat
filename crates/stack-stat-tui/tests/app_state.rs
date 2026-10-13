@@ -75,6 +75,42 @@ async fn initial_selection_prefers_worktree_branch_and_falls_back_to_first_visib
 }
 
 #[tokio::test]
+async fn initial_selection_moves_to_worktree_when_git_reports_after_github() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &["auth", "api", "ui"])
+        .pr("auth", PrBuilder::new(42))
+        .pr("api", PrBuilder::new(43))
+        .pr("ui", PrBuilder::new(44))
+        .current_branch("api")
+        .build()
+        .into_app();
+    app.poll_once(Source::GitHub).await;
+    app.poll_once(Source::Git).await;
+    assert_eq!(app.selected_branch(), Some("api"));
+
+    // Once anchored, later worktree switches leave the selection alone.
+    handles.git.set_current_branch("ui");
+    app.poll_once(Source::Git).await;
+    assert_eq!(app.selected_branch(), Some("api"));
+}
+
+#[tokio::test]
+async fn explicit_selection_before_git_reports_is_kept() {
+    let (mut app, _) = TestScenario::builder()
+        .stack("main", &["auth", "api", "ui"])
+        .pr("auth", PrBuilder::new(42))
+        .pr("api", PrBuilder::new(43))
+        .pr("ui", PrBuilder::new(44))
+        .current_branch("api")
+        .build()
+        .into_app();
+    app.poll_once(Source::GitHub).await;
+    app.handle_key(KeyEvent::new(KeyCode::End, KeyModifiers::NONE));
+    app.poll_once(Source::Git).await;
+    assert_eq!(app.selected_branch(), Some("ui"));
+}
+
+#[tokio::test]
 async fn draft_toggle_requires_confirmation_and_records_effect() {
     let (mut app, handles) = scenario();
     app.poll_once(Source::Git).await;
