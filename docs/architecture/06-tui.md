@@ -1,6 +1,6 @@
 # 06 — Terminal application
 
-The default binary command checks for authenticated `gh` and the `gh stack` extension before entering raw terminal mode. The [core providers](05-providers-and-store.md) supply Git, GitHub, and local check snapshots. The App owns the most recent successful slice of each source; its pure [compositor](04-domain-and-config.md) creates the view used by rendering.
+The default binary command checks for authenticated `gh` before entering raw terminal mode; the `gh stack` extension is required only when executing checkout, push, or sync. The [core providers](05-providers-and-store.md) supply Git, GitHub, and local check snapshots. The App owns the most recent successful slice of each source; its pure [compositor](04-domain-and-config.md) creates the view used by rendering.
 
 ```mermaid
 flowchart LR
@@ -26,6 +26,8 @@ flowchart LR
 The main loop selects terminal input, provider messages, and a presentation tick. Provider errors retain the last successful snapshot, except an explicit `NotInStack` result, which clears rows as the worktree leaves its stack. Fetch errors are tracked per source, so a successful local poll does not erase an outstanding GitHub warning; failed one-off mutations are transient and never suppress later fetch errors. A confirmation prompt remains visible during unrelated polls, and opening a PR does not release the busy guard on a concurrent push. A change of the checked-out branch updates the worktree marker and its local-to-remote suffix on the next Git poll. The App exposes narrow input, snapshot, effect, and tick methods that tests can drive with fake providers and an injected timestamp; no test needs a terminal or wall-clock sleep.
 
 The keymap is one table shared by input dispatch and the help overlay. Normal mode handles navigation and actions. Filter mode edits a branch-name query. Help consumes its next key without navigating. Mutations use a confirmation mode that accepts only `y`; another key cancels. Only one mutation can be in flight. Effects run outside the key handler, then request an immediate refresh on completion. Terminal raw mode, alternate screen, and cursor state are restored on normal exit, errors, and panic.
+
+If a confirmed push or sync discovers missing local stack tracking, the App asks separately before linking it through `gh stack checkout` and continuing the original action. Declining performs no checkout or retry and reports cancellation. Reading stack membership never initializes or links a local stack; see [ADR-0002](../adr/0002-read-stack-from-github.md).
 
 ## Frame layout and theme
 

@@ -17,7 +17,7 @@ Architecture starts with [system context](docs/architecture/01-l1-context.md).
 
 - Stable Rust, selected by [`rust-toolchain.toml`](rust-toolchain.toml).
 - Git, GitHub CLI (`gh`), and an authenticated account (`gh auth login`).
-- The stacked PR extension: `gh extension install github/gh-stack`.
+- For checkout, push, and sync actions only, the stacked PR extension: `gh extension install github/gh-stack`. Reading a GitHub stack needs no extension or local stack tracking.
 
 First-time setup: `make dev-setup` checks prerequisites and installs versioned git hooks.
 

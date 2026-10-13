@@ -23,12 +23,13 @@ Open layers use verdict glyphs: `✔` ready to merge, `◷` still waiting on CI,
 
 ## Prerequisites
 
-Install Git and an authenticated [GitHub CLI](https://cli.github.com/), then install the [`gh stack` extension](https://github.com/github/gh-stack):
+Install Git and an authenticated [GitHub CLI](https://cli.github.com/):
 
 ```sh
 gh auth login
-gh extension install github/gh-stack
 ```
+
+The dashboard reads stack membership directly from GitHub, so it works without local stack tracking. Install the [`gh stack` extension](https://github.com/github/gh-stack) only to check out, push, or sync stacks: `gh extension install github/gh-stack`.
 
 ## Install
 
@@ -45,6 +46,6 @@ Windows users can run the [PowerShell installer](scripts/install.ps1). Alternati
 
 ## Use
 
-From a Git worktree whose branch belongs to a `gh stack` stack, run `stack-stat`. The detail pane starts on the worktree's branch. Use ↑/↓ to select a layer; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation.
+From a Git worktree whose branch has a PR in a GitHub stack, run `stack-stat`. The detail pane starts on the worktree's branch. Use ↑/↓ to select a layer; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation; push and sync ask before linking missing local tracking.
 
 External agents and scripts can publish local results with `stack-stat report lint pass`; see [local checks](docs/user/local-checks.md) and [configuration](docs/user/configuration.md). [User documentation](https://cam1se.github.io/stack-stat/) covers the full UI and troubleshooting. Developers should read [AGENTS.md](AGENTS.md), the [contributor guide](CONTRIBUTING.md), and [architecture](docs/architecture/01-l1-context.md).

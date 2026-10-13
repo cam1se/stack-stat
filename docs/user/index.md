@@ -21,14 +21,15 @@ Open layers carry verdict glyphs: `✔` ready, `◷` waiting on CI, a review, or
 
 ## Setup
 
-Install Git, an authenticated [GitHub CLI](https://cli.github.com/), and [gh stack](https://github.com/github/gh-stack):
+Install Git and an authenticated [GitHub CLI](https://cli.github.com/):
 
 ```sh
 gh auth login
-gh extension install github/gh-stack
 ```
 
-From a Git repository, run `stack-stat`. The tool follows **only the current branch's stack**; on a branch outside a stack it shows "Not in a stack" rather than guessing. GitHub CLI and the extension are required at startup.
+From a Git repository, run `stack-stat`. The tool follows **only the current branch's GitHub stack**, without needing local stack tracking. On a branch with no PR or with an unstacked PR it shows "Not in a stack" rather than guessing. Startup requires GitHub CLI and authentication, not the stack extension.
+
+Install [gh stack](https://github.com/github/gh-stack) only to use checkout, push, or sync: `gh extension install github/gh-stack`. These actions ask for confirmation. If push or sync finds no local tracking, a further prompt asks to link the stack through `gh stack checkout` before continuing; declining leaves it unchanged.
 
 At launch, an animated wordmark and indeterminate loading indicator wait for the first GitHub result before revealing the dashboard. Press any key to skip it; `q` and Ctrl-C still quit immediately.
 
