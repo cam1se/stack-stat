@@ -31,6 +31,7 @@ tracing.workspace = true
 zip.workspace = true
 
 [dev-dependencies]
+async-trait.workspace = true
 stack-stat-core = { path = "../stack-stat-core", features = ["test-fakes"] }
 
 [lints]

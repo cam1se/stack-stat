@@ -16,6 +16,10 @@ make preflight
 
 For build, focused test, and commit commands, see [AGENTS.md](AGENTS.md). System structure and significant decisions belong in [architecture](docs/architecture/) and [ADRs](docs/adr/README.md).
 
+## Demo
+
+`make demo` runs the dashboard against a fictional stack in [the demo example](crates/stack-stat-tui/examples/demo.rs). In-memory fake providers replace Git, GitHub, and the status store, so it needs no repository or stack; only the dashboard's background release check still calls `gh`, and its failure is silent. The stack covers each layer verdict and issue category. `make demo-gif` re-records the README and docs-site gif with [VHS](https://github.com/charmbracelet/vhs) from [the tape](docs/user/assets/demo.tape). When the dashboard's appearance changes, re-record it and update the example if a new state needs to appear.
+
 ## Commits
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/). The authoritative types and scopes are in [`.gitmessage`](.gitmessage). Update documentation alongside the change.
