@@ -65,7 +65,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Constraint::Min(10),
         Constraint::Length(6),
         Constraint::Length(7),
-        Constraint::Length(11),
+        Constraint::Length(9),
         Constraint::Length(if full_reviews { 17 } else { 5 }),
         Constraint::Length(7),
     ];
@@ -153,16 +153,6 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     stack_stat_core::model::Verdict::Merged => ratatui::style::Color::Reset,
                     _ => verdict_color,
                 };
-                let mut check_spans = vec![Span::styled(
-                    checks.0,
-                    style(Column::Checks, checks.1.color(theme)),
-                )];
-                if let Some(spinner) = checks.2 {
-                    check_spans.push(Span::styled(
-                        format!(" {spinner}"),
-                        Style::default().fg(theme.warning),
-                    ));
-                }
                 let mut cells = vec![
                     Cell::from(vec![Line::from(marker), Line::from(" ")]),
                     Cell::from(vec![
@@ -193,7 +183,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         lifecycle,
                         style(Column::State, lifecycle_color),
                     )),
-                    Cell::from(Line::from(check_spans)),
+                    Cell::from(Span::styled(
+                        checks.0,
+                        style(Column::Checks, checks.1.color(theme)),
+                    )),
                     Cell::from(Span::styled(
                         reviews.0,
                         style(Column::Reviews, reviews.1.color(theme)),
@@ -278,15 +271,15 @@ impl Health {
     }
 }
 
-/// Row summary of CI checks plus, when something is still running behind a worse state (such as a
-/// failure), a trailing spinner so running checks are never hidden.
-fn check_label(branch: &BranchState, spinner: char) -> (String, Health, Option<char>) {
+/// Row summary of CI checks. While anything is still running the spinner replaces the icon, keeping
+/// the color of the worst state so a failing PR spins red and the icon returns when checks finish.
+fn check_label(branch: &BranchState, spinner: char) -> (String, Health) {
     let Some(pr) = &branch.pr else {
-        return ("—".into(), Health::Muted, None);
+        return ("—".into(), Health::Muted);
     };
     let summary = pr.check_summary();
     if summary.total == 0 {
-        return ("—".into(), Health::Muted, None);
+        return ("—".into(), Health::Muted);
     }
     let (icon, health) = match summary.worst {
         CheckHealth::Failure => ('✖', Health::Failure),
@@ -294,12 +287,10 @@ fn check_label(branch: &BranchState, spinner: char) -> (String, Health, Option<c
         CheckHealth::Success => ('✔', Health::Success),
         CheckHealth::Skipped | CheckHealth::None => ('░', Health::Muted),
     };
-    let trailing =
-        (summary.worst != CheckHealth::Running && summary.running > 0).then_some(spinner);
+    let icon = if summary.running > 0 { spinner } else { icon };
     (
         format!("{icon} {}/{}", summary.passed, summary.total),
         health,
-        trailing,
     )
 }
 
