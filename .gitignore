@@ -9,4 +9,3 @@
 .env.*
 !.env.example
 /site/
-/docs/user/assets/

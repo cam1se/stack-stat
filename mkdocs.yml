@@ -8,6 +8,8 @@ docs_dir: docs/user
 site_dir: site
 theme:
   name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.png
   features:
     - content.action.edit
     - content.code.copy
