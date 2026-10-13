@@ -76,6 +76,10 @@ impl PrBuilder {
         self.0.review_decision = Some("APPROVED".into());
         self
     }
+    pub fn review_required(mut self) -> Self {
+        self.0.review_decision = Some("REVIEW_REQUIRED".into());
+        self
+    }
     pub fn pending_review(mut self) -> Self {
         self.0
             .review_requests

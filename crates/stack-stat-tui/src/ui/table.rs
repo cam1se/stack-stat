@@ -307,11 +307,25 @@ fn review_label(
     } else {
         summary
     };
-    let (icon, label, health) = match summary {
-        ReviewSummary::Approved => ("✔", "approved", Health::Success),
-        ReviewSummary::ChangesRequested => ("↺", "changes", Health::Failure),
-        ReviewSummary::Pending => ("…", "pending", Health::Running),
-        ReviewSummary::None => ("—", "", Health::Muted),
+    let requested = pr
+        .reviews
+        .iter()
+        .any(|review| review.state == ReviewState::Pending && (show_bots || !review.is_bot));
+    let (icon, label, health) = if pr.review_decision == ReviewDecision::ReviewRequired
+        && summary != ReviewSummary::ChangesRequested
+    {
+        (
+            "…",
+            if requested { "pending" } else { "required" },
+            Health::Running,
+        )
+    } else {
+        match summary {
+            ReviewSummary::Approved => ("✔", "approved", Health::Success),
+            ReviewSummary::ChangesRequested => ("↺", "changes", Health::Failure),
+            ReviewSummary::Pending => ("…", "pending", Health::Running),
+            ReviewSummary::None => ("—", "", Health::Muted),
+        }
     };
     if !full {
         return (icon.into(), health);
