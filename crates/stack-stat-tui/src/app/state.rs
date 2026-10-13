@@ -135,6 +135,12 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     /// Advance presentation time with an injected clock.
     pub fn tick(&mut self, now: DateTime<Utc>) {
         self.now = now;
+        self.animation.tick();
+    }
+    /// Presentation-only animation phase and flash lifetime.
+    #[must_use]
+    pub fn animation(&self) -> &crate::ui::animation::AnimationState {
+        &self.animation
     }
     /// Topmost visible detail line; independent of the selected table row.
     #[must_use]

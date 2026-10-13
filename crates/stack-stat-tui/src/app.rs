@@ -6,11 +6,14 @@ use chrono::{DateTime, Utc};
 use stack_stat_core::{
     compose::{GitHubSnapshot, GitSnapshot, StoreSnapshot, compose},
     config::{Config, ReviewsDefault},
-    model::StackState,
+    model::{StackState, StackStatus},
     providers::{GitHubError, GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider},
 };
 
-use crate::message::{AppMessage, Source};
+use crate::{
+    message::{AppMessage, Source},
+    ui::animation::{AnimationState, diff_cells},
+};
 
 mod effects;
 mod keys;
@@ -89,6 +92,7 @@ pub struct App<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> {
     fetching: HashSet<Source>,
     now: DateTime<Utc>,
     update_available: Option<String>,
+    animation: AnimationState,
 }
 
 impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
@@ -130,6 +134,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             fetching: HashSet::new(),
             now: Utc::now(),
             update_available: None,
+            animation: AnimationState::default(),
         }
     }
 
@@ -225,12 +230,18 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     }
 
     fn recompose(&mut self) {
-        self.state = compose(
+        let next = compose(
             self.git.as_ref(),
             self.github.as_ref(),
             self.store.as_ref(),
             &self.config,
         );
+        if self.state.stack_status == StackStatus::Ready {
+            for cell in diff_cells(&self.state, &next) {
+                self.animation.flash(cell, 5);
+            }
+        }
+        self.state = next;
         self.sync_selection();
     }
 

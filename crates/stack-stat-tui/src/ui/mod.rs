@@ -11,6 +11,8 @@ use crate::{
     theme::Theme,
 };
 
+/// Tick-based animation state and cell change detection.
+pub mod animation;
 mod detail;
 mod header;
 mod help;

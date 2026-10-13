@@ -92,7 +92,12 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
         ],
     );
     let api = find_row(&buf, "#43").unwrap();
-    assert_row_contains(&buf, api, &["api", "#43", "Draft", "🔄", "0/1", "pending"]);
+    let spinner = app.animation().spinner_char().to_string();
+    assert_row_contains(
+        &buf,
+        api,
+        &["api", "#43", "Draft", &spinner, "0/1", "pending"],
+    );
     let ui = find_row(&buf, "#44").unwrap();
     assert_row_contains(&buf, ui, &["ui", "#44", "Ready", "❌", "0/1", "changes"]);
     assert!(find_row(&buf, "#45").is_some());

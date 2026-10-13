@@ -5,7 +5,7 @@ use ratatui::{
     Frame,
     layout::Rect,
     style::{Modifier, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
 use stack_stat_core::{
@@ -41,7 +41,32 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let age = state
         .last_github_fetch
         .map_or_else(|| "loading…".into(), |at| relative_age(app.now(), at));
-    let line = format!("worktree: {branch}    ↻ {age}");
+    let active_interval = if app.ci_active() {
+        app.config().poll.github_active
+    } else {
+        app.config().poll.github
+    };
+    let stale = state
+        .last_github_fetch
+        .is_some_and(|at| super::animation::stale_after(app.now(), at, active_interval));
+    let age_color = if stale {
+        if app.animation().phase(20) < 0.5 {
+            theme.warning
+        } else {
+            theme.muted
+        }
+    } else {
+        ratatui::style::Color::Reset
+    };
+    let icon = if app.is_fetching() {
+        app.animation().spinner_char()
+    } else {
+        '↻'
+    };
+    let status_line = Line::from(vec![
+        Span::raw(format!("worktree: {branch}    {icon} ")),
+        Span::styled(age, Style::default().fg(age_color)),
+    ]);
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" stack-stat ")
@@ -49,7 +74,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame.render_widget(
         Paragraph::new(vec![
             Line::styled(chain, Style::default().add_modifier(Modifier::BOLD)),
-            Line::from(line),
+            status_line,
         ])
         .block(block),
         area,

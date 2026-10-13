@@ -500,9 +500,9 @@
 - [x] Also cover: NotInStack view text, loading skeleton rows present before the first GitHub poll, help overlay lists every keymap entry, status line shows the confirm prompt, color-depth detection from env values (pure function over passed-in strings, no global env mutation)
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 11: Rendering: header, table, detail pane, status bar, help, theme` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 11: Rendering: header, table, detail pane, status bar, help, theme` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 12: Animations
 
@@ -527,16 +527,16 @@
 - Rendering stays pure: effects are functions of `AnimationState.tick` and the state, so a `TestBackend` render at a given tick is deterministic.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] All six effects implemented and visible in a manual run
-- [ ] Flash expiry is tick-based and pruned on tick
-- [ ] `diff_cells` reports only cells whose rendered value changed (not every cell on every poll)
-- [ ] 16-color fallback uses bold toggling, not color changes
+- [x] All six effects implemented and visible in a manual run
+- [x] Flash expiry is tick-based and pruned on tick
+- [x] `diff_cells` reports only cells whose rendered value changed (not every cell on every poll)
+- [x] 16-color fallback uses bold toggling, not color changes
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-tui --test animation`
-- [ ] Scenario 13 — flash on change: a check moves `InProgress` → `Completed(Success)` via `poll_once(GitHub)`; `CellId{branch, Checks}` is flashing; after 5 `tick`s it is not
-- [ ] Also cover: `diff_cells` ignores unchanged polls; spinner frame advances with the tick; activity flag set between `FetchStarted` and the result; stale threshold flips at exactly 2× interval (injected `now`). Do not assert colors or interpolation values (spec "No testing")
-- [ ] Manual smoke: run in a repo with an active stack with CI running; observe the pulse on the worktree row, spinners, and a flash when a check completes
+- [x] `cargo test -p stack-stat-tui --test animation`
+- [x] Scenario 13 — flash on change: a check moves `InProgress` → `Completed(Success)` via `poll_once(GitHub)`; `CellId{branch, Checks}` is flashing; after 5 `tick`s it is not
+- [x] Also cover: `diff_cells` ignores unchanged polls; spinner frame advances with the tick; activity flag set between `FetchStarted` and the result; stale threshold flips at exactly 2× interval (injected `now`). Do not assert colors or interpolation values (spec "No testing")
+- [x] Manual smoke: run in a repo with an active stack with CI running; observe the pulse on the worktree row, spinners, and a flash when a check completes
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

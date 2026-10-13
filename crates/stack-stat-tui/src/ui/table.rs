@@ -15,7 +15,11 @@ use stack_stat_core::{
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
-use crate::{app::App, theme::Theme};
+use crate::{
+    app::App,
+    theme::{ColorDepth, Theme},
+    ui::animation::Column,
+};
 
 pub(super) fn view_start<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     app: &App<G, H, S>,
@@ -78,7 +82,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             let branch = &app.state().branches[index];
             let selected = app.selected_branch() == Some(branch.name.as_str());
             let (state, state_color) = state_label(branch, theme);
-            let checks = check_label(branch);
+            let checks = check_label(branch, app.animation().spinner_char());
             let reviews = review_label(
                 branch,
                 app.show_bots(),
@@ -92,42 +96,71 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 if branch.is_current { " ←wt" } else { "" },
                 if branch.needs_rebase { " ⚠" } else { "" }
             );
+            let style = |column: Column, foreground| {
+                let style = Style::default().fg(foreground);
+                if app.animation().is_flashing_for(&branch.name, column) {
+                    style.bg(theme.flash)
+                } else {
+                    style
+                }
+            };
             let cells = vec![
                 Cell::from(if selected { "►" } else { " " }),
-                Cell::from(branch_name),
-                Cell::from(
+                Cell::from(Span::styled(
+                    branch_name,
+                    style(Column::Branch, ratatui::style::Color::Reset),
+                )),
+                Cell::from(Span::styled(
                     branch
                         .pr_number
                         .map_or_else(|| "—".into(), |number| format!("#{number}")),
-                ),
-                Cell::from(Span::styled(state, Style::default().fg(state_color))),
+                    style(Column::Pr, ratatui::style::Color::Reset),
+                )),
+                Cell::from(Span::styled(state, style(Column::State, state_color))),
                 Cell::from(Span::styled(
                     checks.0,
-                    Style::default().fg(checks.1.color(theme)),
+                    style(Column::Checks, checks.1.color(theme)),
                 )),
                 Cell::from(Span::styled(
                     reviews.0,
-                    Style::default().fg(reviews.1.color(theme)),
+                    style(Column::Reviews, reviews.1.color(theme)),
                 )),
                 Cell::from(Span::styled(
                     local.0,
-                    Style::default().fg(local.1.color(theme)),
+                    style(Column::Local, local.1.color(theme)),
                 )),
             ];
-            let bg = if selected {
+            let bg = if branch.is_current {
+                app.animation()
+                    .pulse_color(theme.active_base, theme.active_peak, 20)
+            } else if selected {
                 theme.selected
-            } else if branch.is_current {
-                theme.active_base
             } else {
                 ratatui::style::Color::Reset
             };
-            Row::new(cells).style(Style::default().bg(bg))
+            let mut row_style = Style::default().bg(bg);
+            if branch.is_current
+                && theme.depth == ColorDepth::Basic16
+                && app.animation().phase(20) >= 0.5
+            {
+                row_style = row_style.add_modifier(Modifier::BOLD);
+            }
+            Row::new(cells).style(row_style)
         })
         .collect();
     if app.state().stack_status == StackStatus::Loading {
+        let shimmer = |column| app.animation().skeleton_char(column).to_string();
         rows.push(
-            Row::new([" ", "░▒▓█", "░░", "░░", "░░", "░░", "░░"])
-                .style(Style::default().fg(theme.skeleton)),
+            Row::new([
+                " ".into(),
+                shimmer(0),
+                shimmer(1),
+                shimmer(2),
+                shimmer(3),
+                shimmer(4),
+                shimmer(5),
+            ])
+            .style(Style::default().fg(theme.skeleton)),
         );
     }
     let table = Table::new(rows, widths)
@@ -173,7 +206,7 @@ impl Health {
     }
 }
 
-fn check_label(branch: &BranchState) -> (String, Health) {
+fn check_label(branch: &BranchState, spinner: char) -> (String, Health) {
     let Some(pr) = &branch.pr else {
         return ("—".into(), Health::Muted);
     };
@@ -182,10 +215,10 @@ fn check_label(branch: &BranchState) -> (String, Health) {
         return ("—".into(), Health::Muted);
     }
     let (icon, health) = match summary.worst {
-        CheckHealth::Failure => ("❌", Health::Failure),
-        CheckHealth::Running => ("🔄", Health::Running),
-        CheckHealth::Success => ("✅", Health::Success),
-        CheckHealth::Skipped | CheckHealth::None => ("░░", Health::Muted),
+        CheckHealth::Failure => ('❌', Health::Failure),
+        CheckHealth::Running => (spinner, Health::Running),
+        CheckHealth::Success => ('✅', Health::Success),
+        CheckHealth::Skipped | CheckHealth::None => ('░', Health::Muted),
     };
     (
         format!("{icon} {}/{}", summary.passed, summary.total),

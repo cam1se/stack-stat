@@ -61,13 +61,18 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             lines.push(Line::from("  — none reported"));
         }
         for check in &pr.checks {
+            let mut spinner_buffer = [0; 4];
+            let spinner: &str = app
+                .animation()
+                .spinner_char()
+                .encode_utf8(&mut spinner_buffer);
             let (icon, suffix, color) = if check.skipped_by_config {
                 ("░░", "skipped (config)".into(), theme.muted)
             } else {
                 match check.status {
-                    CheckStatus::Queued => ("⏳", "queued".into(), theme.warning),
+                    CheckStatus::Queued => (spinner, "queued".into(), theme.warning),
                     CheckStatus::InProgress => (
-                        "🔄",
+                        spinner,
                         check.started_at.map_or_else(
                             || "running".into(),
                             |at| {
