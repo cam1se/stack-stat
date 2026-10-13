@@ -17,6 +17,16 @@ use stack_stat_core::{
 
 use crate::{app::App, theme::Theme};
 
+pub(super) fn view_start<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
+    app: &App<G, H, S>,
+    area: Rect,
+) -> usize {
+    let capacity = area.height.saturating_sub(3).max(1) as usize;
+    app.selected_row_index()
+        .saturating_add(1)
+        .saturating_sub(capacity)
+}
+
 pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame: &mut Frame<'_>,
     area: Rect,
@@ -58,9 +68,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             .fg(theme.muted)
             .add_modifier(Modifier::BOLD),
     );
+    let capacity = area.height.saturating_sub(3) as usize;
     let mut rows: Vec<Row<'_>> = app
         .visible_indices()
         .into_iter()
+        .skip(view_start(app, area))
+        .take(capacity)
         .map(|index| {
             let branch = &app.state().branches[index];
             let selected = app.selected_branch() == Some(branch.name.as_str());

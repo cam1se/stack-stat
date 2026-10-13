@@ -15,6 +15,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         if visible.is_empty() {
             self.selected_name = None;
             self.selected_index = 0;
+            self.detail_scroll = 0;
             return;
         }
         let selected_position = self.selected_name.as_ref().and_then(|name| {
@@ -24,11 +25,13 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         });
         self.selected_index =
             selected_position.unwrap_or_else(|| self.selected_index.min(visible.len() - 1));
-        self.selected_name = Some(
-            self.state.branches[visible[self.selected_index]]
-                .name
-                .clone(),
-        );
+        let name = self.state.branches[visible[self.selected_index]]
+            .name
+            .clone();
+        if self.selected_name.as_deref() != Some(name.as_str()) {
+            self.detail_scroll = 0;
+        }
+        self.selected_name = Some(name);
     }
 
     /// Branch indexes in filtered and sorted display order.
@@ -132,5 +135,60 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     /// Advance presentation time with an injected clock.
     pub fn tick(&mut self, now: DateTime<Utc>) {
         self.now = now;
+    }
+    /// Topmost visible detail line; independent of the selected table row.
+    #[must_use]
+    pub fn detail_scroll(&self) -> usize {
+        self.detail_scroll
+    }
+
+    /// Visible detail content rows provided by the current terminal layout.
+    pub fn set_detail_viewport_rows(&mut self, rows: usize) {
+        self.detail_viewport_rows = rows.max(1);
+        self.detail_scroll = self.detail_scroll.min(self.detail_scroll_max());
+    }
+
+    /// Selected position within the filtered/sorted list.
+    #[must_use]
+    pub fn selected_row_index(&self) -> usize {
+        self.selected_index
+    }
+
+    pub(super) fn scroll_detail(&mut self, delta: isize) {
+        if !self.detail_open {
+            return;
+        }
+        let next = self.detail_scroll.saturating_add_signed(delta);
+        self.detail_scroll = next.min(self.detail_scroll_max());
+    }
+
+    pub(super) fn detail_page_step(&self) -> isize {
+        self.detail_viewport_rows.saturating_sub(2).max(1) as isize
+    }
+
+    fn detail_scroll_max(&self) -> usize {
+        self.detail_line_count()
+            .saturating_sub(self.detail_viewport_rows)
+    }
+
+    fn detail_line_count(&self) -> usize {
+        let Some(branch) = self.selected_name.as_deref().and_then(|name| {
+            self.state
+                .branches
+                .iter()
+                .find(|branch| branch.name == name)
+        }) else {
+            return 0;
+        };
+        let checks = branch.pr.as_ref().map_or(1, |pr| pr.checks.len().max(1));
+        let reviews = branch.pr.as_ref().map_or(1, |pr| {
+            pr.reviews
+                .iter()
+                .filter(|review| self.show_bots || !review.is_bot)
+                .count()
+                .max(1)
+        });
+        let local = branch.local_checks.len().max(1);
+        1 + usize::from(branch.needs_rebase) + 1 + 1 + checks + 1 + 1 + reviews + 1 + 1 + local
     }
 }

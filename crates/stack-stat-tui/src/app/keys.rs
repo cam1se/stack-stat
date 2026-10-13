@@ -1,11 +1,13 @@
 //! Mode-sensitive input handling; effects are executed outside this module.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{
+    KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 use stack_stat_core::providers::{
     GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider,
 };
 
-use super::{App, Mode, SortOrder, StatusLine};
+use super::{App, Mode, PointerTarget, SortOrder, StatusLine};
 use crate::{
     action::{Action, lookup},
     message::{Effect, Source},
@@ -43,6 +45,28 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         }
     }
 
+    /// Scroll the hovered pane or select a branch row on mouse click.
+    pub fn handle_mouse(&mut self, mouse: MouseEvent, target: PointerTarget) {
+        if matches!(self.mode, Mode::Help | Mode::Confirm(_)) {
+            return;
+        }
+        match (mouse.kind, target) {
+            (MouseEventKind::ScrollDown, PointerTarget::Detail) => self.scroll_detail(3),
+            (MouseEventKind::ScrollUp, PointerTarget::Detail) => self.scroll_detail(-3),
+            (MouseEventKind::ScrollDown, PointerTarget::Table | PointerTarget::TableRow(_)) => {
+                self.move_selection(3)
+            }
+            (MouseEventKind::ScrollUp, PointerTarget::Table | PointerTarget::TableRow(_)) => {
+                self.move_selection(-3)
+            }
+            (MouseEventKind::Down(MouseButton::Left), PointerTarget::TableRow(position)) => {
+                let visible = self.visible_indices();
+                self.choose_visible(&visible, position);
+            }
+            _ => {}
+        }
+    }
+
     fn filter_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
             KeyCode::Esc => {
@@ -76,6 +100,10 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             Action::Top => self.jump_selection(false),
             Action::Bottom => self.jump_selection(true),
             Action::ToggleDetail => self.detail_open = !self.detail_open,
+            Action::DetailDown => self.scroll_detail(1),
+            Action::DetailUp => self.scroll_detail(-1),
+            Action::DetailPageDown => self.scroll_detail(self.detail_page_step()),
+            Action::DetailPageUp => self.scroll_detail(-self.detail_page_step()),
             Action::Filter => self.mode = Mode::Filter,
             Action::Sort => {
                 self.sort = match self.sort {
@@ -148,21 +176,16 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         };
     }
 
-    fn move_selection(&mut self, direction: i8) {
+    fn move_selection(&mut self, delta: isize) {
         let visible = self.visible_indices();
         if visible.is_empty() {
             return;
         }
-        self.selected_index = if direction > 0 {
-            (self.selected_index + 1).min(visible.len() - 1)
-        } else {
-            self.selected_index.saturating_sub(1)
-        };
-        self.selected_name = Some(
-            self.state.branches[visible[self.selected_index]]
-                .name
-                .clone(),
-        );
+        let position = self
+            .selected_index
+            .saturating_add_signed(delta)
+            .min(visible.len() - 1);
+        self.choose_visible(&visible, position);
     }
 
     fn jump_selection(&mut self, last: bool) {
@@ -170,12 +193,20 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         if visible.is_empty() {
             return;
         }
-        self.selected_index = if last { visible.len() - 1 } else { 0 };
-        self.selected_name = Some(
-            self.state.branches[visible[self.selected_index]]
-                .name
-                .clone(),
-        );
+        let position = if last { visible.len() - 1 } else { 0 };
+        self.choose_visible(&visible, position);
+    }
+
+    fn choose_visible(&mut self, visible: &[usize], position: usize) {
+        let Some(&index) = visible.get(position) else {
+            return;
+        };
+        let name = self.state.branches[index].name.clone();
+        if self.selected_name.as_deref() != Some(name.as_str()) {
+            self.detail_scroll = 0;
+        }
+        self.selected_index = position;
+        self.selected_name = Some(name);
     }
 }
 

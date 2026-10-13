@@ -15,6 +15,14 @@ pub enum Action {
     Bottom,
     /// Toggle the detail pane.
     ToggleDetail,
+    /// Scroll the detail pane one line down.
+    DetailDown,
+    /// Scroll the detail pane one line up.
+    DetailUp,
+    /// Scroll the detail pane one page down.
+    DetailPageDown,
+    /// Scroll the detail pane one page up.
+    DetailPageUp,
     /// Open a PR in the browser.
     OpenPr,
     /// Checkout the selected branch.
@@ -169,6 +177,34 @@ pub const KEYMAP: &[KeyBinding] = &[
         "Table"
     ),
     binding!(
+        KeyCode::Char('J'),
+        KeyModifiers::SHIFT,
+        Action::DetailDown,
+        "scroll details down",
+        "Detail"
+    ),
+    binding!(
+        KeyCode::Char('K'),
+        KeyModifiers::SHIFT,
+        Action::DetailUp,
+        "scroll details up",
+        "Detail"
+    ),
+    binding!(
+        KeyCode::PageDown,
+        KeyModifiers::NONE,
+        Action::DetailPageDown,
+        "details next page",
+        "Detail"
+    ),
+    binding!(
+        KeyCode::PageUp,
+        KeyModifiers::NONE,
+        Action::DetailPageUp,
+        "details previous page",
+        "Detail"
+    ),
+    binding!(
         KeyCode::Char('R'),
         KeyModifiers::SHIFT,
         Action::Refresh,
@@ -232,7 +268,7 @@ pub fn lookup(key: KeyEvent) -> Option<Action> {
                 && (binding.key.modifiers == key.modifiers
                     || (binding.key.modifiers == KeyModifiers::SHIFT
                         && key.modifiers == KeyModifiers::NONE
-                        && matches!(key.code, KeyCode::Char('G' | 'S' | 'R' | '?'))))
+                        && matches!(key.code, KeyCode::Char('G' | 'S' | 'R' | '?' | 'J' | 'K'))))
         })
         .map(|binding| binding.action)
 }

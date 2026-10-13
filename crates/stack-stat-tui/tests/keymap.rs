@@ -148,6 +148,16 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
                 assert_eq!(app.selected_branch(), Some("auth"), "{:?}", binding.key)
             }
             Action::ToggleDetail => assert!(app.detail_open()),
+            Action::DetailDown
+            | Action::DetailUp
+            | Action::DetailPageDown
+            | Action::DetailPageUp => {
+                assert_eq!(
+                    app.detail_scroll(),
+                    0,
+                    "closed details should ignore scroll keys"
+                );
+            }
             Action::OpenPr => assert_eq!(effects, [Effect::Mutate(ProviderAction::OpenPr(42))]),
             Action::Checkout => assert_eq!(
                 app.mode(),

@@ -236,6 +236,14 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
             binding.key
         );
     }
+    let compact_help = draw(&app, 80, 24);
+    for binding in stack_stat_tui::action::KEYMAP {
+        assert!(
+            find_row(&compact_help, binding.help).is_some(),
+            "short-terminal help hides {:?}",
+            binding.key
+        );
+    }
     app.handle_key(key('?'));
     app.handle_key(key('p'));
     assert!(find_row(&draw(&app, 120, 26), "Push stack? y/n").is_some());
@@ -262,6 +270,92 @@ async fn overflowing_details_end_with_ellipsis_without_overwriting_footer() {
     let buf = draw(&app, 80, 24);
     assert!(find_row(&buf, "  …").is_some());
     assert!(find_row(&buf, "quit").is_some());
+}
+
+#[tokio::test]
+async fn keyboard_scroll_reaches_reviews_after_many_checks_without_changing_selected_branch() {
+    let mut pr = PrBuilder::new(42).pending_review();
+    for n in 0..40 {
+        pr = pr.check(&format!("ci/check-{n}"), "COMPLETED", Some("SUCCESS"));
+    }
+    let (mut app, _) = TestScenario::builder()
+        .stack("main", &["auth", "api"])
+        .pr("auth", pr)
+        .pr("api", PrBuilder::new(43))
+        .current_branch("auth")
+        .config(ConfigBuilder::new().local("lint"))
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    let first = draw(&app, 100, 28);
+    assert!(find_row(&first, "ci/check-0").is_some());
+    assert!(find_row(&first, "Reviews:").is_none());
+    for _ in 0..8 {
+        app.handle_key(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
+    }
+    let scrolled = draw(&app, 100, 28);
+    assert!(find_row(&scrolled, "Reviews:").is_some());
+    assert!(find_row(&scrolled, "Local checks:").is_some());
+    assert_eq!(app.selected_branch(), Some("auth"));
+    assert!(app.detail_scroll() > 0);
+    app.handle_key(KeyEvent::new(KeyCode::Char('K'), KeyModifiers::SHIFT));
+    assert_eq!(app.selected_branch(), Some("auth"));
+    app.handle_key(key('j'));
+    assert_eq!(app.selected_branch(), Some("api"));
+    assert_eq!(app.detail_scroll(), 0);
+}
+
+#[tokio::test]
+async fn mouse_wheel_scrolls_hovered_pane_and_click_selects_branch() {
+    use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+    use stack_stat_tui::app::PointerTarget;
+    let mut pr = PrBuilder::new(42);
+    for n in 0..30 {
+        pr = pr.check(&format!("ci/check-{n}"), "COMPLETED", Some("SUCCESS"));
+    }
+    let (mut app, _) = TestScenario::builder()
+        .stack("main", &["auth", "api"])
+        .pr("auth", pr)
+        .pr("api", PrBuilder::new(43))
+        .current_branch("auth")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    let area = ratatui::layout::Rect::new(0, 0, 100, 28);
+    let regions = ui::regions(area, &app);
+    let detail = regions.detail.unwrap();
+    let over_detail = MouseEvent {
+        kind: MouseEventKind::ScrollDown,
+        column: detail.x + 2,
+        row: detail.y + 2,
+        modifiers: KeyModifiers::NONE,
+    };
+    assert_eq!(
+        ui::hit_test(area, &app, over_detail.column, over_detail.row),
+        PointerTarget::Detail
+    );
+    app.handle_mouse(over_detail, PointerTarget::Detail);
+    assert!(app.detail_scroll() > 0);
+    assert_eq!(app.selected_branch(), Some("auth"));
+    let over_table = MouseEvent {
+        kind: MouseEventKind::ScrollDown,
+        column: regions.table.x + 2,
+        row: regions.table.y + 2,
+        modifiers: KeyModifiers::NONE,
+    };
+    app.handle_mouse(over_table, PointerTarget::Table);
+    assert_eq!(app.selected_branch(), Some("api"));
+    let row = MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: regions.table.x + 3,
+        row: regions.table.y + 2,
+        modifiers: KeyModifiers::NONE,
+    };
+    let target = ui::hit_test(area, &app, row.column, row.row);
+    app.handle_mouse(row, target);
+    assert_eq!(app.selected_branch(), Some("auth"));
 }
 
 #[test]

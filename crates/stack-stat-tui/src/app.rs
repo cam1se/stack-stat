@@ -30,6 +30,19 @@ pub enum Mode {
     Help,
 }
 
+/// UI location identified by the renderer for a mouse event.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PointerTarget {
+    /// A branch row at its visible-list index.
+    TableRow(usize),
+    /// Table border, header, or empty table space.
+    Table,
+    /// Selected branch's detail pane.
+    Detail,
+    /// Neither scrollable region.
+    Outside,
+}
+
 /// Row sort order, cyclically selected with `s`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SortOrder {
@@ -64,6 +77,8 @@ pub struct App<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> {
     selected_name: Option<String>,
     selected_index: usize,
     detail_open: bool,
+    detail_scroll: usize,
+    detail_viewport_rows: usize,
     mode: Mode,
     sort: SortOrder,
     filter: String,
@@ -103,6 +118,8 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             selected_name: None,
             selected_index: 0,
             detail_open: false,
+            detail_scroll: 0,
+            detail_viewport_rows: 12,
             mode: Mode::Normal,
             sort: SortOrder::Stack,
             filter: String::new(),

@@ -7,7 +7,7 @@ use ratatui::{
 use stack_stat_core::providers::{GitHubProvider, GitProvider, StatusStoreProvider};
 
 use crate::{
-    app::{App, Mode},
+    app::{App, Mode, PointerTarget},
     theme::Theme,
 };
 
@@ -17,27 +17,35 @@ mod help;
 mod status_bar;
 mod table;
 
-/// Render header, branch table, optional details, footer, and modal help.
-pub fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
-    frame: &mut Frame<'_>,
+/// Rectangles shared by pure drawing and mouse hit testing.
+#[derive(Clone, Copy, Debug)]
+pub struct UiRegions {
+    /// Stack identity at the top.
+    pub header: Rect,
+    /// Branch status table.
+    pub table: Rect,
+    /// Optional selected-branch details.
+    pub detail: Option<Rect>,
+    /// Footer hints and feedback.
+    pub status: Rect,
+}
+
+/// Calculate pane geometry without mutating App state.
+#[must_use]
+pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
+    area: Rect,
     app: &App<G, H, S>,
-    theme: &Theme,
-) {
-    let area = frame.area();
-    if area.height == 0 || area.width == 0 {
-        return;
-    }
-    let regions = Layout::vertical([
+) -> UiRegions {
+    let chunks = Layout::vertical([
         Constraint::Length(4),
         Constraint::Min(1),
         Constraint::Length(1),
     ])
     .split(area);
-    header::render(frame, regions[0], app, theme);
-    let body = regions[1];
-    let (table_region, detail_region) =
+    let body = chunks[1];
+    let (table, detail) =
         if app.detail_open() && app.selected_branch().is_some() && body.height >= 10 {
-            let table_min = (app.state().branches.len() as u16 + 3).max(4);
+            let table_min = (app.visible_indices().len() as u16 + 3).max(4);
             let detail_height = body
                 .height
                 .saturating_sub(table_min)
@@ -58,11 +66,63 @@ pub fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         } else {
             (body, None)
         };
-    table::render(frame, table_region, app, theme);
-    if let Some(region) = detail_region {
-        detail::render(frame, region, app, theme);
+    UiRegions {
+        header: chunks[0],
+        table,
+        detail,
+        status: chunks[2],
     }
-    status_bar::render(frame, regions[2], app, theme);
+}
+
+/// Determine the pane or visible row under a mouse coordinate.
+#[must_use]
+pub fn hit_test<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
+    area: Rect,
+    app: &App<G, H, S>,
+    x: u16,
+    y: u16,
+) -> PointerTarget {
+    if app.mode() == Mode::Help {
+        return PointerTarget::Outside;
+    }
+    let layout = regions(area, app);
+    if layout.detail.is_some_and(|detail| contains(detail, x, y)) {
+        return PointerTarget::Detail;
+    }
+    if contains(layout.table, x, y) {
+        let row = y.saturating_sub(layout.table.y + 2) as usize;
+        if y >= layout.table.y + 2 && y < layout.table.bottom().saturating_sub(1) {
+            let index = table::view_start(app, layout.table) + row;
+            if index < app.visible_indices().len() {
+                return PointerTarget::TableRow(index);
+            }
+        }
+        return PointerTarget::Table;
+    }
+    PointerTarget::Outside
+}
+
+fn contains(region: Rect, x: u16, y: u16) -> bool {
+    x >= region.x && x < region.right() && y >= region.y && y < region.bottom()
+}
+
+/// Render header, branch table, optional details, footer, and modal help.
+pub fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
+    frame: &mut Frame<'_>,
+    app: &App<G, H, S>,
+    theme: &Theme,
+) {
+    let area = frame.area();
+    if area.height == 0 || area.width == 0 {
+        return;
+    }
+    let layout = regions(area, app);
+    header::render(frame, layout.header, app, theme);
+    table::render(frame, layout.table, app, theme);
+    if let Some(detail) = layout.detail {
+        detail::render(frame, detail, app, theme);
+    }
+    status_bar::render(frame, layout.status, app, theme);
     if app.mode() == Mode::Help {
         help::render(frame, area, theme);
     }

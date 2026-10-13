@@ -168,15 +168,28 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         ));
     }
     let content_height = area.height.saturating_sub(2) as usize;
-    if lines.len() > content_height && content_height > 0 {
-        lines.truncate(content_height);
-        lines[content_height - 1] = Line::from("  …");
+    let total = lines.len();
+    let scroll = app
+        .detail_scroll()
+        .min(total.saturating_sub(content_height));
+    let mut visible: Vec<_> = lines
+        .into_iter()
+        .skip(scroll)
+        .take(content_height)
+        .collect();
+    if scroll + content_height < total && content_height > 0 {
+        visible[content_height - 1] = Line::from("  … ↓ J/PgDn");
     }
+    let title = if scroll > 0 {
+        format!(" Details ↑ {scroll}/{total} ")
+    } else {
+        " Details · J/K/PgUp/PgDn scroll ".into()
+    };
     frame.render_widget(
-        Paragraph::new(lines).block(
+        Paragraph::new(visible).block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Details ")
+                .title(title)
                 .border_style(Style::default().fg(theme.muted)),
         ),
         area,

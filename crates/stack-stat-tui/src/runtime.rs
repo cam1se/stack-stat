@@ -9,7 +9,7 @@ use std::{
 use anyhow::{Context, Result};
 use chrono::Utc;
 use crossterm::{
-    event::{Event, EventStream},
+    event::{DisableMouseCapture, EnableMouseCapture, Event, EventStream},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -35,8 +35,9 @@ impl TerminalGuard {
     fn enter() -> Result<Self> {
         enable_raw_mode().context("enabling terminal raw mode")?;
         let mut stdout = io::stdout();
-        if let Err(error) = execute!(stdout, EnterAlternateScreen) {
+        if let Err(error) = execute!(stdout, EnterAlternateScreen, EnableMouseCapture) {
             let _ = disable_raw_mode();
+            let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
             return Err(error).context("entering alternate screen");
         }
         let backend = CrosstermBackend::new(stdout);
@@ -44,7 +45,7 @@ impl TerminalGuard {
             Ok(terminal) => terminal,
             Err(error) => {
                 let _ = disable_raw_mode();
-                let _ = execute!(io::stdout(), LeaveAlternateScreen);
+                let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
                 return Err(error).context("initializing TUI");
             }
         };
@@ -55,7 +56,11 @@ impl TerminalGuard {
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
-        let _ = execute!(self.terminal.backend_mut(), LeaveAlternateScreen);
+        let _ = execute!(
+            self.terminal.backend_mut(),
+            DisableMouseCapture,
+            LeaveAlternateScreen
+        );
         let _ = self.terminal.show_cursor();
     }
 }
@@ -76,7 +81,7 @@ where
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        let _ = execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen);
         original_hook(info);
     }));
     let mut guard = TerminalGuard::enter()?;
@@ -89,13 +94,22 @@ where
         tokio::select! {
             event = keys.next() => match event {
                 Some(Ok(Event::Key(key))) => {
+                    sync_viewport(&mut app, guard.terminal.size()?.into());
                     let effects = app.handle_key(key);
                     for effect in effects {
                         if execute_effect(effect, &github, &tx, &pollers).await? { return Ok(()); }
                     }
+                    sync_viewport(&mut app, guard.terminal.size()?.into());
                     draw(&mut guard, &app, &theme)?;
                 }
-                Some(Ok(Event::Resize(_, _))) => draw(&mut guard, &app, &theme)?,
+                Some(Ok(Event::Resize(_, _))) => { sync_viewport(&mut app, guard.terminal.size()?.into()); draw(&mut guard, &app, &theme)?; },
+                Some(Ok(Event::Mouse(mouse))) => {
+                    let area: ratatui::layout::Rect = guard.terminal.size()?.into();
+                    let target = crate::ui::hit_test(area, &app, mouse.column, mouse.row);
+                    sync_viewport(&mut app, area);
+                    app.handle_mouse(mouse, target);
+                    draw(&mut guard, &app, &theme)?;
+                }
                 Some(Err(error)) => return Err(error).context("reading terminal input"),
                 None => return Ok(()),
                 _ => {},
@@ -106,6 +120,7 @@ where
                 app.apply(message);
                 pollers.set_ci_active(app.ci_active());
                 if completed_mutation { pollers.refresh_all(); }
+                sync_viewport(&mut app, guard.terminal.size()?.into());
                 draw(&mut guard, &app, &theme)?;
             }
             _ = ticks.tick() => {
@@ -113,6 +128,15 @@ where
                 draw(&mut guard, &app, &theme)?;
             }
         }
+    }
+}
+fn sync_viewport<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
+    app: &mut App<G, H, S>,
+    area: ratatui::layout::Rect,
+) {
+    let detail = crate::ui::regions(area, app).detail;
+    if let Some(detail) = detail {
+        app.set_detail_viewport_rows(detail.height.saturating_sub(2) as usize);
     }
 }
 
