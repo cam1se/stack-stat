@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/tcamise-gpsw/stack-stat/compare/v0.4.0...v0.5.0) (2026-10-13)
+
+
+### Features
+
+* **tui:** block every layer above a blocking rebase ([083d77b](https://github.com/tcamise-gpsw/stack-stat/commit/083d77ba41b45eb4160c8cf720350ab4017094a4))
+
 ## [0.4.0](https://github.com/tcamise-gpsw/stack-stat/compare/v0.3.0...v0.4.0) (2026-10-13)
 
 
