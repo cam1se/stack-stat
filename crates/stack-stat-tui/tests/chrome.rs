@@ -7,7 +7,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{FakeApp, PrBuilder, TestScenario, find_row};
+use support::{FakeApp, PrBuilder, TestScenario, find_body_row, find_row};
 
 fn draw(app: &FakeApp, width: u16) -> ratatui::buffer::Buffer {
     draw_at(app, width, 28)
@@ -93,7 +93,7 @@ async fn pie_uses_each_verdict_color_in_a_tall_wide_header() {
     let theme = Theme::for_depth(ColorDepth::TrueColor);
     let buffer = draw_at(&app, 120, 40);
     let buffer = &buffer;
-    let pie_cells = (100..120).flat_map(|x| (1..6).map(move |y| &buffer[(x, y)]));
+    let pie_cells = (100..120).flat_map(|x| (1..7).map(move |y| &buffer[(x, y)]));
     let colors = pie_cells
         .filter(|cell| {
             cell.symbol()
@@ -151,7 +151,7 @@ async fn merged_layers_show_checks_without_status_color() {
     let app = dashboard().await;
     let theme = Theme::for_depth(ColorDepth::TrueColor);
     let buffer = draw_at(&app, 140, 40);
-    let row = find_row(&buffer, "#4").expect("merged layer row");
+    let row = find_body_row(&buffer, "#4").expect("merged layer row");
     let line: Vec<&str> = (0..buffer.area.width)
         .map(|x| buffer[(x, row)].symbol())
         .collect();

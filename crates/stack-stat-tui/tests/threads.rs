@@ -9,7 +9,9 @@ use stack_stat_tui::{
         animation::{CellId, Column, diff_cells},
     },
 };
-use support::{ConfigBuilder, FakeApp, PrBuilder, TestScenario, assert_row_contains, find_row};
+use support::{
+    ConfigBuilder, FakeApp, PrBuilder, TestScenario, assert_row_contains, find_body_row, find_row,
+};
 
 fn draw(app: &FakeApp, width: u16, height: u16) -> Buffer {
     let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -51,7 +53,7 @@ async fn threads_column_shows_success_for_zero_unresolved_threads() {
     let app = app_with_threads(false, 0).await;
     let theme = Theme::for_depth(ColorDepth::TrueColor);
     let buffer = draw(&app, 120, 40);
-    let row = find_row(&buffer, "#42").expect("branch row");
+    let row = find_body_row(&buffer, "#42").expect("branch row");
 
     assert_row_contains(&buffer, row, &["✔ 0"]);
     let detail_row = find_row(&buffer, "Unresolved threads: 0").expect("thread detail");
@@ -68,7 +70,7 @@ async fn gated_unresolved_threads_block_the_branch_and_are_red() {
     let app = app_with_threads(true, 3).await;
     let theme = Theme::for_depth(ColorDepth::TrueColor);
     let buffer = draw(&app, 120, 40);
-    let row = find_row(&buffer, "#42").expect("branch row");
+    let row = find_body_row(&buffer, "#42").expect("branch row");
     let line: String = (0..buffer.area.width)
         .map(|x| buffer[(x, row)].symbol())
         .collect();
@@ -89,7 +91,7 @@ async fn non_gating_unresolved_threads_warn_without_blocking_the_branch() {
     let app = app_with_threads(false, 3).await;
     let theme = Theme::for_depth(ColorDepth::TrueColor);
     let buffer = draw(&app, 120, 40);
-    let row = find_row(&buffer, "#42").expect("branch row");
+    let row = find_body_row(&buffer, "#42").expect("branch row");
     let line: String = (0..buffer.area.width)
         .map(|x| buffer[(x, row)].symbol())
         .collect();

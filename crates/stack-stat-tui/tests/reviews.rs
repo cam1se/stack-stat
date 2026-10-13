@@ -6,7 +6,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{PrBuilder, TestScenario, assert_row_contains, find_row};
+use support::{PrBuilder, TestScenario, assert_row_contains, find_body_row};
 
 #[tokio::test]
 async fn review_column_is_yellow_text_only_when_a_review_is_required() {
@@ -30,9 +30,9 @@ async fn review_column_is_yellow_text_only_when_a_review_is_required() {
         .unwrap();
     let buffer = terminal.backend().buffer();
 
-    let none = find_row(buffer, "#1").unwrap();
-    let required = find_row(buffer, "#2").unwrap();
-    let requested = find_row(buffer, "#3").unwrap();
+    let none = find_body_row(buffer, "#1").unwrap();
+    let required = find_body_row(buffer, "#2").unwrap();
+    let requested = find_body_row(buffer, "#3").unwrap();
     assert_row_contains(buffer, none, &["#1", "—"]);
     assert_row_contains(buffer, required, &["#2", "… required"]);
     assert_row_contains(buffer, requested, &["#3", "… pending"]);

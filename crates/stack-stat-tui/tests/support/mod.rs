@@ -73,6 +73,10 @@ impl PrBuilder {
             unresolved_threads: 0,
         })
     }
+    pub fn title(mut self, title: &str) -> Self {
+        self.0.title = title.into();
+        self
+    }
     pub fn draft(mut self) -> Self {
         self.0.is_draft = true;
         self
@@ -278,6 +282,17 @@ pub fn assert_cell(buffer: &ratatui::buffer::Buffer, x: u16, y: u16, expected: &
 }
 pub fn find_row(buffer: &ratatui::buffer::Buffer, text: &str) -> Option<u16> {
     (0..buffer.area.height).find(|&y| {
+        (0..buffer.area.width)
+            .map(|x| buffer[(x, y)].symbol())
+            .collect::<String>()
+            .contains(text)
+    })
+}
+/// Like [`find_row`] but only searches below the header card, whose "Next: #N" line would
+/// otherwise match PR-number lookups meant for the stack table.
+pub fn find_body_row(buffer: &ratatui::buffer::Buffer, text: &str) -> Option<u16> {
+    let body_start = find_row(buffer, "Stack ─").unwrap_or(0);
+    (body_start..buffer.area.height).find(|&y| {
         (0..buffer.area.width)
             .map(|x| buffer[(x, y)].symbol())
             .collect::<String>()

@@ -11,7 +11,9 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{ConfigBuilder, FakeApp, PrBuilder, TestScenario, assert_row_contains, find_row};
+use support::{
+    ConfigBuilder, FakeApp, PrBuilder, TestScenario, assert_row_contains, find_body_row, find_row,
+};
 
 fn key(ch: char) -> KeyEvent {
     KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE)
@@ -73,7 +75,7 @@ async fn four_layer_healthy_stack_has_passing_status_without_staleness() {
     app.poll_once(Source::All).await;
     let buf = draw(&app, 120, 40);
     for number in [42, 43, 44, 45] {
-        let row = find_row(&buf, &format!("#{number}")).unwrap();
+        let row = find_body_row(&buf, &format!("#{number}")).unwrap();
         assert_row_contains(&buf, row, &["✔", "Open", "✔", "1/1", "approved"]);
     }
     assert!(find_row(&buf, "stale").is_none());
@@ -83,7 +85,7 @@ async fn four_layer_healthy_stack_has_passing_status_without_staleness() {
 async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
     let (app, _) = ready().await;
     let buf = draw(&app, 120, 40);
-    let auth = find_row(&buf, "#42").unwrap();
+    let auth = find_body_row(&buf, "#42").unwrap();
     assert_row_contains(
         &buf,
         auth,
@@ -92,16 +94,16 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
         ],
     );
     assert_row_contains(&buf, auth + 1, &["Change 42"]);
-    let api = find_row(&buf, "#43").unwrap();
+    let api = find_body_row(&buf, "#43").unwrap();
     let spinner = app.animation().spinner_char().to_string();
     assert_row_contains(
         &buf,
         api,
         &["✖", "api", "#43", "Draft", &spinner, "0/1", "pending"],
     );
-    let ui = find_row(&buf, "#44").unwrap();
+    let ui = find_body_row(&buf, "#44").unwrap();
     assert_row_contains(&buf, ui, &["✖", "ui", "#44", "Open", "✖", "0/1", "changes"]);
-    assert!(find_row(&buf, "#45").is_some());
+    assert!(find_body_row(&buf, "#45").is_some());
     assert!(find_row(&buf, "stale").is_none());
 }
 
@@ -144,7 +146,7 @@ async fn skipped_ci_check_is_visible_in_details_not_row_total() {
         .into_app();
     app.poll_once(Source::All).await;
     let buf = draw(&app, 120, 30);
-    assert_row_contains(&buf, find_row(&buf, "#42").unwrap(), &["1/1"]);
+    assert_row_contains(&buf, find_body_row(&buf, "#42").unwrap(), &["1/1"]);
     assert!(find_row(&buf, "secrets-scan").is_some());
     assert!(find_row(&buf, "skipped (config)").is_some());
 }
@@ -188,9 +190,9 @@ async fn branch_switch_and_stale_check_have_distinct_visual_markers() {
     handles.git.set_current_branch("api");
     app.poll_once(Source::Git).await;
     let buf = draw(&app, 120, 40);
-    let api = find_row(&buf, "#43").unwrap();
+    let api = find_body_row(&buf, "#43").unwrap();
     assert_row_contains(&buf, api, &["*", "api"]);
-    let auth = find_row(&buf, "#42").unwrap();
+    let auth = find_body_row(&buf, "#42").unwrap();
     let auth_line: String = (0..buf.area.width)
         .map(|x| buf[(x, auth)].symbol())
         .collect();
@@ -207,7 +209,7 @@ async fn narrow_widths_collapse_review_and_local_columns() {
     assert!(find_row(&medium, "approved").is_none());
     assert!(find_row(&wide, "lint").is_some());
     assert!(find_row(&narrow, "lint").is_none());
-    assert!(find_row(&narrow, "#42").is_some());
+    assert!(find_body_row(&narrow, "#42").is_some());
 }
 
 #[tokio::test]
@@ -295,7 +297,10 @@ async fn keyboard_scroll_reaches_reviews_after_many_checks_without_changing_sele
     let detail = ui::regions(ratatui::layout::Rect::new(0, 0, 100, 28), &app)
         .detail
         .expect("selected branch has details");
-    app.set_detail_viewport_rows(usize::from(detail.height.saturating_sub(2)));
+    app.set_detail_viewport(
+        usize::from(detail.height.saturating_sub(2)),
+        usize::from(detail.width.saturating_sub(2)),
+    );
     for _ in 0..8 {
         app.handle_key(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
     }

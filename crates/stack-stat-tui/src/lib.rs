@@ -21,3 +21,5 @@ pub mod theme;
 pub mod ui;
 /// Release lookup, archive verification, and self replacement.
 pub mod update;
+/// Character-counted word wrapping for terminal content.
+pub mod wrap;

@@ -96,6 +96,55 @@ pub enum Verdict {
     Queued,
 }
 
+/// A concrete condition affecting a branch's readiness.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Issue {
+    /// The pull request is still a draft.
+    Draft,
+    /// The branch must be rebased onto the layer below it.
+    RebaseParent,
+    /// The branch must be rebased onto trunk.
+    RebaseTrunk,
+    /// One or more CI checks failed.
+    FailingChecks(usize),
+    /// GitHub or a reviewer requested changes.
+    ChangesRequested,
+    /// One or more gated review threads remain unresolved.
+    UnresolvedThreads(usize),
+    /// One or more local checks failed.
+    LocalFailed(usize),
+    /// One or more local check results no longer match the branch head.
+    LocalStale(usize),
+    /// Pull request details have not been loaded.
+    LoadingDetails,
+    /// One or more CI checks are queued or running.
+    RunningChecks(usize),
+    /// GitHub reports that a review is required.
+    ReviewRequired,
+    /// A requested review remains pending.
+    ReviewPending,
+    /// One or more configured local checks have not reported a result.
+    MissingLocal(usize),
+}
+
+impl Issue {
+    /// Whether this issue prevents the branch from being merged.
+    #[must_use]
+    pub const fn is_blocking(self) -> bool {
+        matches!(
+            self,
+            Self::Draft
+                | Self::RebaseParent
+                | Self::RebaseTrunk
+                | Self::FailingChecks(_)
+                | Self::ChangesRequested
+                | Self::UnresolvedThreads(_)
+                | Self::LocalFailed(_)
+                | Self::LocalStale(_)
+        )
+    }
+}
+
 /// Per-verdict branch counts for a whole stack.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct StackSummary {
@@ -109,6 +158,23 @@ pub struct StackSummary {
     pub merged: usize,
     /// Layers in the merge queue.
     pub queued: usize,
+}
+
+/// Count of open layers with blockers in each category.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BlockerSummary {
+    /// Layers whose pull request is a draft.
+    pub draft: usize,
+    /// Layers requiring a rebase.
+    pub rebase: usize,
+    /// Layers with failed CI checks.
+    pub checks: usize,
+    /// Layers with requested or pending reviews.
+    pub reviews: usize,
+    /// Layers with unresolved gated threads.
+    pub threads: usize,
+    /// Layers with failed, stale, or missing local results.
+    pub local: usize,
 }
 
 /// Pull request fields needed to render status.

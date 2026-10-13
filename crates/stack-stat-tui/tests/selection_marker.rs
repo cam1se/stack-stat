@@ -8,7 +8,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{FakeApp, PrBuilder, TestScenario, find_row};
+use support::{FakeApp, PrBuilder, TestScenario, find_body_row};
 
 fn row_backgrounds(app: &FakeApp, theme: &Theme) -> (Color, Color, String) {
     let mut terminal = Terminal::new(TestBackend::new(120, 40)).unwrap();
@@ -16,8 +16,8 @@ fn row_backgrounds(app: &FakeApp, theme: &Theme) -> (Color, Color, String) {
         .draw(|frame| ui::render(frame, app, theme))
         .unwrap();
     let buffer = terminal.backend().buffer();
-    let auth = find_row(buffer, "#42").unwrap();
-    let api = find_row(buffer, "#43").unwrap();
+    let auth = find_body_row(buffer, "#42").unwrap();
+    let api = find_body_row(buffer, "#43").unwrap();
     (
         buffer[(2, auth)].bg,
         buffer[(2, api)].bg,

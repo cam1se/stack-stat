@@ -1,9 +1,9 @@
 //! Derived check and review summaries.
 
 use super::{
-    BranchState, CheckConclusion, CheckHealth, CheckStatus, CheckSummary, LocalCheckState, PrInfo,
-    PrLifecycle, RebaseNeed, ReviewDecision, ReviewState, ReviewSummary, StackState, StackSummary,
-    Verdict,
+    BlockerSummary, BranchState, CheckConclusion, CheckHealth, CheckStatus, CheckSummary, Issue,
+    LocalCheckState, PrInfo, PrLifecycle, RebaseNeed, ReviewDecision, ReviewState, ReviewSummary,
+    StackState, StackSummary, Verdict,
 };
 
 impl StackState {
@@ -22,9 +22,140 @@ impl StackState {
         }
         summary
     }
+
+    /// Lowest layer in stack order whose lifecycle is open.
+    #[must_use]
+    pub fn next_to_merge(&self) -> Option<&BranchState> {
+        self.branches
+            .iter()
+            .find(|branch| branch.lifecycle == PrLifecycle::Open)
+    }
+
+    /// Count open layers with blockers in each category.
+    #[must_use]
+    pub fn blocker_summary(&self) -> BlockerSummary {
+        let mut summary = BlockerSummary::default();
+        for branch in self
+            .branches
+            .iter()
+            .filter(|branch| branch.lifecycle == PrLifecycle::Open)
+        {
+            let issues = branch.issues();
+            summary.draft += issues.contains(&Issue::Draft) as usize;
+            summary.rebase += issues
+                .iter()
+                .any(|issue| matches!(issue, Issue::RebaseParent | Issue::RebaseTrunk))
+                as usize;
+            summary.checks += issues
+                .iter()
+                .any(|issue| matches!(issue, Issue::FailingChecks(_)))
+                as usize;
+            summary.reviews += issues.iter().any(|issue| {
+                matches!(
+                    issue,
+                    Issue::ChangesRequested | Issue::ReviewRequired | Issue::ReviewPending
+                )
+            }) as usize;
+            summary.threads += issues
+                .iter()
+                .any(|issue| matches!(issue, Issue::UnresolvedThreads(_)))
+                as usize;
+            summary.local += issues.iter().any(|issue| {
+                matches!(
+                    issue,
+                    Issue::LocalFailed(_) | Issue::LocalStale(_) | Issue::MissingLocal(_)
+                )
+            }) as usize;
+        }
+        summary
+    }
 }
 
 impl BranchState {
+    /// List the conditions affecting this branch's readiness.
+    #[must_use]
+    pub fn issues(&self) -> Vec<Issue> {
+        if self.lifecycle != PrLifecycle::Open {
+            return Vec::new();
+        }
+        let Some(pr) = &self.pr else {
+            return vec![Issue::LoadingDetails];
+        };
+
+        let mut issues = Vec::new();
+        if pr.is_draft {
+            issues.push(Issue::Draft);
+        }
+        match self.rebase {
+            RebaseNeed::Parent => issues.push(Issue::RebaseParent),
+            RebaseNeed::Trunk if self.trunk_rebase_gates => issues.push(Issue::RebaseTrunk),
+            RebaseNeed::None | RebaseNeed::Trunk => {}
+        }
+        let failing_checks = pr
+            .checks
+            .iter()
+            .filter(|check| !check.skipped_by_config)
+            .filter(|check| {
+                check.status == CheckStatus::Completed
+                    && !matches!(
+                        check.conclusion,
+                        Some(
+                            CheckConclusion::Success
+                                | CheckConclusion::Neutral
+                                | CheckConclusion::Skipped
+                        )
+                    )
+            })
+            .count();
+        if failing_checks > 0 {
+            issues.push(Issue::FailingChecks(failing_checks));
+        }
+        let reviews = pr.review_summary(true);
+        if pr.review_decision == ReviewDecision::ChangesRequested
+            || reviews == ReviewSummary::ChangesRequested
+        {
+            issues.push(Issue::ChangesRequested);
+        }
+        if pr.threads_gate && pr.unresolved_threads > 0 {
+            issues.push(Issue::UnresolvedThreads(pr.unresolved_threads));
+        }
+        let failed_local = self
+            .local_checks
+            .iter()
+            .filter(|local| local.state == LocalCheckState::Fail)
+            .count();
+        if failed_local > 0 {
+            issues.push(Issue::LocalFailed(failed_local));
+        }
+        let stale_local = self
+            .local_checks
+            .iter()
+            .filter(|local| local.is_stale)
+            .count();
+        if stale_local > 0 {
+            issues.push(Issue::LocalStale(stale_local));
+        }
+
+        let running_checks = pr.check_summary().running;
+        if running_checks > 0 {
+            issues.push(Issue::RunningChecks(running_checks));
+        }
+        if pr.review_decision == ReviewDecision::ReviewRequired {
+            issues.push(Issue::ReviewRequired);
+        } else if pr.review_decision == ReviewDecision::None && reviews == ReviewSummary::Pending {
+            issues.push(Issue::ReviewPending);
+        }
+        let missing_local = self
+            .local_checks
+            .iter()
+            .filter(|local| local.state == LocalCheckState::Missing)
+            .count();
+        if missing_local > 0 {
+            issues.push(Issue::MissingLocal(missing_local));
+        }
+        issues
+    }
+
     /// Go/no-go readiness. Failing or stale evidence outranks outstanding evidence; unknown evidence
     /// is never `Go`. Reviews ignore the bot display filter so toggling it cannot change readiness.
     #[must_use]
@@ -34,37 +165,14 @@ impl BranchState {
             PrLifecycle::Queued => return Verdict::Queued,
             PrLifecycle::Open => {}
         }
-        let Some(pr) = &self.pr else {
-            return Verdict::Wait;
-        };
-        let reviews = pr.review_summary(true);
-        let checks = pr.check_summary().worst;
-        if pr.is_draft
-            || self.rebase == RebaseNeed::Parent
-            || (self.rebase == RebaseNeed::Trunk && self.trunk_rebase_gates)
-            || checks == CheckHealth::Failure
-            || (pr.threads_gate && pr.unresolved_threads > 0)
-            || pr.review_decision == ReviewDecision::ChangesRequested
-            || reviews == ReviewSummary::ChangesRequested
-            || self
-                .local_checks
-                .iter()
-                .any(|local| local.state == LocalCheckState::Fail || local.is_stale)
-        {
-            return Verdict::NoGo;
+        let issues = self.issues();
+        if issues.iter().any(|issue| issue.is_blocking()) {
+            Verdict::NoGo
+        } else if issues.is_empty() {
+            Verdict::Go
+        } else {
+            Verdict::Wait
         }
-        let review_outstanding = pr.review_decision == ReviewDecision::ReviewRequired
-            || (pr.review_decision == ReviewDecision::None && reviews == ReviewSummary::Pending);
-        if checks == CheckHealth::Running
-            || review_outstanding
-            || self
-                .local_checks
-                .iter()
-                .any(|local| local.state == LocalCheckState::Missing)
-        {
-            return Verdict::Wait;
-        }
-        Verdict::Go
     }
 }
 

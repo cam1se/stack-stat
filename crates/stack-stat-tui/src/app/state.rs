@@ -8,6 +8,7 @@ use stack_stat_core::{
 };
 
 use super::{App, Mode, SortOrder, StatusLine};
+use crate::wrap;
 
 impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     pub(super) fn sync_selection(&mut self) {
@@ -151,9 +152,10 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         self.detail_scroll
     }
 
-    /// Visible detail content rows provided by the current terminal layout.
-    pub fn set_detail_viewport_rows(&mut self, rows: usize) {
+    /// Visible detail content dimensions provided by the current terminal layout.
+    pub fn set_detail_viewport(&mut self, rows: usize, width: usize) {
         self.detail_viewport_rows = rows.max(1);
+        self.detail_viewport_width = width.max(1);
         self.detail_scroll = self.detail_scroll.min(self.detail_scroll_max());
     }
 
@@ -186,7 +188,13 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         }) else {
             return 0;
         };
-        let title = branch.pr.as_ref().is_some_and(|pr| !pr.title.is_empty());
+        let title = branch
+            .pr
+            .as_ref()
+            .filter(|pr| !pr.title.is_empty())
+            .map_or(0, |pr| {
+                wrap::wrap(&pr.title, self.detail_viewport_width.saturating_sub(2)).len()
+            });
         let checks = branch
             .pr
             .as_ref()
@@ -199,11 +207,11 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 .count()
         });
         let local = branch.local_checks.len().max(1);
-        // Header, optional title and rebase detail, then blank-separated checks, reviews,
+        // Header, wrapped branch name and title, then blank-separated checks, reviews,
         // threads, and local sections.
-        1 + usize::from(title)
+        1 + wrap::wrap(&branch.name, self.detail_viewport_width).len()
+            + title
             + usize::from(branch.rebase != RebaseNeed::None)
-            + 1
             + checks
             + 1
             + 1

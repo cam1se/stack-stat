@@ -144,7 +144,7 @@ async fn basic_color_active_row_pulses_bold_without_changing_background() {
     terminal
         .draw(|frame| ui::render(frame, &app, &theme))
         .unwrap();
-    let row = support::find_row(terminal.backend().buffer(), "#42").unwrap();
+    let row = support::find_body_row(terminal.backend().buffer(), "#42").unwrap();
     let first = &terminal.backend().buffer()[(2, row)];
     let base_bg = first.bg;
     let base_bold = first.modifier.contains(Modifier::BOLD);

@@ -3,7 +3,7 @@
 use ratatui::{
     Frame,
     layout::{Margin, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
@@ -15,7 +15,7 @@ use stack_stat_core::{
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
-use crate::{app::App, theme::Theme};
+use crate::{app::App, theme::Theme, wrap};
 
 pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame: &mut Frame<'_>,
@@ -34,13 +34,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
 
     let (glyph, verdict_color) = super::verdict::style(branch.verdict(), theme);
     let lifecycle = lifecycle_word(branch);
-    let identity = branch.pr_number.map_or_else(
-        || branch.name.clone(),
-        |number| format!("PR #{number} · {}", branch.name),
-    );
-    let mut lines = vec![Line::from(vec![
-        Span::raw(identity),
-        Span::raw(" · "),
+    let content_width = usize::from(area.width.saturating_sub(2));
+    let mut header = Vec::new();
+    if let Some(number) = branch.pr_number {
+        header.push(Span::raw(format!("PR #{number} · ")));
+    }
+    header.extend([
         Span::styled(glyph, Style::default().fg(verdict_color)),
         Span::raw(" · "),
         Span::styled(
@@ -56,14 +55,21 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         } else {
             ""
         }),
-    ])];
+    ]);
+    let mut lines = vec![Line::from(header)];
+    lines.extend(
+        wrap::wrap(&branch.name, content_width)
+            .into_iter()
+            .map(|line| Line::styled(line, Style::default().add_modifier(Modifier::BOLD))),
+    );
     if let Some(pr) = &branch.pr
         && !pr.title.is_empty()
     {
-        lines.push(Line::styled(
-            format!("  {}", pr.title),
-            Style::default().fg(theme.muted),
-        ));
+        lines.extend(
+            wrap::wrap(&pr.title, content_width.saturating_sub(2))
+                .into_iter()
+                .map(|line| Line::styled(format!("  {line}"), Style::default().fg(theme.muted))),
+        );
     }
     match branch.rebase {
         RebaseNeed::None => {}
