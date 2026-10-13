@@ -36,3 +36,8 @@ N/A
 
 - A throwaway local stack initialized with `gh stack init --base main test-layer` produced `gh stack view --json` without `head` or `pr` on the unsubmitted branch. The wire type now accepts absent `head`; a regression fixture records this observed shape. The live provider returned `stack=main, layers=1` and fetched PR #1 with five checks using the aliased GraphQL query. No remote stack was created or pushed.
 - `resolve_repo` is asynchronous rather than the plan's synchronous signature so its `gh repo view` read obeys the same 20-second timeout and process cleanup as all other `gh` reads.
+
+### Task 8: Compositor
+
+- `BranchState.pr_number` preserves a PR number from stack metadata even if a GraphQL alias is inaccessible or missing. Detailed PR fields stay absent rather than falsely labeling that row Ready.
+- `LocalCheckResult.recorded_at` remains absent for never-reported configured checks. The compositor does not infer a timestamp from the poll time.

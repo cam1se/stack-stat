@@ -2,6 +2,12 @@
 
 [stack-stat-core](../../crates/stack-stat-core/) separates data fetched from Git and GitHub from the view rendered in the terminal. The domain model describes stack order, the current worktree branch, each layer's PR lifecycle, CI status, reviews, and local checks. Provider responses are mapped into the model by the compositor; the TUI reads the resulting state without depending on JSON response shapes.
 
+## Composition
+
+Successful Git, GitHub, and store snapshots are composed without I/O or clock reads. GitHub stack order supplies rows and PR identities; Git supplies the worktree's checked-out branch and current local SHAs. A PR number from stack metadata remains visible even if GitHub details are temporarily unavailable. A transport failure keeps the prior successful snapshot in the App, while an explicit not-in-stack result clears rows without guessing another stack.
+
+For a local check, the current-SHA report wins; otherwise the newest older report is stale. Declared checks without a report render as missing, and a branch without a local ref never treats a stored result as fresh. Review requests without a submitted latest review become pending reviewer entries. CI skip patterns affect summaries, not underlying check visibility. Snapshot timestamps are carried through to the view so the TUI can show refresh age without reading the wall clock during rendering.
+
 ## Derived status
 
 CI checks excluded by repository configuration remain visible in the PR detail view but do not count toward the row's passed/total summary. Failure takes precedence over running, which takes precedence over success; skipped-only checks remain distinct. Review summaries consider visible reviewers: changes requested outranks approval, which outranks an outstanding request. The bot toggle changes visibility without changing the original GitHub data. Missing local checks are configured expectations that were never reported; stale results refer to a previous branch commit.

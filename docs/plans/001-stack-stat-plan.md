@@ -310,9 +310,9 @@
 - [x] Throwaway smoke (not committed): in a repo with a real gh stack, call `stack_view` and `pr_details` from a scratch example or test-ignored harness and record the observed shapes in notes. If the real `gh stack view --json` shape differs from the fixture, fix the wire types and fixture
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 7: GitHub CLI provider` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 7: GitHub CLI provider` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 8: Compositor
 
@@ -338,15 +338,15 @@
 - The compositor only sees successful snapshots. The app keeps the last good GitHub snapshot on transient errors (see Task 10), so rows never blank on a failed poll.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Pure: no I/O, no clock reads (timestamps come from snapshots)
-- [ ] Fresh vs stale vs missing local checks resolved per the rules above
-- [ ] Bot detection uses both GraphQL type and config
-- [ ] Pending reviewers derived from review requests
-- [ ] Skipped checks visible but excluded from the summary
+- [x] Pure: no I/O, no clock reads (timestamps come from snapshots)
+- [x] Fresh vs stale vs missing local checks resolved per the rules above
+- [x] Bot detection uses both GraphQL type and config
+- [x] Pending reviewers derived from review requests
+- [x] Skipped checks visible but excluded from the summary
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-core --test compose`
-- [ ] Cover: git-only (loading), full happy path, NotInStack, stale local checks after HEAD moves, missing declared check, skip filter excluded from counts, bot via typename, bot via config, pending reviewer from request, merged/queued lifecycle, worktree on a branch outside the stack (no row marked current)
+- [x] `cargo test -p stack-stat-core --test compose`
+- [x] Cover: git-only (loading), full happy path, NotInStack, stale local checks after HEAD moves, missing declared check, skip filter excluded from counts, bot via typename, bot via config, pending reviewer from request, merged/queued lifecycle, worktree on a branch outside the stack (no row marked current)
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

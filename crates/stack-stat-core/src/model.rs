@@ -46,6 +46,8 @@ pub struct BranchState {
     pub is_current: bool,
     /// Its PR lifecycle state.
     pub lifecycle: PrLifecycle,
+    /// PR number from stack metadata, even when GitHub details are unavailable.
+    pub pr_number: Option<u32>,
     /// Remote PR details, if any.
     pub pr: Option<PrInfo>,
     /// Results reported for this branch, including missing configured checks.
