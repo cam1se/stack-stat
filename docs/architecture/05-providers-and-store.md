@@ -1,6 +1,6 @@
 # 05 — Providers and local status store
 
-The [core library](../../crates/stack-stat-core/) owns the `GitProvider`, `GitHubProvider`, and `StatusStoreProvider` contracts. The TUI consumes those interfaces; production adapters run external processes or read files, while tests inject fakes. Provider types retain upstream JSON vocabulary. The [domain model](04-domain-and-config.md) has no CLI or GraphQL dependency.
+The [core library manifest](../../crates/stack-stat-core/Cargo.toml) owns the `GitProvider`, `GitHubProvider`, and `StatusStoreProvider` contracts. Production adapters run external processes or read files, while tests inject fakes. Raw GraphQL wire types are normalized into provider records before composition; the [domain model](04-domain-and-config.md) has no CLI or GraphQL dependency.
 
 The trait boundary makes branch switches, check transitions, and error paths testable with mutable in-memory fakes without live GitHub access. Fake executables on PATH would couple App behavior to CLI flag order and platform-specific scripts; a replay-only mode could not drive transitions or partial failures. The extra trait implementations are the deliberate cost of a stable, testable boundary.
 

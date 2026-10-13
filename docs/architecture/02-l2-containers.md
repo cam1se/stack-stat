@@ -12,16 +12,18 @@ flowchart LR
   end
   subgraph Local
     Git[Git worktree and common dir]
-    Store[.git/stack-stat/status]
+    Store[<git-common-dir>/stack-stat/status]
     Config[.stack-stat.toml]
+    UserConfig[User config directory]
   end
   subgraph Remote
-    Gh[gh stack and GitHub API]
+    Gh[gh CLI: gh stack + gh api graphql]
   end
   TUI --> Core
   Core --> Git
   Core --> Store
   Core --> Config
+  Core --> UserConfig
   Core --> Gh
 ```
 

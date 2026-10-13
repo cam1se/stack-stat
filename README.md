@@ -15,7 +15,7 @@ A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-
 > [!TIP]
 > Full documentation, including configuration, local checks, and troubleshooting, is at **[tcamise-gpsw.github.io/stack-stat](https://tcamise-gpsw.github.io/stack-stat/)**.
 
-Every layer gets a verdict glyph: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. The header names the next layer to merge and lists what stands in its way, and the detail pane for the selected layer is always open, with failing checks first. Here it is in action:
+Open layers use verdict glyphs: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. Merged and queued layers use separate lifecycle glyphs. The header names the next layer to merge and lists its issues, and the detail pane for the selected layer is always open, with failing checks first. Here it is in action:
 
 <p align="center">
   <img src="docs/user/assets/demo.gif" width="840" alt="Demo of the stack-stat dashboard: selecting layers, reading checks and reviews, and scrolling details">

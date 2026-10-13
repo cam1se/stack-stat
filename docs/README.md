@@ -18,12 +18,9 @@
 | Root [README](../README.md) | Summary and install pointer | Living |
 | [User docs](user/) | Installation, usage, configuration; published on [GitHub Pages](https://tcamise-gpsw.github.io/stack-stat/) | Living |
 | Root [AGENTS.md](../AGENTS.md) | Contributor and agent workflow | Living |
-| [Architecture](architecture/) | Context, crate boundaries, rationale, extending recipes | Living |
+| [Architecture](architecture/01-l1-context.md) | Context, crate boundaries, rationale, extending recipes | Living |
 | [ADRs](adr/README.md) | Significant decisions and alternatives | Append-only |
-| [Specs](specs/) | Reviewed feature intent | Point-in-time |
-| [Plans](plans/) | Change sequencing and execution notes | Point-in-time |
 | Rustdoc (`cargo doc`) | Per-symbol API documentation | Generated |
-
 Living docs describe what currently exists. Point-in-time docs describe intended changes and must not be mistaken for implemented behavior. Do not add a parallel guide hierarchy that duplicates these sources.
 
 ## Architecture
@@ -44,7 +41,3 @@ The first two pages follow the [C4 model](https://c4model.com); later numbered p
 ## ADRs
 
 [ADR conventions and template](adr/README.md) cover numbering, lifecycle, and cross-linking. Rationale for everyday reversible choices belongs inline in architecture docs.
-
-## Work in progress
-
-[Specifications](specs/) capture reviewed design; [plans](plans/) capture execution order and findings. Fold durable structure into architecture docs and durable choices into ADRs when work ships.
