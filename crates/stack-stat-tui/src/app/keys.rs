@@ -7,10 +7,10 @@ use stack_stat_core::providers::{
     GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider,
 };
 
-use super::{App, Mode, PointerTarget, SortOrder, StatusLine};
+use super::{App, Mode, NoticeLevel, PointerTarget, Prompt, SortOrder};
 use crate::{
     action::{Action, lookup},
-    message::{Effect, Source},
+    message::{ActionSteps, Effect, Source},
 };
 
 impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
@@ -22,26 +22,39 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             return vec![Effect::Quit];
         }
-        match self.mode.clone() {
+        match self.mode {
             Mode::Help => {
                 self.mode = Mode::Normal;
                 Vec::new()
             }
-            Mode::Confirm(action) => {
-                self.mode = Mode::Normal;
-                if key.code == KeyCode::Char('y') {
-                    self.mutation_busy = true;
-                    vec![Effect::Mutate(action)]
-                } else {
-                    self.status = StatusLine {
-                        text: "cancelled".into(),
-                        is_error: false,
-                    };
-                    Vec::new()
-                }
-            }
+            Mode::Confirm(_) => self.confirm_key(key),
             Mode::Filter => self.filter_key(key),
             Mode::Normal => self.normal_key(key),
+        }
+    }
+
+    fn confirm_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if key
+            .modifiers
+            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+        {
+            return Vec::new();
+        }
+        match key.code {
+            KeyCode::Char('y' | 'Y') => {
+                let Mode::Confirm(prompt) = std::mem::replace(&mut self.mode, Mode::Normal) else {
+                    unreachable!("confirmation input requires a prompt");
+                };
+                self.mutation_busy = true;
+                self.notify(NoticeLevel::Progress, format!("{}…", prompt.title));
+                vec![Effect::Mutate(prompt.steps)]
+            }
+            KeyCode::Char('n' | 'N') | KeyCode::Esc => {
+                self.mode = Mode::Normal;
+                self.notify(NoticeLevel::Info, "cancelled".into());
+                Vec::new()
+            }
+            _ => Vec::new(),
         }
     }
 
@@ -91,6 +104,10 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     }
 
     fn normal_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if key.code == KeyCode::Esc {
+            self.dismiss_error();
+            return Vec::new();
+        }
         let Some(action) = lookup(key) else {
             return Vec::new();
         };
@@ -119,14 +136,19 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     self.no_pr();
                     return Vec::new();
                 };
-                return vec![Effect::Mutate(ProviderAction::OpenPr(number))];
+                return vec![Effect::Mutate(ActionSteps::single(ProviderAction::OpenPr(
+                    number,
+                )))];
             }
             Action::Checkout | Action::Push | Action::Sync | Action::ToggleDraft => {
                 if self.mutation_busy {
-                    self.status = StatusLine {
-                        text: "busy: mutation in progress".into(),
-                        is_error: false,
-                    };
+                    if !self
+                        .status
+                        .as_ref()
+                        .is_some_and(|notice| notice.level == NoticeLevel::Progress)
+                    {
+                        self.notify(NoticeLevel::Info, "busy: mutation in progress".into());
+                    }
                     return Vec::new();
                 }
                 let operation = match action {
@@ -147,11 +169,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     self.no_pr();
                     return Vec::new();
                 };
-                self.status = StatusLine {
-                    text: format!("{}? y/n", prompt(&operation)),
-                    is_error: false,
-                };
-                self.mode = Mode::Confirm(operation);
+                self.mode = Mode::Confirm(Prompt::for_action(operation));
             }
         }
         Vec::new()
@@ -167,10 +185,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
 
     fn no_pr(&mut self) {
         let branch = self.selected_name.as_deref().unwrap_or("selected branch");
-        self.status = StatusLine {
-            text: format!("no PR for {branch}"),
-            is_error: false,
-        };
+        self.notify(NoticeLevel::Info, format!("no PR for {branch}"));
     }
 
     fn move_selection(&mut self, delta: isize) {
@@ -205,18 +220,5 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         self.selected_index = position;
         self.selected_name = Some(name);
         self.follow_worktree = false;
-    }
-}
-
-fn prompt(action: &ProviderAction) -> String {
-    match action {
-        ProviderAction::OpenPr(number) => format!("Open PR #{number}"),
-        ProviderAction::Checkout(branch) => format!("Checkout {branch}"),
-        ProviderAction::PushStack => "Push stack".into(),
-        ProviderAction::SyncStack => "Sync stack".into(),
-        ProviderAction::ToggleDraft { number, make_ready } => format!(
-            "Mark PR #{number} {}",
-            if *make_ready { "ready" } else { "draft" }
-        ),
     }
 }

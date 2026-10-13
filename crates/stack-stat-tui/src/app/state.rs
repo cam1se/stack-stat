@@ -7,7 +7,7 @@ use stack_stat_core::{
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
-use super::{App, Mode, SortOrder, StatusLine};
+use super::{App, Mode, Notice, SortOrder};
 use crate::wrap;
 
 impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
@@ -95,13 +95,13 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     }
     /// Current input context.
     #[must_use]
-    pub fn mode(&self) -> Mode {
-        self.mode.clone()
+    pub fn mode(&self) -> &Mode {
+        &self.mode
     }
-    /// Footer feedback.
+    /// Current footer notice, independent of any confirmation prompt.
     #[must_use]
-    pub fn status_line(&self) -> &StatusLine {
-        &self.status
+    pub fn notice(&self) -> Option<&Notice> {
+        self.status.as_ref()
     }
     /// Bot reviewer visibility.
     #[must_use]
@@ -144,10 +144,19 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         self.update_available.as_deref()
     }
 
-    /// Advance presentation time with an injected clock.
+    /// Advance presentation time and expire notices using an injected clock.
     pub fn tick(&mut self, now: DateTime<Utc>) {
         self.now = now;
         self.animation.tick();
+        if self
+            .status
+            .as_ref()
+            .and_then(|notice| notice.expires_at)
+            .is_some_and(|deadline| now >= deadline)
+        {
+            self.status = None;
+            self.notice_source = None;
+        }
     }
     /// Presentation-only animation phase and flash lifetime.
     #[must_use]

@@ -6,12 +6,22 @@ use stack_stat_core::providers::{
 
 use super::App;
 use crate::{
-    message::{AppMessage, Effect, Source},
+    message::{ActionSteps, AppMessage, Effect, Source},
     poll::{fetch_git, fetch_github, fetch_store},
 };
 
-/// Perform one user-requested GitHub action without interacting with terminal state.
+/// Execute confirmed steps in order, stopping immediately if local linking fails.
 pub async fn execute<H: GitHubProvider>(
+    github: &H,
+    steps: &ActionSteps,
+) -> Result<String, GitHubError> {
+    if let Some(before) = &steps.before {
+        execute_one(github, before).await?;
+    }
+    execute_one(github, &steps.action).await
+}
+
+async fn execute_one<H: GitHubProvider>(
     github: &H,
     action: &ProviderAction,
 ) -> Result<String, GitHubError> {
@@ -55,7 +65,12 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             }
             Source::GitHub => {
                 self.apply(AppMessage::FetchStarted(Source::GitHub));
-                let result = fetch_github(self.github_provider.as_ref(), self.now).await;
+                let result = fetch_github(
+                    self.git_provider.as_ref(),
+                    self.github_provider.as_ref(),
+                    self.now,
+                )
+                .await;
                 self.apply(AppMessage::GitHub(result));
             }
             Source::Store => {
@@ -73,9 +88,9 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
     pub async fn run_effect(&mut self, effect: Effect) {
         match effect {
             Effect::Refresh(source) => self.poll_once(source).await,
-            Effect::Mutate(action) => {
-                let result = execute(self.github_provider.as_ref(), &action).await;
-                self.apply(AppMessage::MutationDone { action, result });
+            Effect::Mutate(steps) => {
+                let result = execute(self.github_provider.as_ref(), &steps).await;
+                self.apply(AppMessage::MutationDone { steps, result });
                 self.poll_once(Source::All).await;
             }
             Effect::Quit => {}
