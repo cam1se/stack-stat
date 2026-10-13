@@ -23,8 +23,9 @@ pub struct StackViewResponse {
 pub struct StackBranch {
     /// Local branch name.
     pub name: String,
-    /// Commit at the branch tip.
-    pub head: String,
+    /// Commit at the branch tip, when supplied by gh stack. Local Git is the
+    /// authority on the current tip, so an omitted head is valid.
+    pub head: Option<String>,
     /// Recorded parent base commit.
     pub base: String,
     /// Whether the extension considers this branch checked out.

@@ -6,6 +6,12 @@ The [core library](../../crates/stack-stat-core/) owns the `GitProvider`, `GitHu
 
 `CliGitProvider` discovers the checkout's top-level path and the Git common directory, which is shared by all worktrees. It reads HEAD via `git symbolic-ref --short HEAD`, branch refs via a single `git for-each-ref` invocation, and resolves explicit revisions with `git rev-parse --verify`. A detached checkout is represented by a distinct marker. Subprocess stdio is piped and optional Git locks are disabled for polling so the viewer does not interfere with concurrent agent work.
 
+## GitHub adapter
+
+`CliGitHubProvider` resolves the repository owner and name once through `gh repo view`, reads the checked-out branch's stack with `gh stack view --json`, then fetches PR details by exact PR number in one aliased `gh api graphql` query. PR details include draft state, the latest reviews and outstanding review requests, and head-commit check runs plus legacy status contexts. Deleted or inaccessible PR aliases are omitted while valid siblings remain available. A local stack can omit `head` and `pr` until a layer has been submitted; Git's branch refs supply the current tip.
+
+Every `gh` process runs with piped input/output and prompts disabled. Read operations time out after 20 seconds; push and sync allow 120 seconds. The adapter classifies off-stack, rebase-conflict, rate-limit, authentication, network, and parse failures separately so the UI can retain the last useful snapshot or direct the user to an actionable fix. The adapter does not decide colors, sorting, or which checks the repository suppresses.
+
 ## Local check results
 
 The file store lives at `<git-common-dir>/stack-stat/status/<encoded-branch>/<full-sha>.json`. Branch names are encoded as one platform-safe directory segment; `feat/api` does not create nested directories. The file contains a map of named results with outcome, optional message, and UTC timestamp. Writing merges a named result with its existing file and atomically replaces the file from a temporary sibling, so readers never observe a partial JSON document.

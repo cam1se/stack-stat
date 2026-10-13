@@ -31,3 +31,8 @@ N/A
 
 - macOS resolves temporary worktrees under `/private/var` even when the test created them under `/var`. The test compares canonical paths; provider discovery keeps Git's returned worktree path and canonicalizes only the common dir.
 - The file store exposes `read_all_with_warnings()` in addition to the trait's `read_all()` so the polling layer can surface corrupt/unreadable files without discarding valid entries.
+
+### Task 7: GitHub CLI provider
+
+- A throwaway local stack initialized with `gh stack init --base main test-layer` produced `gh stack view --json` without `head` or `pr` on the unsubmitted branch. The wire type now accepts absent `head`; a regression fixture records this observed shape. The live provider returned `stack=main, layers=1` and fetched PR #1 with five checks using the aliased GraphQL query. No remote stack was created or pushed.
+- `resolve_repo` is asynchronous rather than the plan's synchronous signature so its `gh repo view` read obeys the same 20-second timeout and process cleanup as all other `gh` reads.

@@ -274,9 +274,9 @@
 - [x] Store tests use `tempfile` dirs. Cover: write/read round-trip, merge of a second check into the same file, slash branch names, malformed-file skip, clear, gc with branch deleted and with three SHAs on one branch (keeps current + newest other)
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 6: Git CLI provider and file status store` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 6: Git CLI provider and file status store` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 7: GitHub CLI provider
 
@@ -299,15 +299,15 @@
 - A PR missing from the GraphQL response (deleted or inaccessible) is omitted, not an error. A GraphQL `errors` array with partial `data` returns the partial data. Only a response with no data is an error.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Query builder produces one alias per number and is deterministic (sorted, deduplicated)
-- [ ] Parser handles CheckRun and StatusContext, null `statusCheckRollup`, null `reviewDecision`, Bot vs User authors, Team review requests
-- [ ] `classify_gh_failure` covers all `GitHubError` variants
-- [ ] No path through the provider can attach gh to the terminal
+- [x] Query builder produces one alias per number and is deterministic (sorted, deduplicated)
+- [x] Parser handles CheckRun and StatusContext, null `statusCheckRollup`, null `reviewDecision`, Bot vs User authors, Team review requests
+- [x] `classify_gh_failure` covers all `GitHubError` variants
+- [x] No path through the provider can attach gh to the terminal
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-core --test github_cli`
-- [ ] Unit-test the pure functions only: query builder, response parser (using Task 5 fixtures plus a partial-errors fixture), and `classify_gh_failure` with representative stderr strings, including exit 3 from `stack sync` → `RebaseConflict`. Do not spawn real `gh` in tests
-- [ ] Throwaway smoke (not committed): in a repo with a real gh stack, call `stack_view` and `pr_details` from a scratch example or test-ignored harness and record the observed shapes in notes. If the real `gh stack view --json` shape differs from the fixture, fix the wire types and fixture
+- [x] `cargo test -p stack-stat-core --test github_cli`
+- [x] Unit-test the pure functions only: query builder, response parser (using Task 5 fixtures plus a partial-errors fixture), and `classify_gh_failure` with representative stderr strings, including exit 3 from `stack sync` → `RebaseConflict`. Do not spawn real `gh` in tests
+- [x] Throwaway smoke (not committed): in a repo with a real gh stack, call `stack_view` and `pr_details` from a scratch example or test-ignored harness and record the observed shapes in notes. If the real `gh stack view --json` shape differs from the fixture, fix the wire types and fixture
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

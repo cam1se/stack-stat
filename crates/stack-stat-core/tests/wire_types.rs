@@ -20,6 +20,14 @@ fn stack_view_fixture_preserves_order_and_flags() {
 }
 
 #[test]
+fn unsubmitted_local_stack_can_omit_head_and_pr_fields() {
+    let stack: StackViewResponse =
+        serde_json::from_str(include_str!("fixtures/stack_view_no_pr.json")).unwrap();
+    assert_eq!(stack.branches[0].name, "test-layer");
+    assert!(stack.branches[0].pr.is_none());
+}
+
+#[test]
 fn graphql_fixture_normalizes_checks_reviews_and_requests() {
     let raw = include_str!("fixtures/pr_details.json");
     let response: GraphqlResponse = serde_json::from_str(raw).unwrap();

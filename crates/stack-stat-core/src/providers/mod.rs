@@ -8,8 +8,11 @@ use async_trait::async_trait;
 pub mod branch_dir;
 mod file_store;
 mod git_cli;
+mod github_cli;
+pub mod graphql;
 pub use file_store::FileStatusStore;
 pub use git_cli::{CliGitProvider, DETACHED_HEAD};
+pub use github_cli::CliGitHubProvider;
 
 mod retention;
 mod types;

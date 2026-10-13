@@ -1,0 +1,17 @@
+{
+  "data": {
+    "repository": {
+      "pr42": {
+        "number": 42,
+        "url": "https://github.com/example/project/pull/42",
+        "isDraft": false,
+        "reviewDecision": null,
+        "latestReviews": {"nodes": []},
+        "reviewRequests": {"nodes": [{"requestedReviewer":{"__typename":"Team","name":"reviewers"}}]},
+        "commits": {"nodes": [{"commit":{"statusCheckRollup":null}}]}
+      },
+      "pr999": null
+    }
+  },
+  "errors": [{"message":"PR #999 is inaccessible"}]
+}
