@@ -17,6 +17,7 @@ fn absent_files_use_defaults() {
     assert_eq!(config.poll.store, 2);
     assert!(!config.reviews.show_bots);
     assert!(!config.reviews.gate_on_unresolved_threads);
+    assert!(!config.rebase.onto_trunk);
     assert_eq!(config.display.reviews_default, ReviewsDefault::Collapsed);
     assert!(config.checks.local.is_empty());
 }
@@ -43,27 +44,47 @@ fn repo_filters_and_local_checks_are_loaded() {
 }
 
 #[test]
+fn repo_rebase_setting_is_loaded() {
+    let repo = tempfile::tempdir().unwrap();
+    write(
+        &repo.path().join(".stack-stat.toml"),
+        "[rebase]\nonto_trunk = true\n",
+    );
+
+    let config = Config::load(repo.path(), None).unwrap();
+
+    assert!(config.rebase.onto_trunk);
+}
+
+#[test]
 fn personal_preferences_cannot_override_repo_filters() {
     let repo = tempfile::tempdir().unwrap();
     write(
         &repo.path().join(".stack-stat.toml"),
-        "[checks.skip]\nnames = ['required-check']\n[reviews]\nbots = ['ci-bot']\ngate_on_unresolved_threads = true\n",
+        "[checks.skip]\nnames = ['required-check']\n[reviews]\nbots = ['ci-bot']\ngate_on_unresolved_threads = true\n[rebase]\nonto_trunk = true\n",
     );
     let user = repo.path().join("config.toml");
     write(
         &user,
         "[checks.skip]\nnames = []\n[checks.local]\nother = { description = 'local' }\n\
-         [reviews]\nbots = []\ngate_on_unresolved_threads = false\n[poll]\ngithub = 60\n\
+         [reviews]\nbots = []\ngate_on_unresolved_threads = false\n[rebase]\nonto_trunk = false\n[poll]\ngithub = 60\n\
          [display]\nreviews_default = 'expanded'\n",
     );
     let config = Config::load(repo.path(), Some(&user)).unwrap();
     assert!(config.is_check_skipped("required-check"));
     assert!(config.is_bot("ci-bot"));
     assert!(config.reviews.gate_on_unresolved_threads);
+    assert!(config.rebase.onto_trunk);
     assert!(config.checks.local.is_empty());
     assert_eq!(config.poll.github, 60);
     assert_eq!(config.display.reviews_default, ReviewsDefault::Expanded);
-    assert_eq!(config.warnings.len(), 3);
+    assert_eq!(config.warnings.len(), 4);
+    assert!(
+        config
+            .warnings
+            .iter()
+            .any(|warning| warning.starts_with("user [rebase] is ignored"))
+    );
 }
 
 #[test]

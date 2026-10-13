@@ -2,7 +2,8 @@
 
 use super::{
     BranchState, CheckConclusion, CheckHealth, CheckStatus, CheckSummary, LocalCheckState, PrInfo,
-    PrLifecycle, ReviewDecision, ReviewState, ReviewSummary, StackState, StackSummary, Verdict,
+    PrLifecycle, RebaseNeed, ReviewDecision, ReviewState, ReviewSummary, StackState, StackSummary,
+    Verdict,
 };
 
 impl StackState {
@@ -39,7 +40,8 @@ impl BranchState {
         let reviews = pr.review_summary(true);
         let checks = pr.check_summary().worst;
         if pr.is_draft
-            || self.needs_rebase
+            || self.rebase == RebaseNeed::Parent
+            || (self.rebase == RebaseNeed::Trunk && self.trunk_rebase_gates)
             || checks == CheckHealth::Failure
             || (pr.threads_gate && pr.unresolved_threads > 0)
             || pr.review_decision == ReviewDecision::ChangesRequested

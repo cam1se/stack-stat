@@ -1,7 +1,7 @@
 mod support;
 
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
-use stack_stat_core::providers::PrResponse;
+use stack_stat_core::providers::{PrResponse, StackBranch, StackViewResponse};
 use stack_stat_tui::{
     message::{AppMessage, Source},
     ui::animation::{AnimationState, CellId, Column, diff_cells, stale_after},
@@ -44,6 +44,52 @@ async fn completed_check_flashes_only_its_cell_for_five_ticks() {
     assert!(
         !app.animation().is_flashing(&id),
         "unchanged polls must not re-flash"
+    );
+}
+
+#[tokio::test]
+async fn rebase_change_flashes_the_rebase_column() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &["base", "feature"])
+        .current_branch("feature")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    let old = app.state().clone();
+    handles.github.set_stack(StackViewResponse {
+        trunk: "main".into(),
+        current_branch: "feature".into(),
+        branches: vec![
+            StackBranch {
+                name: "base".into(),
+                head: Some(format!("{:040x}", 1)),
+                base: "0".repeat(40),
+                is_current: false,
+                is_merged: false,
+                is_queued: false,
+                needs_rebase: false,
+                pr: None,
+            },
+            StackBranch {
+                name: "feature".into(),
+                head: Some(format!("{:040x}", 2)),
+                base: "0".repeat(40),
+                is_current: true,
+                is_merged: false,
+                is_queued: false,
+                needs_rebase: true,
+                pr: None,
+            },
+        ],
+    });
+    app.poll_once(Source::GitHub).await;
+    assert_eq!(
+        diff_cells(&old, app.state()),
+        vec![CellId::new("feature", Column::Rebase)]
+    );
+    assert!(
+        app.animation()
+            .is_flashing(&CellId::new("feature", Column::Rebase))
     );
 }
 

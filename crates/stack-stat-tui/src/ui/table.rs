@@ -9,8 +9,8 @@ use ratatui::{
 };
 use stack_stat_core::{
     model::{
-        BranchState, CheckHealth, LocalCheckState, PrLifecycle, ReviewDecision, ReviewState,
-        ReviewSummary, StackStatus,
+        BranchState, CheckHealth, LocalCheckState, PrLifecycle, RebaseNeed, ReviewDecision,
+        ReviewState, ReviewSummary, StackStatus,
     },
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
@@ -52,7 +52,14 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         return;
     }
     let full_reviews = area.width >= 100;
+    let full_rebase = area.width >= 100;
     let full_local = area.width >= 80;
+    // The Rebase column only appears when a layer needs rebase attention.
+    let show_rebase = app
+        .state()
+        .branches
+        .iter()
+        .any(|branch| branch.rebase != RebaseNeed::None);
     // The Local column only appears once local checks are configured or reported for some branch.
     let show_local = app
         .state()
@@ -79,6 +86,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         if full_reviews { "Reviews" } else { "Rev" },
         if full_reviews { "Threads" } else { "Thr" },
     ];
+    if show_rebase {
+        widths.push(Constraint::Length(7));
+        header.push(if full_rebase { "Rebase" } else { "Rb" });
+    }
     if show_local {
         widths.push(Constraint::Length(if full_local { 22 } else { 4 }));
         header.push(if full_local { "Local" } else { "L" });
@@ -128,12 +139,9 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     full_reviews,
                 );
                 let threads = thread_label(branch);
+                let rebase = rebase_label(branch, full_rebase);
                 let local = local_label(branch, full_local);
-                let branch_name = format!(
-                    "{}{}",
-                    branch.name,
-                    if branch.needs_rebase { " !" } else { "" }
-                );
+                let branch_name = branch.name.as_str();
                 let title = branch.pr.as_ref().map_or("", |pr| pr.title.as_str());
                 let style = |column: Column, foreground| {
                     let style = Style::default().fg(foreground);
@@ -196,6 +204,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         style(Column::Threads, threads.1.color(theme)),
                     )),
                 ];
+                if show_rebase {
+                    cells.push(Cell::from(Span::styled(
+                        rebase.0,
+                        style(Column::Rebase, rebase.1.color(theme)),
+                    )));
+                }
                 if show_local {
                     cells.push(Cell::from(Span::styled(
                         local.0,
@@ -385,6 +399,21 @@ fn thread_label(branch: &BranchState) -> (String, Health) {
         return (format!("✖ {}", pr.unresolved_threads), Health::Failure);
     }
     (format!("… {}", pr.unresolved_threads), Health::Running)
+}
+
+fn rebase_label(branch: &BranchState, full: bool) -> (String, Health) {
+    match branch.rebase {
+        RebaseNeed::None => (String::new(), Health::Muted),
+        RebaseNeed::Parent => (if full { "↻ below" } else { "↻" }.into(), Health::Failure),
+        RebaseNeed::Trunk => (
+            if full { "↻ main" } else { "↻" }.into(),
+            if branch.trunk_rebase_gates {
+                Health::Failure
+            } else {
+                Health::Muted
+            },
+        ),
+    }
 }
 
 fn local_label(branch: &BranchState, full: bool) -> (String, Health) {

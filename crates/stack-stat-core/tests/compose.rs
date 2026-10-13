@@ -4,7 +4,7 @@ use chrono::{TimeZone, Utc};
 use stack_stat_core::{
     compose::{GitHubSnapshot, GitSnapshot, StackOutcome, StoreSnapshot, compose},
     config::{Config, LocalCheckConfig},
-    model::{CheckHealth, LocalCheckState, PrLifecycle, ReviewState, StackStatus},
+    model::{CheckHealth, LocalCheckState, PrLifecycle, RebaseNeed, ReviewState, StackStatus},
     providers::{CheckResult, GraphqlResponse, ReportedState, StackViewResponse, StatusEntry},
 };
 
@@ -111,7 +111,8 @@ fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
         ["auth", "api", "ui"]
     );
     assert_eq!(state.branches[0].lifecycle, PrLifecycle::Merged);
-    assert!(state.branches[2].needs_rebase);
+    assert_eq!(state.branches[1].rebase, RebaseNeed::None);
+    assert_eq!(state.branches[2].rebase, RebaseNeed::Parent);
     let api = &state.branches[1];
     assert!(api.is_current);
     assert_eq!(api.pr.as_ref().unwrap().unresolved_threads, 2);
@@ -167,6 +168,54 @@ fn composition_keeps_unresolved_threads_non_gating_by_default() {
     let pr = state.branches[1].pr.as_ref().unwrap();
     assert_eq!(pr.unresolved_threads, 2);
     assert!(!pr.threads_gate);
+}
+
+#[test]
+fn composition_classifies_rebase_targets_from_stack_order() {
+    let mut snapshot = github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.branches[1].needs_rebase = true;
+    stack.branches[2].needs_rebase = true;
+
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
+
+    assert_eq!(state.branches[0].rebase, RebaseNeed::None);
+    assert_eq!(state.branches[1].rebase, RebaseNeed::Trunk);
+    assert_eq!(state.branches[2].rebase, RebaseNeed::Parent);
+    assert!(
+        state
+            .branches
+            .iter()
+            .all(|branch| !branch.trunk_rebase_gates)
+    );
+}
+
+#[test]
+fn composition_makes_first_open_layer_trunk_target_after_merged_layers() {
+    let mut snapshot = github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.branches[0].needs_rebase = true;
+    stack.branches[1].is_merged = true;
+    stack.branches[1].needs_rebase = true;
+    stack.branches[2].needs_rebase = true;
+    let mut config = Config::default();
+    config.rebase.onto_trunk = true;
+
+    let state = compose(Some(&git("ui")), Some(&snapshot), None, &config);
+
+    assert_eq!(state.branches[0].rebase, RebaseNeed::None);
+    assert_eq!(state.branches[1].rebase, RebaseNeed::None);
+    assert_eq!(state.branches[2].rebase, RebaseNeed::Trunk);
+    assert!(
+        state
+            .branches
+            .iter()
+            .all(|branch| branch.trunk_rebase_gates)
+    );
 }
 
 #[test]

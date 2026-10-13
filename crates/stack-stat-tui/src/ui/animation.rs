@@ -9,8 +9,10 @@ use stack_stat_core::model::{BranchState, StackState};
 /// Branch table column that may flash when its displayed value changes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Column {
-    /// Branch name or checked-out/rebase marker.
+    /// Branch name or checked-out marker.
     Branch,
+    /// Rebase status.
+    Rebase,
     /// PR identity.
     Pr,
     /// Draft, ready, merged, or queued state.
@@ -148,6 +150,7 @@ pub fn diff_cells(old: &StackState, new: &StackState) -> Vec<CellId> {
                 Column::Checks,
                 Column::Reviews,
                 Column::Threads,
+                Column::Rebase,
                 Column::Local,
             ] {
                 changed.push(CellId::new(&branch.name, column));
@@ -161,8 +164,11 @@ pub fn diff_cells(old: &StackState, new: &StackState) -> Vec<CellId> {
 
 fn compare_branch(old: &BranchState, new: &BranchState, changed: &mut Vec<CellId>) {
     let name = &new.name;
-    if old.is_current != new.is_current || old.needs_rebase != new.needs_rebase {
+    if old.is_current != new.is_current {
         changed.push(CellId::new(name, Column::Branch));
+    }
+    if old.rebase != new.rebase || old.trunk_rebase_gates != new.trunk_rebase_gates {
+        changed.push(CellId::new(name, Column::Rebase));
     }
     if old.pr_number != new.pr_number {
         changed.push(CellId::new(name, Column::Pr));

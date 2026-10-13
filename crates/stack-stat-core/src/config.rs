@@ -16,6 +16,8 @@ pub struct Config {
     pub checks: ChecksConfig,
     /// Repository-level reviewer display defaults.
     pub reviews: ReviewsConfig,
+    /// Repository-level rebase readiness policy.
+    pub rebase: RebaseConfig,
     /// Effective refresh intervals.
     pub poll: PollConfig,
     /// User-specific presentation preferences.
@@ -62,6 +64,14 @@ pub struct ReviewsConfig {
     pub gate_on_unresolved_threads: bool,
     /// Whether bot reviews are visible before toggling them.
     pub show_bots: bool,
+}
+
+/// Repository policy for whether trunk drift blocks readiness.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(default, deny_unknown_fields)]
+pub struct RebaseConfig {
+    /// Whether a layer behind trunk blocks readiness.
+    pub onto_trunk: bool,
 }
 
 /// Refresh cadence in whole seconds.
@@ -113,6 +123,7 @@ pub enum ReviewsDefault {
 struct RepoFile {
     checks: ChecksConfig,
     reviews: ReviewsConfig,
+    rebase: RebaseConfig,
     poll: PollConfig,
 }
 
@@ -121,6 +132,7 @@ struct RepoFile {
 struct UserFile {
     checks: Option<ChecksConfig>,
     reviews: Option<ReviewsConfig>,
+    rebase: Option<RebaseConfig>,
     poll: Option<UserPoll>,
     display: DisplayConfig,
 }
@@ -152,6 +164,7 @@ impl Config {
         let mut config = Self {
             checks: repo.checks,
             reviews: repo.reviews,
+            rebase: repo.rebase,
             poll: repo.poll,
             display: user.display,
             warnings: Vec::new(),
@@ -175,6 +188,11 @@ impl Config {
             config
                 .warnings
                 .push("user [reviews] is ignored; the repository sets review defaults".into());
+        }
+        if user.rebase.is_some() {
+            config
+                .warnings
+                .push("user [rebase] is ignored; the repository sets rebase policy".into());
         }
         if let Some(poll) = user.poll {
             if let Some(value) = poll.git {

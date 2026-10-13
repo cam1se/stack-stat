@@ -42,8 +42,10 @@ pub struct BranchState {
     pub name: String,
     /// Full HEAD commit identifier, empty when the local ref is absent.
     pub head_sha: String,
-    /// Whether its stack base has moved.
-    pub needs_rebase: bool,
+    /// Required rebase target for this layer.
+    pub rebase: RebaseNeed,
+    /// Whether trunk rebases block readiness.
+    pub trunk_rebase_gates: bool,
     /// Whether this worktree has checked out this branch.
     pub is_current: bool,
     /// Its PR lifecycle state.
@@ -54,6 +56,18 @@ pub struct BranchState {
     pub pr: Option<PrInfo>,
     /// Results reported for this branch, including missing configured checks.
     pub local_checks: Vec<LocalCheckResult>,
+}
+
+/// Required rebase target for a stack layer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RebaseNeed {
+    /// No rebase is required.
+    #[default]
+    None,
+    /// Rebase onto the layer directly below this one.
+    Parent,
+    /// Rebase onto the trunk branch.
+    Trunk,
 }
 
 /// GitHub's lifecycle status for a stack layer.
