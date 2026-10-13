@@ -12,6 +12,7 @@ use tokio::{process::Command, time::timeout};
 use super::{
     GitHubError, GitHubProvider, StackDetailsResponse, StackViewResponse,
     graphql::{StackDiscovery, build_stack_query, classify_gh_failure, parse_stack_response},
+    push_remote,
 };
 
 const READ_TIMEOUT: Duration = Duration::from_secs(20);
@@ -109,7 +110,11 @@ impl CliGitHubProvider {
 #[async_trait]
 impl GitHubProvider for CliGitHubProvider {
     async fn stack_view(&self, current_branch: &str) -> Result<StackViewResponse, GitHubError> {
-        let mut discovery = StackDiscovery::new(current_branch)?;
+        let discovery = StackDiscovery::new(current_branch)?;
+        let head_owner = push_remote::push_owner(&self.worktree_root, current_branch)
+            .await
+            .unwrap_or_else(|| self.owner.clone());
+        let mut discovery = discovery.with_head_owner(head_owner);
         loop {
             let input = format!("query={}", discovery.query(&self.owner, &self.repo));
             let output = self

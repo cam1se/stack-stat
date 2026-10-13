@@ -136,7 +136,11 @@ fn lookup_query_selects_newest_open_and_lifecycle_with_escaped_branch_name() {
     assert!(query.contains("openPullRequests: pullRequests("));
     assert!(query.contains("states:[OPEN]"));
     assert!(query.contains("states:[OPEN,MERGED,CLOSED]"));
-    assert_eq!(query.matches("first:1,").count(), 2);
+    assert_eq!(query.matches("first:10,").count(), 2);
+    assert_eq!(
+        query.matches("headRepository { owner { login } }").count(),
+        2
+    );
     assert_eq!(
         query
             .matches("orderBy:{field:CREATED_AT,direction:DESC}")
@@ -154,6 +158,98 @@ fn lookup_query_selects_newest_open_and_lifecycle_with_escaped_branch_name() {
     ] {
         assert!(query.contains(field), "missing {field}");
     }
+}
+
+fn candidate(owner: Option<&str>, stack: Value) -> Value {
+    let head_repository = owner.map(|login| json!({"owner": {"login": login}}));
+    json!({"headRepository": head_repository, "stack": stack})
+}
+
+fn fork_stack(response: &mut Value) -> Value {
+    let mut stack = stack_node(response).clone();
+    stack["baseRefName"] = json!("fork-trunk");
+    stack
+}
+
+fn discover_for(response: &Value, owner: &str) -> Result<StackViewResponse, GitHubError> {
+    StackDiscovery::new("api")?
+        .with_head_owner(owner)
+        .accept_response(0, &response.to_string(), "")?
+        .ok_or_else(|| GitHubError::Parse("test expected a complete stack".into()))
+}
+
+#[test]
+fn fork_pr_with_the_same_branch_name_is_skipped_for_the_local_repository() {
+    let mut response = fixture();
+    let mine = stack_node(&mut response).clone();
+    let theirs = fork_stack(&mut response);
+    // The fork PR is newer, so it sorts first.
+    response["data"]["repository"]["openPullRequests"]["nodes"] = json!([
+        candidate(Some("alice"), theirs),
+        candidate(Some("example"), mine)
+    ]);
+
+    assert_eq!(discover_for(&response, "example").unwrap().trunk, "main");
+}
+
+#[test]
+fn fork_pr_alone_is_not_the_local_branch_stack() {
+    let mut response = fixture();
+    let theirs = fork_stack(&mut response);
+    response["data"]["repository"]["openPullRequests"]["nodes"] =
+        json!([candidate(Some("alice"), theirs.clone())]);
+    response["data"]["repository"]["pullRequests"]["nodes"] =
+        json!([candidate(Some("alice"), theirs)]);
+
+    assert_eq!(
+        discover_for(&response, "example"),
+        Err(GitHubError::NotInStack)
+    );
+}
+
+#[test]
+fn checkout_pushing_to_a_fork_selects_that_forks_pr() {
+    let mut response = fixture();
+    let upstream = stack_node(&mut response).clone();
+    let mine = fork_stack(&mut response);
+    response["data"]["repository"]["openPullRequests"]["nodes"] = json!([
+        candidate(Some("someone-else"), upstream),
+        candidate(Some("Alice"), mine)
+    ]);
+
+    // Owner comparison ignores case, as GitHub logins do.
+    assert_eq!(
+        discover_for(&response, "alice").unwrap().trunk,
+        "fork-trunk"
+    );
+}
+
+#[test]
+fn lifecycle_fallback_skips_fork_prs_and_prs_from_deleted_forks() {
+    let mut response = fixture();
+    let mine = stack_node(&mut response).clone();
+    let theirs = fork_stack(&mut response);
+    response["data"]["repository"]["openPullRequests"]["nodes"] = json!([]);
+    response["data"]["repository"]["pullRequests"]["nodes"] = json!([
+        candidate(Some("alice"), theirs.clone()),
+        candidate(None, theirs),
+        candidate(Some("example"), mine)
+    ]);
+
+    assert_eq!(discover_for(&response, "example").unwrap().trunk, "main");
+}
+
+#[test]
+fn open_pr_from_another_repository_does_not_block_own_merged_pr_fallback() {
+    let mut response = fixture();
+    let mine = stack_node(&mut response).clone();
+    let theirs = fork_stack(&mut response);
+    response["data"]["repository"]["openPullRequests"]["nodes"] =
+        json!([candidate(Some("alice"), theirs)]);
+    response["data"]["repository"]["pullRequests"]["nodes"] =
+        json!([candidate(Some("example"), mine)]);
+
+    assert_eq!(discover_for(&response, "example").unwrap().trunk, "main");
 }
 
 #[test]
