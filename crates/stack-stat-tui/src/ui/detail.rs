@@ -278,9 +278,10 @@ fn review_headline(
     } else if reviews
         .iter()
         .any(|review| review.state == ReviewState::Pending)
-        || decision == ReviewDecision::ReviewRequired
     {
         "Review pending"
+    } else if decision == ReviewDecision::ReviewRequired {
+        "Review required"
     } else if approved > 0 || decision == ReviewDecision::Approved {
         "Approved"
     } else {
