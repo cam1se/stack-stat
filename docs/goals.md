@@ -2,9 +2,13 @@
 
 Judge architecture choices against these goals. Name any tradeoff that improves one at another's expense.
 
-## At-a-glance stack health
+## Know at a glance whether a branch is ready
 
-A developer can understand branch, pull request, check, and review state without leaving the terminal.
+The primary purpose. A developer sees from the stack table alone whether each branch is ready to merge, without leaving the terminal. Readiness combines draft status, CI, reviews, and local checks, and is never overstated: unknown or failing evidence is not shown as ready.
+
+## Find the blocker fast
+
+When a branch is not ready, the blocking check, review, rebase, or missing result is reachable within a keystroke or two of the row. The dashboard shows what is wrong, not just that something is.
 
 ## Agent-aware
 
