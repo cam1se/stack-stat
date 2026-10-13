@@ -36,6 +36,8 @@ pub enum StackOutcome {
 /// Successful GitHub poll result, including an off-stack result.
 #[derive(Clone, Debug)]
 pub struct GitHubSnapshot {
+    /// `owner/name` of the GitHub repository, empty when unknown.
+    pub repo: String,
     /// Local stack view or off-stack condition.
     pub stack: StackOutcome,
     /// PR details fetched by exact number.
@@ -64,6 +66,7 @@ pub fn compose(
     config: &Config,
 ) -> StackState {
     let mut state = StackState {
+        repo: github.map_or_else(String::new, |github| github.repo.clone()),
         worktree_branch: git.map_or_else(String::new, |git| git.current_branch.clone()),
         last_git_fetch: git.map(|snapshot| snapshot.fetched_at),
         last_github_fetch: github.map(|snapshot| snapshot.fetched_at),

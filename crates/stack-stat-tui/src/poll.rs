@@ -43,12 +43,14 @@ pub async fn fetch_github<H: GitHubProvider>(
             Ok(GitHubSnapshot {
                 stack: StackOutcome::InStack(stack),
                 prs,
+                repo: github.repo(),
                 fetched_at: now,
             })
         }
         Err(GitHubError::NotInStack) => Ok(GitHubSnapshot {
             stack: StackOutcome::NotInStack,
             prs: vec![],
+            repo: github.repo(),
             fetched_at: now,
         }),
         Err(error) => Err(error),

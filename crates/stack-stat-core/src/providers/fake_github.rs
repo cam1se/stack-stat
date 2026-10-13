@@ -19,6 +19,8 @@ pub struct FakeGitHubState {
     pub stack: Result<StackViewResponse, GitHubError>,
     /// PRs returned by the details query.
     pub prs: Vec<PrResponse>,
+    /// `owner/name` of the GitHub repository, empty when unknown.
+    pub repo: String,
     /// Mutations and browser-open actions in invocation order.
     pub actions: Vec<ProviderAction>,
     /// Result returned by subsequent action calls.
@@ -34,6 +36,7 @@ impl FakeGitHubProvider {
                 stack: Ok(stack),
                 prs,
                 actions: Vec::new(),
+                repo: String::new(),
                 mutation_result: Ok(String::new()),
             })),
         }
@@ -52,6 +55,11 @@ impl FakeGitHubProvider {
     /// Replace the PR details seen at the next fetch.
     pub fn set_prs(&self, prs: Vec<PrResponse>) {
         self.state.lock().expect("fake GitHub mutex poisoned").prs = prs;
+    }
+
+    /// Change the repository identity seen at the next fetch.
+    pub fn set_repo(&self, repo: impl Into<String>) {
+        self.state.lock().expect("fake GitHub mutex poisoned").repo = repo.into();
     }
 
     /// Cause subsequent action calls to fail.
@@ -86,6 +94,14 @@ impl GitHubProvider for FakeGitHubProvider {
             .lock()
             .expect("fake GitHub mutex poisoned")
             .stack
+            .clone()
+    }
+
+    fn repo(&self) -> String {
+        self.state
+            .lock()
+            .expect("fake GitHub mutex poisoned")
+            .repo
             .clone()
     }
 

@@ -1591,6 +1591,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "tui-piechart",
  "zip",
 ]
 
@@ -1928,6 +1929,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "tui-piechart"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1958db0d8b2e127821dbf4735aaba4e07712022d341d1cff30155129f0e6111b"
+dependencies = [
+ "ratatui",
 ]
 
 [[package]]

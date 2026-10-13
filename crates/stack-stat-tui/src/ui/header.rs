@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use stack_stat_core::{
-    model::{StackStatus, Verdict},
+    model::{StackStatus, StackSummary, Verdict},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
@@ -22,15 +22,40 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     theme: &Theme,
 ) {
     let state = app.state();
-    let chain = match state.stack_status {
-        StackStatus::Loading => "Stack: loading…".into(),
-        StackStatus::NotInStack => "Stack: not in a stack".into(),
+    let (identity, stack_summary) = match state.stack_status {
+        StackStatus::Loading => (
+            Line::styled(
+                "loading…",
+                Style::default()
+                    .fg(theme.muted)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            None,
+        ),
+        StackStatus::NotInStack => (
+            Line::styled(
+                "Stack: not in a stack",
+                Style::default()
+                    .fg(theme.muted)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            None,
+        ),
         StackStatus::Ready => {
-            let mut chain = format!("Stack: ({})", state.trunk);
-            for branch in &state.branches {
-                chain.push_str(&format!(" ← {}", branch.name));
-            }
-            chain
+            let layers = state.branches.len();
+            let layer_label = if layers == 1 { "layer" } else { "layers" };
+            let identity = if state.repo.is_empty() {
+                format!("{} · {} {layer_label}", state.trunk, layers)
+            } else {
+                format!(
+                    "{} · {} · {} {layer_label}",
+                    state.repo, state.trunk, layers
+                )
+            };
+            (
+                Line::styled(identity, Style::default().add_modifier(Modifier::BOLD)),
+                Some(state.summary()),
+            )
         }
     };
     let branch = if state.worktree_branch.is_empty() {
@@ -67,36 +92,48 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Span::raw(format!("worktree: {branch}    {icon} ")),
         Span::styled(age, Style::default().fg(age_color)),
     ]);
-    let summary = match state.stack_status {
-        StackStatus::Ready => summary_line(app, theme),
-        StackStatus::Loading => {
-            Line::styled("Stack summary: loading…", Style::default().fg(theme.muted))
-        }
-        StackStatus::NotInStack => Line::styled(
-            "Stack summary: not in a stack",
-            Style::default().fg(theme.muted),
-        ),
+    let summary = match stack_summary {
+        Some(summary) => summary_line(summary, theme),
+        None => match state.stack_status {
+            StackStatus::Loading => {
+                Line::styled("Stack summary: loading…", Style::default().fg(theme.muted))
+            }
+            StackStatus::NotInStack => Line::styled(
+                "Stack summary: not in a stack",
+                Style::default().fg(theme.muted),
+            ),
+            StackStatus::Ready => unreachable!("ready stacks have a summary"),
+        },
     };
     let block = Block::default()
         .borders(Borders::ALL)
         .title(super::title(" stack-stat ", theme))
         .border_style(Style::default().fg(theme.muted));
     frame.render_widget(
-        Paragraph::new(vec![
-            Line::styled(chain, Style::default().add_modifier(Modifier::BOLD)),
-            status_line,
-            summary,
-        ])
-        .block(block),
+        Paragraph::new(vec![identity, status_line, summary]).block(block),
         area,
     );
+
+    if area.height >= 7
+        && area.width >= 70
+        && !state.branches.is_empty()
+        && let Some(summary) = stack_summary
+    {
+        super::pie::render(
+            frame,
+            Rect::new(
+                area.right().saturating_sub(14),
+                area.y.saturating_add(1),
+                12,
+                5,
+            ),
+            summary,
+            theme,
+        );
+    }
 }
 
-fn summary_line<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
-    app: &App<G, H, S>,
-    theme: &Theme,
-) -> Line<'static> {
-    let summary = app.state().summary();
+fn summary_line(summary: StackSummary, theme: &Theme) -> Line<'static> {
     let mut spans = Vec::new();
     for (verdict, count, always_visible) in [
         (Verdict::Go, summary.go, true),

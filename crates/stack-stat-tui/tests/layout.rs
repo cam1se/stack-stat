@@ -17,6 +17,15 @@ fn draw(app: &support::FakeApp, width: u16, height: u16) -> ratatui::buffer::Buf
     terminal.backend().buffer().clone()
 }
 
+#[test]
+fn header_expands_only_in_wide_tall_terminals() {
+    let (app, _) = TestScenario::builder().build().into_app();
+
+    assert_eq!(ui::regions(Rect::new(0, 0, 70, 30), &app).header.height, 7);
+    assert_eq!(ui::regions(Rect::new(0, 0, 69, 30), &app).header.height, 5);
+    assert_eq!(ui::regions(Rect::new(0, 0, 70, 29), &app).header.height, 5);
+}
+
 #[tokio::test]
 async fn selected_branch_always_has_a_detail_pane_that_fills_the_remaining_body() {
     let (mut app, _) = TestScenario::builder()

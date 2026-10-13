@@ -7,6 +7,8 @@ use chrono::{DateTime, Utc};
 pub struct StackState {
     /// Name of the stack's trunk branch, if known.
     pub trunk: String,
+    /// `owner/name` of the GitHub repository, empty when unknown.
+    pub repo: String,
     /// Branches in stack order, trunk-first.
     pub branches: Vec<BranchState>,
     /// Branch currently checked out in this worktree.

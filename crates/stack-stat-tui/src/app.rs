@@ -162,9 +162,15 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                         self.clear_error(Source::GitHub);
                     }
                     Err(GitHubError::NotInStack) => {
+                        let repo = self
+                            .github
+                            .as_ref()
+                            .map(|snapshot| snapshot.repo.clone())
+                            .unwrap_or_default();
                         self.github = Some(GitHubSnapshot {
                             stack: stack_stat_core::compose::StackOutcome::NotInStack,
                             prs: vec![],
+                            repo,
                             fetched_at: self.now,
                         });
                         self.clear_error(Source::GitHub);
