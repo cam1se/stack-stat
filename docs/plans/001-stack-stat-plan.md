@@ -155,9 +155,9 @@
 - [x] `./scripts/serve-docs.sh --watch` builds the stub site if `uv` is available; otherwise note it as skipped
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 3: CI, release automation, install scripts, and Pages site scaffold` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 3: CI, release automation, install scripts, and Pages site scaffold` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 4: Domain model and configuration
 
@@ -181,14 +181,14 @@
 - Malformed TOML returns an error naming the file. The caller (startup) treats it as fatal.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] All spec domain types exist with doc comments
-- [ ] `CheckSummary` excludes config-skipped checks from both `passed` and `total`
-- [ ] Repo + user merge obeys the precedence rule, and ignored user keys produce warnings
-- [ ] Glob matching supports `*` and `?` against full check names (`codecov/*` matches `codecov/patch`)
+- [x] All spec domain types exist with doc comments
+- [x] `CheckSummary` excludes config-skipped checks from both `passed` and `total`
+- [x] Repo + user merge obeys the precedence rule, and ignored user keys produce warnings
+- [x] Glob matching supports `*` and `?` against full check names (`codecov/*` matches `codecov/patch`)
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-core --test config` and `--test model`
-- [ ] Cover: defaults with no files; repo-only; user-only poll override; user attempting to un-skip (ignored + warning); unknown key error; zero poll interval error; glob match/non-match; `CheckSummary` worst-state ordering and skip exclusion; collapsed review status from mixed reviews
+- [x] `cargo test -p stack-stat-core --test config` and `--test model`
+- [x] Cover: defaults with no files; repo-only; user-only poll override; user attempting to un-skip (ignored + warning); unknown key error; zero poll interval error; glob match/non-match; `CheckSummary` worst-state ordering and skip exclusion; collapsed review status from mixed reviews
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
