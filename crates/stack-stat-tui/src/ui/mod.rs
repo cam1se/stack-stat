@@ -18,6 +18,7 @@ pub mod animation;
 mod detail;
 mod header;
 mod help;
+mod issues;
 mod pie;
 mod status_bar;
 mod table;
@@ -51,8 +52,12 @@ pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     area: Rect,
     app: &App<G, H, S>,
 ) -> UiRegions {
-    let header_height = if area.height >= 30 && area.width >= 70 {
-        7
+    // The pie chart needs an even number of content rows: tui-piechart halves the area height
+    // with integer division, so an odd height wastes a row and shrinks the circle.
+    let header_height = if area.height >= 44 && area.width >= 90 {
+        10
+    } else if area.height >= 30 && area.width >= 70 {
+        8
     } else {
         5
     };

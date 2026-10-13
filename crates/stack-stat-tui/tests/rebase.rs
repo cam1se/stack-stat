@@ -6,7 +6,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{ConfigBuilder, FakeApp, PrBuilder, TestScenario, find_row};
+use support::{ConfigBuilder, FakeApp, PrBuilder, TestScenario, find_body_row, find_row};
 
 fn draw(app: &FakeApp, width: u16) -> (Buffer, Theme) {
     let mut terminal = Terminal::new(TestBackend::new(width, 40)).unwrap();
@@ -61,7 +61,7 @@ async fn rebase_column_is_hidden_when_no_layer_needs_rebase() {
 async fn parent_rebase_is_blocking_and_names_the_layer_below() {
     let app = app_with_rebase("feature", false, "feature").await;
     let (buffer, theme) = draw(&app, 120);
-    let row = find_row(&buffer, "#2").expect("feature row");
+    let row = find_body_row(&buffer, "#2").expect("feature row");
     assert!(row_text(&buffer, row).contains("↻ below"));
     assert_eq!(text_color(&buffer, row, "↻ below"), theme.error);
     assert!(row_text(&buffer, row).contains('✖'));
@@ -76,7 +76,7 @@ async fn parent_rebase_is_blocking_and_names_the_layer_below() {
 async fn trunk_rebase_is_nonblocking_by_default() {
     let app = app_with_rebase("base", false, "base").await;
     let (buffer, theme) = draw(&app, 120);
-    let row = find_row(&buffer, "#1").expect("base row");
+    let row = find_body_row(&buffer, "#1").expect("base row");
     assert!(row_text(&buffer, row).contains("↻ main"));
     assert_eq!(text_color(&buffer, row, "↻ main"), theme.muted);
     assert!(row_text(&buffer, row).contains('✔'));
@@ -92,7 +92,7 @@ async fn trunk_rebase_is_nonblocking_by_default() {
 async fn gated_trunk_rebase_is_blocking() {
     let app = app_with_rebase("base", true, "base").await;
     let (buffer, theme) = draw(&app, 120);
-    let row = find_row(&buffer, "#1").expect("base row");
+    let row = find_body_row(&buffer, "#1").expect("base row");
     assert_eq!(text_color(&buffer, row, "↻ main"), theme.error);
     assert!(row_text(&buffer, row).contains('✖'));
     let detail = find_row(&buffer, "Behind main: rebase onto trunk").expect("trunk rebase detail");
@@ -109,7 +109,7 @@ async fn narrow_rebase_column_uses_short_header_and_glyph() {
     let (buffer, _) = draw(&app, 90);
     let header = find_row(&buffer, "Rb").expect("narrow rebase header");
     assert!(!row_text(&buffer, header).contains("Rebase"));
-    let row = find_row(&buffer, "#2").expect("feature row");
+    let row = find_body_row(&buffer, "#2").expect("feature row");
     assert!(row_text(&buffer, row).contains('↻'));
     assert!(!row_text(&buffer, row).contains("below"));
 }

@@ -7,7 +7,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{PrBuilder, TestScenario, assert_row_contains, find_row};
+use support::{PrBuilder, TestScenario, assert_row_contains, find_body_row, find_row};
 
 fn draw(app: &support::FakeApp, width: u16, height: u16) -> ratatui::buffer::Buffer {
     let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
@@ -21,7 +21,8 @@ fn draw(app: &support::FakeApp, width: u16, height: u16) -> ratatui::buffer::Buf
 fn header_expands_only_in_wide_tall_terminals() {
     let (app, _) = TestScenario::builder().build().into_app();
 
-    assert_eq!(ui::regions(Rect::new(0, 0, 70, 30), &app).header.height, 7);
+    assert_eq!(ui::regions(Rect::new(0, 0, 70, 30), &app).header.height, 8);
+    assert_eq!(ui::regions(Rect::new(0, 0, 90, 44), &app).header.height, 10);
     assert_eq!(ui::regions(Rect::new(0, 0, 69, 30), &app).header.height, 5);
     assert_eq!(ui::regions(Rect::new(0, 0, 70, 29), &app).header.height, 5);
 }
@@ -60,9 +61,9 @@ async fn table_displays_go_wait_and_no_go_verdict_glyphs() {
         .into_app();
     app.poll_once(Source::All).await;
 
-    let buffer = draw(&app, 120, 30);
+    let buffer = draw(&app, 120, 40);
     for (number, glyph) in [(42, "✔"), (43, "…"), (44, "✖")] {
-        let row = find_row(&buffer, &format!("#{number}")).expect("branch row");
+        let row = find_body_row(&buffer, &format!("#{number}")).expect("branch row");
         assert_row_contains(&buffer, row, &[glyph, &format!("#{number}")]);
     }
 }

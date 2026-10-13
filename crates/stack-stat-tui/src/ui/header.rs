@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use stack_stat_core::{
-    model::{StackStatus, StackSummary, Verdict},
+    model::{StackState, StackStatus, StackSummary, Verdict},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
@@ -58,6 +58,8 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             )
         }
     };
+    let chart_area = chart_area(area, stack_summary, !state.branches.is_empty());
+    let text_width = text_width(area, chart_area);
     let branch = if state.worktree_branch.is_empty() {
         "loading…"
     } else {
@@ -105,32 +107,194 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             StackStatus::Ready => unreachable!("ready stacks have a summary"),
         },
     };
+    // The pie chart already shows the verdict counts, so the count strip is only for headers
+    // without one.
+    let mut lines = vec![
+        truncate_line(identity, text_width),
+        truncate_line(status_line, text_width),
+    ];
+    if chart_area.is_none() {
+        lines.push(truncate_line(summary, text_width));
+    }
+    if area.height >= 8 && stack_summary.is_some() {
+        // Fill the rows beside the pie: the next layer, one bullet per issue, then the category
+        // breakdown. Spare rows become spacers, first before `Blocked by:`, then before `Next:`;
+        // surplus bullets collapse into a `+N more` line.
+        let budget = usize::from(area.height.saturating_sub(2));
+        let (head, bullets) = next_to_merge_lines(state, theme);
+        let blocked = blocker_line(state, theme);
+        let room = budget.saturating_sub(lines.len() + 1 + usize::from(blocked.is_some()));
+        let spare = room.saturating_sub(bullets.len());
+        let spacer_before_blocked = blocked.is_some() && spare >= 1;
+        let spacer_before_next = spare > usize::from(blocked.is_some());
+        if spacer_before_next {
+            lines.push(Line::default());
+        }
+        lines.push(truncate_line(head, text_width));
+        let shown = if bullets.len() <= room {
+            bullets
+        } else if room > 0 {
+            let keep = room - 1;
+            let more = bullets.len() - keep;
+            let mut shown: Vec<_> = bullets.into_iter().take(keep).collect();
+            shown.push(Line::styled(
+                format!("  … +{more} more"),
+                Style::default().fg(theme.muted),
+            ));
+            shown
+        } else {
+            Vec::new()
+        };
+        lines.extend(
+            shown
+                .into_iter()
+                .map(|line| truncate_line(line, text_width)),
+        );
+        if let Some(blocked) = blocked {
+            if spacer_before_blocked {
+                lines.push(Line::default());
+            }
+            lines.push(truncate_line(blocked, text_width));
+        }
+    }
+
     let block = Block::default()
         .borders(Borders::ALL)
         .title(super::title(" stack-stat ", theme))
         .border_style(Style::default().fg(theme.muted));
-    frame.render_widget(
-        Paragraph::new(vec![identity, status_line, summary]).block(block),
-        area,
-    );
+    frame.render_widget(Paragraph::new(lines).block(block), area);
 
-    if area.height >= 7
-        && area.width >= 70
-        && !state.branches.is_empty()
-        && let Some(summary) = stack_summary
-    {
-        super::pie::render(
-            frame,
-            Rect::new(
-                area.right().saturating_sub(14),
-                area.y.saturating_add(1),
-                12,
-                5,
-            ),
-            summary,
-            theme,
-        );
+    if let (Some(chart_area), Some(summary)) = (chart_area, stack_summary) {
+        super::pie::render(frame, chart_area, summary, theme);
     }
+}
+
+fn chart_area(area: Rect, summary: Option<StackSummary>, has_branches: bool) -> Option<Rect> {
+    if area.height < 8 || area.width < 70 || !has_branches || summary.is_none() {
+        return None;
+    }
+    // Dots are square, so a pie twice as many columns as rows reads as a circle.
+    let rows = area.height.saturating_sub(2);
+    let columns = rows * 2;
+    Some(Rect::new(
+        area.right().saturating_sub(columns + 2),
+        area.y.saturating_add(1),
+        columns,
+        rows,
+    ))
+}
+
+fn text_width(area: Rect, chart_area: Option<Rect>) -> usize {
+    let content_left = area.x.saturating_add(1);
+    match chart_area {
+        Some(chart_area) => usize::from(chart_area.x.saturating_sub(content_left)),
+        None => usize::from(area.width.saturating_sub(2)),
+    }
+}
+
+/// The next layer to merge as a headline plus one indented bullet per issue.
+fn next_to_merge_lines(state: &StackState, theme: &Theme) -> (Line<'static>, Vec<Line<'static>>) {
+    let Some(next) = state.next_to_merge() else {
+        return (
+            Line::styled("Nothing left to merge", Style::default().fg(theme.muted)),
+            Vec::new(),
+        );
+    };
+    let (glyph, verdict_color) = super::verdict::style(next.verdict(), theme);
+    let number = next
+        .pr_number
+        .map_or_else(String::new, |number| format!("#{number} "));
+    let issues = next.issues();
+    let mut head = vec![
+        Span::styled(glyph, Style::default().fg(verdict_color)),
+        Span::raw(format!(" Next: {number}{}", next.name)),
+    ];
+    if issues.is_empty() {
+        head.push(Span::raw(" — "));
+        head.push(Span::styled(
+            "ready to merge",
+            Style::default().fg(theme.success),
+        ));
+    }
+    let bullets = issues
+        .into_iter()
+        .map(|issue| {
+            let color = if issue.is_blocking() {
+                theme.error
+            } else {
+                theme.warning
+            };
+            Line::styled(
+                format!("  - {}", super::issues::describe(issue)),
+                Style::default().fg(color),
+            )
+        })
+        .collect();
+    (Line::from(head), bullets)
+}
+
+fn blocker_line(state: &StackState, theme: &Theme) -> Option<Line<'static>> {
+    let summary = state.blocker_summary();
+    let categories = [
+        ("checks", summary.checks, theme.error),
+        ("reviews", summary.reviews, theme.warning),
+        ("threads", summary.threads, theme.error),
+        ("rebase", summary.rebase, theme.error),
+        ("local", summary.local, theme.warning),
+        ("draft", summary.draft, theme.error),
+    ];
+    let mut spans = vec![Span::raw("Blocked by: ")];
+    let mut has_category = false;
+    for (name, count, color) in categories {
+        if count == 0 {
+            continue;
+        }
+        if has_category {
+            spans.push(Span::raw(" · "));
+        }
+        spans.push(Span::styled(
+            format!("{name} {count}"),
+            Style::default().fg(color),
+        ));
+        has_category = true;
+    }
+    has_category.then(|| Line::from(spans))
+}
+
+fn truncate_line(line: Line<'static>, width: usize) -> Line<'static> {
+    let length = line
+        .spans
+        .iter()
+        .map(|span| span.content.chars().count())
+        .sum::<usize>();
+    if length <= width {
+        return line;
+    }
+    if width == 0 {
+        return Line::default();
+    }
+
+    let mut spans = Vec::new();
+    let mut remaining = width - 1;
+    let mut ellipsis_style = Style::default();
+    for span in line.spans {
+        let length = span.content.chars().count();
+        ellipsis_style = span.style;
+        if length <= remaining {
+            remaining -= length;
+            spans.push(span);
+            continue;
+        }
+        if remaining > 0 {
+            spans.push(Span::styled(
+                span.content.chars().take(remaining).collect::<String>(),
+                span.style,
+            ));
+        }
+        break;
+    }
+    spans.push(Span::styled("…", ellipsis_style));
+    Line::from(spans)
 }
 
 fn summary_line(summary: StackSummary, theme: &Theme) -> Line<'static> {

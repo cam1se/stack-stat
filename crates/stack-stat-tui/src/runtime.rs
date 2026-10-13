@@ -148,7 +148,10 @@ fn sync_viewport<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
 ) {
     let detail = crate::ui::regions(area, app).detail;
     if let Some(detail) = detail {
-        app.set_detail_viewport_rows(detail.height.saturating_sub(2) as usize);
+        app.set_detail_viewport(
+            detail.height.saturating_sub(2) as usize,
+            detail.width.saturating_sub(2) as usize,
+        );
     }
 }
 

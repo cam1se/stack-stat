@@ -6,7 +6,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{PrBuilder, TestScenario, find_row};
+use support::{PrBuilder, TestScenario, find_body_row};
 
 type Check = (&'static str, Option<&'static str>);
 const PASS: Check = ("COMPLETED", Some("SUCCESS"));
@@ -38,7 +38,7 @@ async fn checks_cell(checks: &[Check]) -> (String, Color, char) {
         .draw(|frame| ui::render(frame, &app, &theme))
         .unwrap();
     let buffer = terminal.backend().buffer();
-    let row = find_row(buffer, "#1").unwrap();
+    let row = find_body_row(buffer, "#1").unwrap();
     let line: Vec<&str> = (0..buffer.area.width)
         .map(|x| buffer[(x, row)].symbol())
         .collect();
