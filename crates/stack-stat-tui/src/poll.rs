@@ -29,12 +29,17 @@ pub async fn fetch_git<G: GitProvider>(git: &G, now: DateTime<Utc>) -> anyhow::R
     })
 }
 
-/// Load remote stack details, treating off-stack as a successful outcome.
-pub async fn fetch_github<H: GitHubProvider>(
+/// Discover the current Git branch's remote stack, treating off-stack as success.
+pub async fn fetch_github<G: GitProvider, H: GitHubProvider>(
+    git: &G,
     github: &H,
     now: DateTime<Utc>,
 ) -> Result<GitHubSnapshot, GitHubError> {
-    match github.stack_view().await {
+    let current_branch = git
+        .current_branch()
+        .await
+        .map_err(|error| GitHubError::Git(format!("reading current Git branch: {error}")))?;
+    match github.stack_view(&current_branch).await {
         Ok(stack) => {
             let details = github.pr_details(&stack).await?;
             Ok(GitHubSnapshot {
@@ -125,6 +130,7 @@ where
     let git_interval = config.poll.git;
     let store_interval = config.poll.store;
     let git_task = {
+        let git = Arc::clone(&git);
         let tx = tx.clone();
         let wake = Arc::clone(&git_wake);
         tokio::spawn(async move {
@@ -156,7 +162,7 @@ where
                 if tx.send(AppMessage::FetchStarted(Source::GitHub)).is_err() {
                     break;
                 }
-                let result = fetch_github(github.as_ref(), Utc::now()).await;
+                let result = fetch_github(git.as_ref(), github.as_ref(), Utc::now()).await;
                 let delay = match &result {
                     Err(GitHubError::RateLimited { reset_hint }) => {
                         rate_limit_wait(reset_hint.as_deref(), Utc::now())

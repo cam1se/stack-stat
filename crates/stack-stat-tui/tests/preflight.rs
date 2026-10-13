@@ -7,7 +7,6 @@ struct FakeRunner {
     calls: Mutex<Vec<String>>,
     missing: Option<&'static str>,
     auth_ok: bool,
-    extension: &'static str,
     repo_ok: bool,
 }
 
@@ -21,21 +20,12 @@ impl CommandRunner for FakeRunner {
             return Err(io::Error::new(io::ErrorKind::NotFound, "missing"));
         }
         let output = match (program, args) {
-            ("gh", ["--version"]) => CommandOutput {
-                success: true,
-                stdout: "gh version 2".into(),
-            },
+            ("gh", ["--version"]) => CommandOutput { success: true },
             ("gh", ["auth", "status"]) => CommandOutput {
                 success: self.auth_ok,
-                stdout: String::new(),
-            },
-            ("gh", ["extension", "list"]) => CommandOutput {
-                success: true,
-                stdout: self.extension.into(),
             },
             ("git", ["rev-parse", "--show-toplevel"]) => CommandOutput {
                 success: self.repo_ok,
-                stdout: "/tmp/repo".into(),
             },
             _ => panic!("unexpected: {program} {args:?}"),
         };
@@ -49,48 +39,47 @@ fn preflight_reports_first_missing_prerequisite_and_stops() {
         missing: Some("gh"),
         ..FakeRunner::default()
     };
-    assert!(matches!(run(&fake), Err(PreflightError::MissingGh)));
-    assert!(
-        run(&fake)
-            .unwrap_err()
-            .to_string()
-            .contains("https://cli.github.com/")
-    );
-    assert_eq!(fake.calls.lock().unwrap()[0], "gh --version");
-    assert_eq!(fake.calls.lock().unwrap().len(), 2);
+    let error = run(&fake).unwrap_err();
+    assert_eq!(error, PreflightError::MissingGh);
+    assert!(error.to_string().contains("https://cli.github.com/"));
+    assert_eq!(*fake.calls.lock().unwrap(), ["gh --version"]);
 }
 
 #[test]
-fn preflight_requires_auth_extension_and_git_repository() {
+fn preflight_requires_auth_and_git_repository() {
     let auth = FakeRunner {
         auth_ok: false,
         ..FakeRunner::default()
     };
     assert!(matches!(run(&auth), Err(PreflightError::Unauthenticated)));
-    let missing_extension = FakeRunner {
-        auth_ok: true,
-        extension: "gh dash\tother\tv1\n",
-        ..FakeRunner::default()
-    };
-    assert!(matches!(
-        run(&missing_extension),
-        Err(PreflightError::MissingExtension)
-    ));
     let missing_repo = FakeRunner {
         auth_ok: true,
-        extension: "gh stack\tgithub/gh-stack\tv0.1.1\n",
         ..FakeRunner::default()
     };
     assert!(matches!(
         run(&missing_repo),
         Err(PreflightError::NotGitRepository)
     ));
-    let ok = FakeRunner {
-        repo_ok: true,
+}
+
+#[test]
+fn preflight_succeeds_without_gh_stack_and_never_lists_extensions() {
+    let runner = FakeRunner {
         auth_ok: true,
-        extension: "gh stack\tgithub/gh-stack\tv0.1.1\n",
+        repo_ok: true,
         ..FakeRunner::default()
     };
-    run(&ok).unwrap();
-    assert_eq!(ok.calls.lock().unwrap().len(), 4);
+
+    run(&runner).unwrap();
+
+    let calls = runner.calls.lock().unwrap();
+    assert!(!calls.iter().any(|call| call == "gh extension list"));
+    assert_eq!(
+        *calls,
+        [
+            "gh --version",
+            "gh auth status",
+            "git rev-parse --show-toplevel"
+        ]
+    );
 }

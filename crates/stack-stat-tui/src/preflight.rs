@@ -10,13 +10,11 @@ use std::{
 pub struct CommandOutput {
     /// Whether the process succeeded.
     pub success: bool,
-    /// Standard output; used to inspect installed extensions.
-    pub stdout: String,
 }
 
 /// Command boundary allowing startup behavior to be exercised without binaries.
 pub trait CommandRunner {
-    /// Run one program with piped output and no interactive standard input.
+    /// Run one program with no interactive standard input or output.
     fn run(&self, program: &str, args: &[&str]) -> io::Result<CommandOutput>;
 }
 
@@ -26,15 +24,14 @@ pub struct SystemCommandRunner;
 
 impl CommandRunner for SystemCommandRunner {
     fn run(&self, program: &str, args: &[&str]) -> io::Result<CommandOutput> {
-        let output = Command::new(program)
+        let status = Command::new(program)
             .args(args)
             .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()?;
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()?;
         Ok(CommandOutput {
-            success: output.status.success(),
-            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            success: status.success(),
         })
     }
 }
@@ -46,8 +43,6 @@ pub enum PreflightError {
     MissingGh,
     /// GitHub CLI is not signed in.
     Unauthenticated,
-    /// gh-stack is not installed.
-    MissingExtension,
     /// Current directory is not within a Git repository.
     NotGitRepository,
 }
@@ -60,17 +55,13 @@ impl fmt::Display for PreflightError {
                 "error: gh CLI not found. Install: https://cli.github.com/"
             ),
             Self::Unauthenticated => write!(f, "error: gh not authenticated. Run: gh auth login"),
-            Self::MissingExtension => write!(
-                f,
-                "error: gh-stack not installed. Run: gh extension install github/gh-stack"
-            ),
             Self::NotGitRepository => write!(f, "error: not in a git repository"),
         }
     }
 }
 impl std::error::Error for PreflightError {}
 
-/// Check `gh`, authentication, the extension, then Git in that order.
+/// Check `gh`, authentication, then Git in that order.
 pub fn run(runner: &dyn CommandRunner) -> Result<(), PreflightError> {
     let version = runner
         .run("gh", &["--version"])
@@ -83,17 +74,6 @@ pub fn run(runner: &dyn CommandRunner) -> Result<(), PreflightError> {
         .map_err(|_| PreflightError::Unauthenticated)?;
     if !auth.success {
         return Err(PreflightError::Unauthenticated);
-    }
-    let extension = runner
-        .run("gh", &["extension", "list"])
-        .map_err(|_| PreflightError::MissingExtension)?;
-    if !extension.success
-        || !extension
-            .stdout
-            .lines()
-            .any(|line| line.split('\t').next() == Some("gh stack"))
-    {
-        return Err(PreflightError::MissingExtension);
     }
     let repo = runner
         .run("git", &["rev-parse", "--show-toplevel"])
