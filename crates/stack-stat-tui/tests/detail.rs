@@ -2,7 +2,10 @@ mod support;
 
 use chrono::{TimeZone, Utc};
 use ratatui::{Terminal, backend::TestBackend};
-use stack_stat_core::providers::{PrCheckResponse, PrResponse, ReviewResponse};
+use stack_stat_core::{
+    model::LocalSync,
+    providers::{PrCheckResponse, PrResponse, ReviewResponse},
+};
 use stack_stat_tui::{
     message::Source,
     theme::{ColorDepth, Theme},
@@ -119,4 +122,24 @@ async fn detail_shows_review_headline_and_verdict_badges() {
     let go_buffer = draw(&go);
     let header = find_row(&go_buffer, "PR #42").expect("detail header");
     assert_row_contains(&go_buffer, header, &["PR #42", "✔", "Open"]);
+}
+
+#[tokio::test]
+async fn detail_identifies_the_current_branch_local_sync_state() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &["feature"])
+        .pr("feature", PrBuilder::new(42))
+        .current_branch("feature")
+        .build()
+        .into_app();
+    handles.git.set_current_sync(LocalSync::Ahead);
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app);
+    let header = find_row(&buffer, "PR #42").expect("detail header");
+    assert_row_contains(
+        &buffer,
+        header,
+        &["* current worktree", "local ahead of remote"],
+    );
 }

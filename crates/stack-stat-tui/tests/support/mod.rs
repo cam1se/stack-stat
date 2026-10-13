@@ -151,7 +151,7 @@ pub struct TestScenario {
     current_branch: String,
     repo: String,
     local: Vec<(String, String, String, ReportedState)>,
-    rebases: Vec<String>,
+    remote_rebases: Vec<String>,
     config: Config,
 }
 impl TestScenario {
@@ -163,7 +163,7 @@ impl TestScenario {
             current_branch: String::new(),
             repo: String::new(),
             local: vec![],
-            rebases: vec![],
+            remote_rebases: vec![],
             config: Config::default(),
         }
     }
@@ -172,8 +172,8 @@ impl TestScenario {
         self.branches = branches.iter().map(|s| (*s).into()).collect();
         self
     }
-    pub fn needs_rebase(mut self, branch: &str) -> Self {
-        self.rebases.push(branch.into());
+    pub fn remote_rebase(mut self, branch: &str) -> Self {
+        self.remote_rebases.push(branch.into());
         self
     }
     pub fn pr(mut self, branch: &str, pr: PrBuilder) -> Self {
@@ -226,7 +226,6 @@ impl TestScenario {
                     is_current: name == &self.current_branch,
                     is_merged: false,
                     is_queued: false,
-                    needs_rebase: self.rebases.iter().any(|branch| branch == name),
                     pr: self
                         .prs
                         .iter()
@@ -241,6 +240,7 @@ impl TestScenario {
         };
         let github =
             FakeGitHubProvider::new(stack, self.prs.into_iter().map(|(_, pr)| pr).collect());
+        github.set_remote_rebase_branches(self.remote_rebases);
         github.set_repo(self.repo);
         let git = FakeGitProvider::new(
             &self.current_branch,

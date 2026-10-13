@@ -5,6 +5,8 @@ use std::{collections::HashMap, path::Path};
 use anyhow::Result;
 use async_trait::async_trait;
 
+use crate::model::LocalSync;
+
 pub mod branch_dir;
 mod file_store;
 mod git_cli;
@@ -39,6 +41,8 @@ pub trait GitProvider: Send + Sync {
     async fn current_branch(&self) -> Result<String>;
     /// All local branch names and their full tip SHAs.
     async fn branch_shas(&self) -> Result<HashMap<String, String>>;
+    /// Local-vs-remote state of the supplied checked-out branch.
+    async fn current_sync(&self, branch: &str) -> Result<LocalSync>;
     /// Repository's git common directory shared by its worktrees.
     fn common_dir(&self) -> &Path;
 }
@@ -50,11 +54,11 @@ pub trait GitHubProvider: Send + Sync {
     async fn stack_view(&self) -> std::result::Result<StackViewResponse, GitHubError>;
     /// `owner/name` of the GitHub repository, empty when unknown.
     fn repo(&self) -> String;
-    /// Fetch PR details by their numbers (not by open-PR listing).
+    /// Fetch exact PR details and remote rebase comparisons for a stack.
     async fn pr_details(
         &self,
-        numbers: &[u32],
-    ) -> std::result::Result<Vec<PrResponse>, GitHubError>;
+        stack: &StackViewResponse,
+    ) -> std::result::Result<StackDetailsResponse, GitHubError>;
     /// Open a PR in a browser.
     async fn open_pr_in_browser(&self, number: u32) -> std::result::Result<(), GitHubError>;
     /// Checkout a branch in the stack.

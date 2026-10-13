@@ -42,12 +42,14 @@ pub struct BranchState {
     pub name: String,
     /// Full HEAD commit identifier, empty when the local ref is absent.
     pub head_sha: String,
-    /// Required rebase target for this layer.
+    /// Required rebase target derived from remote GitHub history.
     pub rebase: RebaseNeed,
     /// Whether trunk rebases block readiness.
     pub trunk_rebase_gates: bool,
     /// Whether this worktree has checked out this branch.
     pub is_current: bool,
+    /// How the checked-out branch compares with its remote-tracking ref.
+    pub local_sync: LocalSync,
     /// Its PR lifecycle state.
     pub lifecycle: PrLifecycle,
     /// PR number from stack metadata, even when GitHub details are unavailable.
@@ -58,15 +60,31 @@ pub struct BranchState {
     pub local_checks: Vec<LocalCheckResult>,
 }
 
-/// Required rebase target for a stack layer.
+/// Local branch state relative to its remote-tracking ref.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum LocalSync {
+    /// Local and remote-tracking refs name the same commit history.
+    #[default]
+    InSync,
+    /// Local commits have not been pushed.
+    Ahead,
+    /// Remote commits have not been incorporated locally.
+    Behind,
+    /// Both local and remote have commits absent from the other.
+    Diverged,
+    /// The local branch has no remote-tracking ref.
+    Unpushed,
+}
+
+/// Required remote rebase target for a stack layer.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RebaseNeed {
-    /// No rebase is required.
+    /// No remote rebase is required.
     #[default]
     None,
-    /// Rebase onto the layer directly below this one.
+    /// The remote parent ref has commits absent from this layer's remote head.
     Parent,
-    /// Rebase onto the trunk branch.
+    /// The remote trunk ref has commits absent from this layer's remote head.
     Trunk,
     /// An earlier layer must be rebased, so this layer will move with it.
     Stacked,

@@ -10,8 +10,8 @@ use async_trait::async_trait;
 use tokio::{process::Command, time::timeout};
 
 use super::{
-    GitHubError, GitHubProvider, PrResponse, StackViewResponse,
-    graphql::{build_pr_query, classify_gh_failure, parse_pr_response},
+    GitHubError, GitHubProvider, StackDetailsResponse, StackViewResponse,
+    graphql::{build_stack_query, classify_gh_failure, parse_stack_response},
 };
 
 const READ_TIMEOUT: Duration = Duration::from_secs(20);
@@ -118,11 +118,14 @@ impl GitHubProvider for CliGitHubProvider {
         format!("{}/{}", self.owner, self.repo)
     }
 
-    async fn pr_details(&self, numbers: &[u32]) -> Result<Vec<PrResponse>, GitHubError> {
-        if numbers.is_empty() {
-            return Ok(Vec::new());
+    async fn pr_details(
+        &self,
+        stack: &StackViewResponse,
+    ) -> Result<StackDetailsResponse, GitHubError> {
+        if stack.branches.is_empty() {
+            return Ok(StackDetailsResponse::default());
         }
-        let query = build_pr_query(&self.owner, &self.repo, numbers);
+        let query = build_stack_query(&self.owner, &self.repo, stack);
         let input = format!("query={query}");
         let output = self
             .run_process(&["api", "graphql", "-f", &input], READ_TIMEOUT)
@@ -133,6 +136,7 @@ impl GitHubProvider for CliGitHubProvider {
             output.status.code().unwrap_or(1),
             &raw,
             &String::from_utf8_lossy(&output.stderr),
+            stack,
         )
     }
 
@@ -191,13 +195,14 @@ pub fn classify_sync_output(stdout: &str, stderr: &str) -> Result<String, GitHub
     Ok(combined)
 }
 
-/// Preserve GraphQL's partial repository data even when `gh api` exits 1.
+/// Preserve partial stack details when `gh api` exits 1.
 pub fn classify_graphql_result(
     code: i32,
     stdout: &str,
     stderr: &str,
-) -> Result<Vec<PrResponse>, GitHubError> {
-    let parsed = parse_pr_response(stdout);
+    stack: &StackViewResponse,
+) -> Result<StackDetailsResponse, GitHubError> {
+    let parsed = parse_stack_response(stdout, stack);
     if parsed.is_ok() || code == 0 {
         return parsed;
     }

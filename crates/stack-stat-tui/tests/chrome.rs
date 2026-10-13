@@ -39,7 +39,6 @@ fn merged_stack() -> StackViewResponse {
             is_current: name == "go",
             is_merged,
             is_queued: false,
-            needs_rebase: false,
             pr: Some(StackPr {
                 number,
                 url: format!("https://example.test/pr/{number}"),

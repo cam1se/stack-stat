@@ -1,7 +1,7 @@
-use stack_stat_core::providers::{GraphqlResponse, StackViewResponse};
+use stack_stat_core::providers::{StackViewResponse, graphql::parse_stack_response};
 
 #[test]
-fn stack_view_fixture_preserves_order_and_flags() {
+fn stack_view_fixture_preserves_order_and_ignores_extension_rebase_flag() {
     let raw = include_str!("fixtures/stack_view.json");
     let stack: StackViewResponse = serde_json::from_str(raw).unwrap();
     assert_eq!(stack.trunk, "main");
@@ -15,7 +15,6 @@ fn stack_view_fixture_preserves_order_and_flags() {
         ["auth", "api", "ui"]
     );
     assert!(stack.branches[0].is_merged);
-    assert!(stack.branches[2].needs_rebase);
     assert_eq!(stack.branches[1].pr.as_ref().unwrap().number, 43);
 }
 
@@ -30,9 +29,9 @@ fn unsubmitted_local_stack_can_omit_head_and_pr_fields() {
 #[test]
 fn graphql_fixture_normalizes_checks_reviews_and_requests() {
     let raw = include_str!("fixtures/pr_details.json");
-    let response: GraphqlResponse = serde_json::from_str(raw).unwrap();
-    let prs = response.into_prs();
-    assert_eq!(prs.len(), 2);
+    let stack: StackViewResponse =
+        serde_json::from_str(include_str!("fixtures/stack_view.json")).unwrap();
+    let prs = parse_stack_response(raw, &stack).unwrap().prs;
     let draft = prs.iter().find(|pr| pr.number == 43).unwrap();
     assert!(draft.is_draft);
     assert!(

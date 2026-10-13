@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::PathBuf,
 };
 
@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use stack_stat_core::providers::{
     CheckResult, FakeGitHubProvider, FakeGitProvider, GitHubError, GitHubProvider, GitProvider,
     MemoryStatusStore, ProviderAction, ReportedState, StackViewResponse, StatusEntry,
-    StatusStoreProvider, retained,
+    StatusStoreProvider, graphql::parse_stack_response, retained,
 };
 
 fn stack() -> StackViewResponse {
@@ -44,22 +44,26 @@ async fn fake_git_reflects_branch_switch_without_reconstruction() {
 }
 
 #[tokio::test]
-async fn fake_github_filters_prs_and_records_mutations() {
-    let prs = serde_json::from_str::<stack_stat_core::providers::GraphqlResponse>(include_str!(
-        "fixtures/pr_details.json"
-    ))
-    .unwrap()
-    .into_prs();
-    let github = FakeGitHubProvider::new(stack(), prs);
+async fn fake_github_filters_stack_details_and_records_mutations() {
+    let full_stack = stack();
+    let details =
+        parse_stack_response(include_str!("fixtures/pr_details.json"), &full_stack).unwrap();
+    let github = FakeGitHubProvider::new(full_stack.clone(), details.prs);
+    github.set_remote_rebase_branches(["api".into(), "ui".into()]);
+    let mut requested_stack = full_stack;
+    requested_stack
+        .branches
+        .retain(|branch| branch.name == "api");
+
+    let details = github.pr_details(&requested_stack).await.unwrap();
+
     assert_eq!(
-        github
-            .pr_details(&[43])
-            .await
-            .unwrap()
-            .iter()
-            .map(|pr| pr.number)
-            .collect::<Vec<_>>(),
+        details.prs.iter().map(|pr| pr.number).collect::<Vec<_>>(),
         [43]
+    );
+    assert_eq!(
+        details.remote_rebase_branches,
+        BTreeSet::from(["api".into()])
     );
     github.toggle_draft(43, true).await.unwrap();
     github.checkout_branch("api").await.unwrap();

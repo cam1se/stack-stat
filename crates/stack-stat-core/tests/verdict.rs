@@ -1,6 +1,6 @@
 use stack_stat_core::model::{
-    BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState, PrInfo,
-    PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState, Verdict,
+    BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState,
+    LocalSync, PrInfo, PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState, Verdict,
 };
 
 fn check(status: CheckStatus, conclusion: Option<CheckConclusion>) -> CiCheck {
@@ -34,6 +34,7 @@ fn ready_branch() -> BranchState {
         rebase: RebaseNeed::None,
         trunk_rebase_gates: false,
         is_current: false,
+        local_sync: LocalSync::InSync,
         lifecycle: PrLifecycle::Open,
         pr_number: Some(1),
         pr: Some(PrInfo {

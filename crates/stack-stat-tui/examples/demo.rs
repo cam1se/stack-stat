@@ -21,10 +21,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration as Age, Utc};
 use stack_stat_core::{
     config::{Config, LocalCheckConfig},
+    model::LocalSync,
     providers::{
         CheckResult, FakeGitHubProvider, FakeGitProvider, GitHubError, GitHubProvider,
         MemoryStatusStore, PrCheckResponse, PrResponse, ReportedState, ReviewRequest,
-        ReviewResponse, StackBranch, StackPr, StackViewResponse, StatusStoreProvider,
+        ReviewResponse, StackBranch, StackDetailsResponse, StackPr, StackViewResponse,
+        StatusStoreProvider,
     },
 };
 
@@ -47,7 +49,7 @@ enum Lifecycle {
 struct Layer {
     branch: &'static str,
     lifecycle: Lifecycle,
-    needs_rebase: bool,
+    remote_rebase: bool,
     pr: PrResponse,
 }
 
@@ -61,12 +63,20 @@ async fn main() -> Result<()> {
         .map(|(index, layer)| (layer.branch.to_owned(), format!("{:040x}", index + 1)))
         .collect();
     let github = FakeGitHubProvider::new(stack(&initial, &shas), prs(&initial));
+    github.set_remote_rebase_branches(
+        initial
+            .iter()
+            .filter(|layer| layer.remote_rebase)
+            .map(|layer| layer.branch.to_owned()),
+    );
     github.set_repo(REPO);
     let git = FakeGitProvider::new(
         WORKTREE_BRANCH,
         shas.clone(),
         PathBuf::from("/tmp/stack-stat-demo"),
     );
+    // The worktree has a commit it has not pushed, so the gutter shows `*↑`.
+    git.set_current_sync(LocalSync::Ahead);
     let store = MemoryStatusStore::default();
     report_local_checks(&store, &shas, now)?;
 
@@ -100,8 +110,11 @@ impl GitHubProvider for SlowFirstFetch {
     fn repo(&self) -> String {
         self.inner.repo()
     }
-    async fn pr_details(&self, numbers: &[u32]) -> Result<Vec<PrResponse>, GitHubError> {
-        self.inner.pr_details(numbers).await
+    async fn pr_details(
+        &self,
+        stack: &StackViewResponse,
+    ) -> Result<StackDetailsResponse, GitHubError> {
+        self.inner.pr_details(stack).await
     }
     async fn open_pr_in_browser(&self, number: u32) -> Result<(), GitHubError> {
         self.inner.open_pr_in_browser(number).await
@@ -142,10 +155,10 @@ fn config() -> Config {
 /// Bottom-to-top stack exercising each verdict: merged, queued, ready, waiting, and blocked
 /// by every blocker category.
 fn layers(now: DateTime<Utc>, finished: bool) -> Vec<Layer> {
-    let layer = |branch, lifecycle, needs_rebase, pr| Layer {
+    let layer = |branch, lifecycle, remote_rebase, pr| Layer {
         branch,
         lifecycle,
-        needs_rebase,
+        remote_rebase,
         pr,
     };
     let cache_checks = if finished {
@@ -347,7 +360,6 @@ fn stack(layers: &[Layer], shas: &HashMap<String, String>) -> StackViewResponse 
                 is_current: layer.branch == WORKTREE_BRANCH,
                 is_merged: layer.lifecycle == Lifecycle::Merged,
                 is_queued: layer.lifecycle == Lifecycle::Queued,
-                needs_rebase: layer.needs_rebase,
                 pr: Some(StackPr {
                     number: layer.pr.number,
                     url: layer.pr.url.clone(),
