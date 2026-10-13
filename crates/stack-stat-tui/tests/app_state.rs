@@ -2,8 +2,8 @@ mod support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use stack_stat_core::{
-    model::StackStatus,
-    providers::{GitHubError, ProviderAction},
+    model::{LocalCheckState, StackStatus},
+    providers::{CheckResult, GitHubError, ProviderAction, ReportedState, StatusStoreProvider},
 };
 use stack_stat_tui::{
     app::{Mode, SortOrder},
@@ -95,6 +95,28 @@ async fn off_stack_replaces_rows_but_network_failure_retains_last_good_rows() {
     handles.git.set_current_branch("api");
     app.poll_once(Source::Git).await;
     assert!(app.state().branches[1].is_current);
+    handles
+        .store
+        .write(
+            "api",
+            &format!("{:040x}", 2),
+            "lint",
+            &CheckResult {
+                state: ReportedState::Pass,
+                message: None,
+                recorded_at: chrono::DateTime::from_timestamp(1_760_000_000, 0).unwrap(),
+            },
+        )
+        .unwrap();
+    app.poll_once(Source::Store).await;
+    assert_eq!(
+        app.state().branches[1].local_checks[0].state,
+        LocalCheckState::Pass
+    );
+    assert!(
+        app.status_line().text.contains("connection refused"),
+        "local refresh must not hide GitHub failure"
+    );
     handles.github.set_stack_error(GitHubError::NotInStack);
     app.poll_once(Source::GitHub).await;
     assert_eq!(app.state().stack_status, StackStatus::NotInStack);

@@ -1,6 +1,9 @@
 //! Application state: successful snapshots, selection, modes, and feedback.
 
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use chrono::{DateTime, Utc};
 use stack_stat_core::{
@@ -88,6 +91,7 @@ pub struct App<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> {
     show_bots: bool,
     reviews_expanded: bool,
     status: StatusLine,
+    errors: HashMap<Source, String>,
     mutation_busy: bool,
     fetching: HashSet<Source>,
     now: DateTime<Utc>,
@@ -132,6 +136,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             status,
             mutation_busy: false,
             fetching: HashSet::new(),
+            errors: HashMap::new(),
             now: Utc::now(),
             update_available: None,
             animation: AnimationState::default(),
@@ -146,9 +151,9 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 match result {
                     Ok(snapshot) => {
                         self.git = Some(snapshot);
-                        self.clear_error();
+                        self.clear_error(Source::Git);
                     }
-                    Err(error) => self.error(format!("⚠ git fetch failed: {error}")),
+                    Err(error) => self.error(Source::Git, format!("⚠ git fetch failed: {error}")),
                 }
             }
             AppMessage::GitHub(result) => {
@@ -156,7 +161,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 match result {
                     Ok(snapshot) => {
                         self.github = Some(snapshot);
-                        self.clear_error();
+                        self.clear_error(Source::GitHub);
                     }
                     Err(GitHubError::NotInStack) => {
                         self.github = Some(GitHubSnapshot {
@@ -164,13 +169,16 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                             prs: vec![],
                             fetched_at: self.now,
                         });
-                        self.clear_error();
+                        self.clear_error(Source::GitHub);
                     }
-                    Err(GitHubError::RateLimited { reset_hint }) => self.error(format!(
-                        "⚠ rate limited, resumes in {}",
-                        reset_hint.unwrap_or_else(|| "5m".into())
-                    )),
-                    Err(error) => self.error(format!("⚠ fetch failed: {error}")),
+                    Err(GitHubError::RateLimited { reset_hint }) => self.error(
+                        Source::GitHub,
+                        format!(
+                            "⚠ rate limited, resumes in {}",
+                            reset_hint.unwrap_or_else(|| "5m".into())
+                        ),
+                    ),
+                    Err(error) => self.error(Source::GitHub, format!("⚠ fetch failed: {error}")),
                 }
             }
             AppMessage::Store(result) => {
@@ -178,16 +186,13 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 match result {
                     Ok(snapshot) => {
                         if let Some(warning) = snapshot.warnings.first() {
-                            self.status = StatusLine {
-                                text: format!("⚠ {warning}"),
-                                is_error: true,
-                            };
+                            self.error(Source::Store, format!("⚠ {warning}"));
                         } else {
-                            self.clear_error();
+                            self.clear_error(Source::Store);
                         }
                         self.store = Some(snapshot);
                     }
-                    Err(error) => self.error(format!("⚠ local checks: {error}")),
+                    Err(error) => self.error(Source::Store, format!("⚠ local checks: {error}")),
                 }
             }
             AppMessage::FetchStarted(source) => {
@@ -195,6 +200,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             }
             AppMessage::MutationDone { action, result } => {
                 self.mutation_busy = false;
+                self.errors.remove(&Source::All);
                 match result {
                     Ok(output) => {
                         let text = if output.trim().is_empty() {
@@ -213,13 +219,14 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                         };
                     }
                     Err(GitHubError::RebaseConflict) => self.error(
+                        Source::All,
                         "⚠ rebase conflict — resolve with gh stack rebase --continue or --abort"
                             .into(),
                     ),
-                    Err(error) => self.error(format!(
-                        "⚠ {}",
-                        error.to_string().lines().next().unwrap_or_default()
-                    )),
+                    Err(error) => self.error(
+                        Source::All,
+                        format!("⚠ {}", error.to_string().lines().next().unwrap_or_default()),
+                    ),
                 }
             }
             AppMessage::UpdateAvailable(version) => {
@@ -245,17 +252,28 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         self.sync_selection();
     }
 
-    fn clear_error(&mut self) {
-        if self.status.is_error {
-            self.status = StatusLine::default();
-        }
+    fn clear_error(&mut self, source: Source) {
+        self.errors.remove(&source);
+        self.show_error_if_any();
     }
 
-    fn error(&mut self, text: String) {
-        self.status = StatusLine {
-            text,
-            is_error: true,
-        };
+    fn error(&mut self, source: Source, text: String) {
+        self.errors.insert(source, text);
+        self.show_error_if_any();
+    }
+
+    fn show_error_if_any(&mut self) {
+        if let Some(text) = [Source::All, Source::GitHub, Source::Git, Source::Store]
+            .iter()
+            .find_map(|source| self.errors.get(source))
+        {
+            self.status = StatusLine {
+                text: text.clone(),
+                is_error: true,
+            };
+        } else if self.status.is_error {
+            self.status = StatusLine::default();
+        }
     }
 }
 

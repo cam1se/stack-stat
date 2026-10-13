@@ -81,3 +81,22 @@ N/A
 ### Task 15: Final Validation
 
 - Initial Windows CI failed `concurrent_reader_never_observes_partial_write`: `NamedTempFile::persist` returned Access is denied (os error 5) while another thread read the existing JSON, and a reader briefly saw zero entries. `tempfile` uses `MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)` on Windows; replacement can be blocked while the destination is open. The store now coordinates shared readers and exclusive writes/GC across processes using a separate std `File` lock, with branch directory creation inside the write lock. The existing concurrent-reader regression test remains unchanged; CI rerun will verify Windows.
+- Scenario 10's validation uncovered another defect: a successful local poll cleared a still-active GitHub network warning. The App now tracks errors by source; the regression test reports a local check during a GitHub failure and asserts the remote warning stays visible.
+- The supplied real stacked repository was used strictly read-only for PR/check/review columns, detail, filter, sort, bot toggle, and clean exit. Branch checkout and `report` were exercised only in an owned throwaway two-layer stack with a separate reporter worktree; the `←wt` marker moved after an external checkout, and a report written from the second worktree appeared in the first TUI. No fixture branches were retained in this repository: the permanent fake-backed `TestScenario` builder and throwaway real Git stack cover repeatable paths without cluttering tracked history.
+
+| E2E scenario | Test evidence |
+|---|---|
+| 1 — all-green stack | `render::four_layer_healthy_stack_has_passing_status_without_staleness` |
+| 2 — mixed CI | `render::branch_table_shows_pr_lifecycle_ci_reviews_and_local_results` |
+| 3 — agent branch switch | `app_state::agent_branch_switch_moves_current_row_after_git_poll`; `render::branch_switch_and_stale_check_have_distinct_visual_markers` |
+| 4 — draft/ready toggle | `app_state::draft_toggle_requires_confirmation_and_records_effect` |
+| 5 — stale local checks | `render::branch_switch_and_stale_check_have_distinct_visual_markers`; `compose::previous_commit_result_is_stale_and_declared_unreported_check_is_missing` |
+| 6 — detail pane | `render::details_toggle_exposes_checks_reviews_local_results_and_rebase`; `render::keyboard_scroll_reaches_reviews_after_many_checks_without_changing_selected_branch` |
+| 7 — CI filtering | `render::skipped_ci_check_is_visible_in_details_not_row_total` |
+| 8 — bot visibility | `render::bot_review_visibility_toggles_in_detail_pane` |
+| 9 — no stack | `app_state::off_stack_replaces_rows_but_network_failure_retains_last_good_rows`; `render::loading_not_in_stack_help_and_confirmation_render_without_panics` |
+| 10 — fetch failure | `app_state::off_stack_replaces_rows_but_network_failure_retains_last_good_rows` (includes local store update while remote fails) |
+| 11 — responsive layout | `render::narrow_widths_collapse_review_and_local_columns` |
+| 12 — keybindings | `keymap::every_normal_mode_binding_has_its_documented_effect` |
+| 13 — change flash | `animation::completed_check_flashes_only_its_cell_for_five_ticks` |
+| 14 — report CLI | `report::report_writes_lists_and_clears_real_git_common_store`; `report::branch_override_and_revision_resolve_to_full_sha_and_stale_entry` |
