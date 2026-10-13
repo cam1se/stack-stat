@@ -68,6 +68,36 @@ async fn table_displays_go_wait_and_no_go_verdict_glyphs() {
 }
 
 #[tokio::test]
+async fn local_column_appears_only_when_local_checks_exist() {
+    let header_has_local = |app: &support::FakeApp| {
+        let buffer = draw(app, 120, 40);
+        let row = find_row(&buffer, "Reviews").expect("table header row");
+        let line: String = (0..buffer.area.width)
+            .map(|x| buffer[(x, row)].symbol())
+            .collect();
+        line.contains("Local")
+    };
+    let (mut without, _) = TestScenario::builder()
+        .stack("main", &["auth"])
+        .pr("auth", PrBuilder::new(42))
+        .current_branch("auth")
+        .build()
+        .into_app();
+    without.poll_once(Source::All).await;
+    assert!(!header_has_local(&without));
+
+    let (mut with, _) = TestScenario::builder()
+        .stack("main", &["auth"])
+        .pr("auth", PrBuilder::new(42))
+        .current_branch("auth")
+        .config(support::ConfigBuilder::new().local("lint"))
+        .build()
+        .into_app();
+    with.poll_once(Source::All).await;
+    assert!(header_has_local(&with));
+}
+
+#[tokio::test]
 async fn clicking_a_branch_title_line_selects_its_branch() {
     let (mut app, _) = TestScenario::builder()
         .stack("main", &["auth", "api"])
