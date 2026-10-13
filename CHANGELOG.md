@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/cam1se/stack-stat/compare/v0.5.0...v0.5.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **core:** derive rebase need from remote and mark local drift ([6866695](https://github.com/cam1se/stack-stat/commit/6866695b9d23b64c10a5c93d2658670657436acf))
+* **tui:** move one layer per mouse wheel event ([5cff239](https://github.com/cam1se/stack-stat/commit/5cff2396039adc416b5cf4a6d955ec6f67c37fc4))
+
 ## [0.5.0](https://github.com/cam1se/stack-stat/compare/v0.4.0...v0.5.0) (2026-10-13)
 
 
