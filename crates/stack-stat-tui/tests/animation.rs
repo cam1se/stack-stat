@@ -99,7 +99,7 @@ async fn basic_color_active_row_pulses_bold_without_changing_background() {
         .draw(|frame| ui::render(frame, &app, &theme))
         .unwrap();
     let row = support::find_row(terminal.backend().buffer(), "#42").unwrap();
-    let first = &terminal.backend().buffer()[(5, row)];
+    let first = &terminal.backend().buffer()[(2, row)];
     let base_bg = first.bg;
     let base_bold = first.modifier.contains(Modifier::BOLD);
     let now = Utc.timestamp_opt(1_760_000_000, 0).single().unwrap();
@@ -109,7 +109,7 @@ async fn basic_color_active_row_pulses_bold_without_changing_background() {
     terminal
         .draw(|frame| ui::render(frame, &app, &theme))
         .unwrap();
-    let next = &terminal.backend().buffer()[(5, row)];
+    let next = &terminal.backend().buffer()[(2, row)];
     assert_eq!(next.bg, base_bg);
     assert_ne!(next.modifier.contains(Modifier::BOLD), base_bold);
 }

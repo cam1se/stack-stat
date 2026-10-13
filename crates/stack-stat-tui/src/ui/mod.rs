@@ -60,7 +60,7 @@ pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let body = chunks[1];
     let (table, detail) = if app.selected_branch().is_some() && body.height >= 14 {
         let branch_rows = app.visible_indices().len().min(usize::from(u16::MAX)) as u16;
-        let required_table_height = branch_rows.saturating_mul(2).saturating_add(4);
+        let required_table_height = branch_rows.saturating_mul(2).saturating_add(5);
         let table_height = required_table_height
             .min((body.height / 2).max(8))
             .min(body.height.saturating_sub(8));
@@ -102,7 +102,7 @@ pub fn hit_test<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         return PointerTarget::Detail;
     }
     if contains(layout.table, x, y) {
-        let branch_top = layout.table.y.saturating_add(3);
+        let branch_top = layout.table.y.saturating_add(4);
         if y >= branch_top && y < layout.table.bottom().saturating_sub(1) {
             let row = y.saturating_sub(branch_top) as usize / 2;
             let index = table::view_start(app, layout.table) + row;

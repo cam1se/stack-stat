@@ -25,7 +25,7 @@ pub(super) fn view_start<G: GitProvider, H: GitHubProvider, S: StatusStoreProvid
     app: &App<G, H, S>,
     area: Rect,
 ) -> usize {
-    let branch_capacity = usize::from(area.height.saturating_sub(4) / 2).max(1);
+    let branch_capacity = usize::from(area.height.saturating_sub(5) / 2).max(1);
     app.selected_row_index()
         .saturating_add(1)
         .saturating_sub(branch_capacity)
@@ -54,7 +54,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let full_reviews = area.width >= 100;
     let full_local = area.width >= 80;
     let widths = [
-        Constraint::Length(2),
+        Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(10),
         Constraint::Length(6),
@@ -78,7 +78,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             .fg(theme.muted)
             .add_modifier(Modifier::BOLD),
     );
-    let branch_capacity = usize::from(area.height.saturating_sub(4) / 2).max(1);
+    let branch_capacity = usize::from(area.height.saturating_sub(5) / 2).max(1);
     let trunk = if app.state().trunk.is_empty() {
         "trunk"
     } else {
@@ -86,8 +86,8 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     };
     let mut rows = vec![
         Row::new(vec![
-            Cell::from(Span::styled("●", Style::default().fg(theme.muted))),
             Cell::from(""),
+            Cell::from(vec![Line::from("○"), Line::from("│")]),
             Cell::from(Span::styled(trunk, Style::default().fg(theme.muted))),
             Cell::from(""),
             Cell::from(""),
@@ -95,6 +95,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             Cell::from(""),
             Cell::from(""),
         ])
+        .height(2)
         .style(Style::default().fg(theme.muted)),
     ];
     let visible = app.visible_indices();
@@ -135,9 +136,9 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         style
                     }
                 };
-                let marker = if selected { "►" } else { "│" };
+                let marker = if selected { "►" } else { " " };
                 let connector = if start + offset + 1 == visible_count {
-                    "╵"
+                    " "
                 } else {
                     "│"
                 };
@@ -147,8 +148,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     _ => verdict_color,
                 };
                 let cells = vec![
-                    Cell::from(vec![Line::from(marker), Line::from(connector)]),
-                    Cell::from(Span::styled(glyph, Style::default().fg(verdict_color))),
+                    Cell::from(vec![Line::from(marker), Line::from(" ")]),
+                    Cell::from(vec![
+                        Line::styled(glyph, Style::default().fg(verdict_color)),
+                        Line::styled(connector, Style::default().fg(verdict_color)),
+                    ]),
                     Cell::from(vec![
                         Line::from(Span::styled(
                             branch_name,
