@@ -21,3 +21,8 @@ N/A
 
 - Used a small allocation-free `*`/`?` matcher instead of a glob dependency; configured patterns are only evaluated while composing a snapshot.
 - `LocalCheckResult.recorded_at` is optional: a configured check in `Missing` state was never reported and has no valid timestamp. Check summaries moved into `model/summary.rs` after the model file passed the size signal.
+
+### Task 5: Provider traits, wire types, and fakes
+
+- GraphQL and stack fixtures are hand-authored from the documented response shapes; the actual `gh stack view --json` payload must be checked against a live stack in Task 7. No active stack exists in this repo yet.
+- `types.rs` was split so the aliased GraphQL response and normalization live in `providers/types/graphql.rs` rather than a monolithic wire file.

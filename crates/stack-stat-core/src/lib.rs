@@ -5,3 +5,5 @@
 pub mod config;
 /// Domain view presented by the dashboard.
 pub mod model;
+/// Git, GitHub, and local check storage interfaces.
+pub mod providers;

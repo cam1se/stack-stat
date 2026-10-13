@@ -191,9 +191,9 @@
 - [x] Cover: defaults with no files; repo-only; user-only poll override; user attempting to un-skip (ignored + warning); unknown key error; zero poll interval error; glob match/non-match; `CheckSummary` worst-state ordering and skip exclusion; collapsed review status from mixed reviews
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 4: Domain model and configuration` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 4: Domain model and configuration` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 5: Provider traits, wire types, and fakes
 
@@ -221,14 +221,14 @@
 - `fail_next` / error fields let tests simulate one-shot or persistent failures.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Trait signatures match the spec section (names, params, return types), with `GitHubProvider` methods returning `Result<T, GitHubError>`
-- [ ] Fakes are only compiled under `test` or the `test-fakes` feature (a release build without the feature has no fake symbols)
-- [ ] `MemoryStatusStore` and the file store share retention semantics through one pure helper. Put `fn retained(entries, live_branches) -> (keep, delete)` in `providers/retention.rs` and reuse it in Task 6
-- [ ] Fixture JSON deserializes into the wire types
+- [x] Trait signatures match the spec section (names, params, return types), with `GitHubProvider` methods returning `Result<T, GitHubError>`
+- [x] Fakes are only compiled under `test` or the `test-fakes` feature (a release build without the feature has no fake symbols)
+- [x] `MemoryStatusStore` and the file store share retention semantics through one pure helper. Put `fn retained(entries, live_branches) -> (keep, delete)` in `providers/retention.rs` and reuse it in Task 6
+- [x] Fixture JSON deserializes into the wire types
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-core --test wire_types` and `--test fakes`
-- [ ] Cover: fixture deserialization, including StatusContext normalization and bot detection from `__typename`; fake GitHub records each mutation; `pr_details` filters by number; `NotInStack` round-trips; retention helper keeps the current-SHA file plus the newest other file, and drops deleted branches
+- [x] `cargo test -p stack-stat-core --test wire_types` and `--test fakes`
+- [x] Cover: fixture deserialization, including StatusContext normalization and bot detection from `__typename`; fake GitHub records each mutation; `pr_details` filters by number; `NotInStack` round-trips; retention helper keeps the current-SHA file plus the newest other file, and drops deleted branches
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

@@ -1,0 +1,27 @@
+{
+  "data": {
+    "repository": {
+      "pr42": {
+        "number": 42,
+        "url": "https://github.com/example/project/pull/42",
+        "isDraft": false,
+        "reviewDecision": "APPROVED",
+        "latestReviews": {"nodes": [{"state": "APPROVED", "submittedAt": "2026-10-11T12:00:00Z", "author": {"login": "alice", "__typename": "User"}}]},
+        "reviewRequests": {"nodes": []},
+        "commits": {"nodes": [{"commit": {"statusCheckRollup": {"contexts": {"nodes": [{"__typename":"CheckRun","name":"build","status":"COMPLETED","conclusion":"SUCCESS","startedAt":"2026-10-11T10:00:00Z","completedAt":"2026-10-11T10:01:00Z","detailsUrl":"https://example.test/build","checkSuite":{"workflowRun":{"workflow":{"name":"CI"}}}}]}}}}]}
+      },
+      "pr43": {
+        "number": 43,
+        "url": "https://github.com/example/project/pull/43",
+        "isDraft": true,
+        "reviewDecision": null,
+        "latestReviews": {"nodes": [{"state": "APPROVED", "submittedAt": "2026-10-11T12:00:00Z", "author": {"login": "lint-bot", "__typename": "Bot"}}]},
+        "reviewRequests": {"nodes": [{"requestedReviewer": {"__typename": "User", "login": "bob"}}]},
+        "commits": {"nodes": [{"commit": {"statusCheckRollup": {"contexts": {"nodes": [
+          {"__typename":"CheckRun","name":"test","status":"IN_PROGRESS","conclusion":null,"startedAt":"2026-10-11T10:00:00Z","completedAt":null,"detailsUrl":"https://example.test/test","checkSuite":{"workflowRun":{"workflow":{"name":"CI"}}}},
+          {"__typename":"StatusContext","context":"coverage","state":"FAILURE","targetUrl":"https://example.test/coverage","createdAt":"2026-10-11T10:00:00Z"}
+        ]}}}}]}
+      }
+    }
+  }
+}
