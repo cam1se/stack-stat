@@ -367,6 +367,32 @@ async fn mouse_wheel_scrolls_hovered_pane_and_click_selects_branch() {
     assert_eq!(app.selected_branch(), Some("auth"));
 }
 
+#[tokio::test]
+async fn mouse_wheel_over_table_moves_one_layer_per_event() {
+    use crossterm::event::{MouseEvent, MouseEventKind};
+    use stack_stat_tui::app::PointerTarget;
+    let layers = ["l1", "l2", "l3", "l4", "l5", "l6"];
+    let (mut app, _) = TestScenario::builder()
+        .stack("main", &layers)
+        .current_branch("l1")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    let wheel = |kind| MouseEvent {
+        kind,
+        column: 2,
+        row: 2,
+        modifiers: KeyModifiers::NONE,
+    };
+    // A trackpad burst delivers many events; each must advance exactly one layer.
+    for expected in ["l2", "l3", "l4"] {
+        app.handle_mouse(wheel(MouseEventKind::ScrollDown), PointerTarget::Table);
+        assert_eq!(app.selected_branch(), Some(expected));
+    }
+    app.handle_mouse(wheel(MouseEventKind::ScrollUp), PointerTarget::Table);
+    assert_eq!(app.selected_branch(), Some("l3"));
+}
+
 #[test]
 fn color_depth_detection_uses_environment_values_without_mutating_them() {
     assert_eq!(

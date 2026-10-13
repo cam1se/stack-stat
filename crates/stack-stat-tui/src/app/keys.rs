@@ -54,10 +54,10 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             (MouseEventKind::ScrollDown, PointerTarget::Detail) => self.scroll_detail(3),
             (MouseEventKind::ScrollUp, PointerTarget::Detail) => self.scroll_detail(-3),
             (MouseEventKind::ScrollDown, PointerTarget::Table | PointerTarget::TableRow(_)) => {
-                self.move_selection(3)
+                self.move_selection(1)
             }
             (MouseEventKind::ScrollUp, PointerTarget::Table | PointerTarget::TableRow(_)) => {
-                self.move_selection(-3)
+                self.move_selection(-1)
             }
             (MouseEventKind::Down(MouseButton::Left), PointerTarget::TableRow(position)) => {
                 let visible = self.visible_indices();
