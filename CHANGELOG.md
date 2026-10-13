@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/tcamise-gpsw/stack-stat/compare/v0.3.0...v0.4.0) (2026-10-13)
+
+
+### Features
+
+* **tui:** animate a startup wordmark until the first github result ([693cda8](https://github.com/tcamise-gpsw/stack-stat/commit/693cda863f3108b8503cb3af482cb4a1aee2e6b4))
+
+
+### Bug Fixes
+
+* **tui:** select the worktree layer when github data arrives before git ([8ff5b62](https://github.com/tcamise-gpsw/stack-stat/commit/8ff5b6206f6720998629ce0aa814e67bd2e1c9c6))
+
 ## [0.3.0](https://github.com/tcamise-gpsw/stack-stat/compare/v0.2.0...v0.3.0) (2026-10-13)
 
 
