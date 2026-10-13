@@ -40,7 +40,7 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
     frame.render_widget(Clear, modal);
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" Keybindings · any key closes ")
+        .title(super::title(" Keybindings · any key closes ", theme))
         .border_style(Style::default().fg(theme.warning));
     frame.render_widget(block, modal);
     let inner = Rect {

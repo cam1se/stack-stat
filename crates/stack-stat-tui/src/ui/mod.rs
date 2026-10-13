@@ -3,6 +3,8 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
+    style::{Modifier, Style},
+    text::Span,
 };
 use stack_stat_core::providers::{GitHubProvider, GitProvider, StatusStoreProvider};
 
@@ -19,6 +21,16 @@ mod help;
 mod status_bar;
 mod table;
 mod verdict;
+
+/// Bold accent-colored title shared by every bordered pane.
+fn title(text: impl Into<std::borrow::Cow<'static, str>>, theme: &Theme) -> Span<'static> {
+    Span::styled(
+        text,
+        Style::default()
+            .fg(theme.header_title)
+            .add_modifier(Modifier::BOLD),
+    )
+}
 
 /// Rectangles shared by pure drawing and mouse hit testing.
 #[derive(Clone, Copy, Debug)]

@@ -42,7 +42,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             Paragraph::new(
                 "Not in a stack\nSwitch to a stacked branch or run gh stack init <branch>.",
             )
-            .block(Block::default().borders(Borders::ALL).title(" Stack ")),
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(super::title(" Stack ", theme)),
+            ),
             area,
         );
         return;
@@ -223,7 +227,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Stack ")
+                .title(super::title(" Stack ", theme))
                 .border_style(Style::default().fg(theme.muted)),
         );
     frame.render_widget(table, area);
@@ -235,7 +239,7 @@ fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::sty
         PrLifecycle::Queued => ("Queued".into(), theme.warning),
         PrLifecycle::Open => match branch.pr.as_ref() {
             Some(pr) if pr.is_draft => ("Draft".into(), theme.muted),
-            Some(_) => ("Open".into(), theme.muted),
+            Some(_) => ("Open".into(), theme.success),
             None if branch.pr_number.is_some() => ("…".into(), theme.warning),
             None => ("—".into(), theme.muted),
         },

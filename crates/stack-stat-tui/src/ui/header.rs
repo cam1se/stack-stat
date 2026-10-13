@@ -79,12 +79,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(Span::styled(
-            " stack-stat ",
-            Style::default()
-                .fg(theme.header_title)
-                .add_modifier(Modifier::BOLD),
-        ))
+        .title(super::title(" stack-stat ", theme))
         .border_style(Style::default().fg(theme.muted));
     frame.render_widget(
         Paragraph::new(vec![
