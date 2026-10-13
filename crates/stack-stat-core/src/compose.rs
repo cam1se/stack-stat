@@ -8,7 +8,8 @@ use crate::{
     config::Config,
     model::{
         BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState,
-        PrInfo, PrLifecycle, Review, ReviewDecision, ReviewState, StackState, StackStatus,
+        PrInfo, PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState, StackState,
+        StackStatus,
     },
     providers::{PrResponse, ReportedState, StackViewResponse, StatusEntry},
 };
@@ -83,6 +84,7 @@ pub fn compose(
     state.stack_status = StackStatus::Ready;
     state.trunk = stack.trunk.clone();
     let prs: HashMap<_, _> = github.prs.iter().map(|pr| (pr.number, pr)).collect();
+    let mut found_non_merged_layer = false;
     for branch in &stack.branches {
         let head_sha = git
             .and_then(|git| git.branch_shas.get(&branch.name))
@@ -99,10 +101,19 @@ pub fn compose(
         } else {
             PrLifecycle::Open
         };
+        let rebase = if branch.is_merged || !branch.needs_rebase {
+            RebaseNeed::None
+        } else if found_non_merged_layer {
+            RebaseNeed::Parent
+        } else {
+            RebaseNeed::Trunk
+        };
+        found_non_merged_layer |= !branch.is_merged;
         state.branches.push(BranchState {
             name: branch.name.clone(),
             head_sha: head_sha.clone(),
-            needs_rebase: branch.needs_rebase,
+            rebase,
+            trunk_rebase_gates: config.rebase.onto_trunk,
             is_current: git.is_some_and(|git| git.current_branch == branch.name),
             lifecycle,
             pr_number,

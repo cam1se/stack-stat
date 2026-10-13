@@ -10,7 +10,7 @@ use ratatui::{
 use stack_stat_core::{
     model::{
         BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState,
-        PrLifecycle, Review, ReviewDecision, ReviewState,
+        PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState,
     },
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
@@ -65,11 +65,33 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             Style::default().fg(theme.muted),
         ));
     }
-    if branch.needs_rebase {
-        lines.push(Line::styled(
-            "! needs rebase",
-            Style::default().fg(theme.warning),
-        ));
+    match branch.rebase {
+        RebaseNeed::None => {}
+        RebaseNeed::Parent => {
+            let parent = app
+                .state()
+                .branches
+                .iter()
+                .position(|candidate| candidate.name == branch.name)
+                .and_then(|index| index.checked_sub(1))
+                .and_then(|index| app.state().branches.get(index))
+                .map_or("layer below", |parent| parent.name.as_str());
+            lines.push(Line::styled(
+                format!("Rebase needed: onto {parent}"),
+                Style::default().fg(theme.error),
+            ));
+        }
+        RebaseNeed::Trunk => {
+            let blocking = branch.trunk_rebase_gates;
+            lines.push(Line::styled(
+                format!(
+                    "Behind {}: rebase onto trunk{}",
+                    app.state().trunk,
+                    if blocking { "" } else { " (not blocking)" }
+                ),
+                Style::default().fg(if blocking { theme.error } else { theme.muted }),
+            ));
+        }
     }
 
     lines.push(Line::from(""));

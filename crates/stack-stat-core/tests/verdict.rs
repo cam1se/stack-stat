@@ -1,6 +1,6 @@
 use stack_stat_core::model::{
     BranchState, CheckConclusion, CheckStatus, CiCheck, LocalCheckResult, LocalCheckState, PrInfo,
-    PrLifecycle, Review, ReviewDecision, ReviewState, Verdict,
+    PrLifecycle, RebaseNeed, Review, ReviewDecision, ReviewState, Verdict,
 };
 
 fn check(status: CheckStatus, conclusion: Option<CheckConclusion>) -> CiCheck {
@@ -31,7 +31,8 @@ fn ready_branch() -> BranchState {
     BranchState {
         name: "feat".into(),
         head_sha: "a".repeat(40),
-        needs_rebase: false,
+        rebase: RebaseNeed::None,
+        trunk_rebase_gates: false,
         is_current: false,
         lifecycle: PrLifecycle::Open,
         pr_number: Some(1),
@@ -81,7 +82,7 @@ fn non_gating_unresolved_threads_do_not_change_verdict() {
 fn every_blocker_is_no_go_even_with_outstanding_evidence() {
     let blockers: [fn(&mut BranchState); 6] = [
         |b| b.pr.as_mut().unwrap().is_draft = true,
-        |b| b.needs_rebase = true,
+        |b| b.rebase = RebaseNeed::Parent,
         |b| b.pr.as_mut().unwrap().checks[0].conclusion = Some(CheckConclusion::TimedOut),
         |b| b.pr.as_mut().unwrap().review_decision = ReviewDecision::ChangesRequested,
         |b| b.local_checks[0].state = LocalCheckState::Fail,
@@ -98,6 +99,16 @@ fn every_blocker_is_no_go_even_with_outstanding_evidence() {
         blocker(&mut branch);
         assert_eq!(branch.verdict(), Verdict::NoGo, "blocker {index}");
     }
+}
+
+#[test]
+fn trunk_rebase_blocks_only_when_configured() {
+    let mut branch = ready_branch();
+    branch.rebase = RebaseNeed::Trunk;
+    assert_eq!(branch.verdict(), Verdict::Go);
+
+    branch.trunk_rebase_gates = true;
+    assert_eq!(branch.verdict(), Verdict::NoGo);
 }
 
 #[test]
@@ -137,7 +148,7 @@ fn bot_changes_request_blocks_regardless_of_display_filter() {
 fn merged_and_queued_layers_are_neutral() {
     let mut merged = ready_branch();
     merged.lifecycle = PrLifecycle::Merged;
-    merged.needs_rebase = true;
+    merged.rebase = RebaseNeed::Trunk;
     assert_eq!(merged.verdict(), Verdict::Merged);
     let mut queued = ready_branch();
     queued.lifecycle = PrLifecycle::Queued;

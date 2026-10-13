@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use stack_stat_core::{
     config::Config,
-    model::{CheckHealth, StackState},
+    model::{CheckHealth, RebaseNeed, StackState},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
@@ -199,10 +199,10 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 .count()
         });
         let local = branch.local_checks.len().max(1);
-        // Header, optional title and rebase warning, then blank-separated checks, reviews,
+        // Header, optional title and rebase detail, then blank-separated checks, reviews,
         // threads, and local sections.
         1 + usize::from(title)
-            + usize::from(branch.needs_rebase)
+            + usize::from(branch.rebase != RebaseNeed::None)
             + 1
             + checks
             + 1

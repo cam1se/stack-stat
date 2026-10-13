@@ -40,6 +40,10 @@ impl ConfigBuilder {
         self.0.reviews.gate_on_unresolved_threads = gate;
         self
     }
+    pub fn rebase_onto_trunk(mut self, gate: bool) -> Self {
+        self.0.rebase.onto_trunk = gate;
+        self
+    }
     pub fn local(mut self, name: &str) -> Self {
         self.0.checks.local.insert(
             name.into(),
@@ -143,6 +147,7 @@ pub struct TestScenario {
     current_branch: String,
     repo: String,
     local: Vec<(String, String, String, ReportedState)>,
+    rebases: Vec<String>,
     config: Config,
 }
 impl TestScenario {
@@ -152,14 +157,19 @@ impl TestScenario {
             branches: vec![],
             prs: vec![],
             current_branch: String::new(),
-            local: vec![],
             repo: String::new(),
+            local: vec![],
+            rebases: vec![],
             config: Config::default(),
         }
     }
     pub fn stack(mut self, trunk: &str, branches: &[&str]) -> Self {
         self.trunk = trunk.into();
         self.branches = branches.iter().map(|s| (*s).into()).collect();
+        self
+    }
+    pub fn needs_rebase(mut self, branch: &str) -> Self {
+        self.rebases.push(branch.into());
         self
     }
     pub fn pr(mut self, branch: &str, pr: PrBuilder) -> Self {
@@ -212,7 +222,7 @@ impl TestScenario {
                     is_current: name == &self.current_branch,
                     is_merged: false,
                     is_queued: false,
-                    needs_rebase: false,
+                    needs_rebase: self.rebases.iter().any(|branch| branch == name),
                     pr: self
                         .prs
                         .iter()
