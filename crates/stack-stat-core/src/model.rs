@@ -208,6 +208,8 @@ pub struct CheckSummary {
     pub total: usize,
     /// Worst visible health, with failures taking precedence over running checks.
     pub worst: CheckHealth,
+    /// Counted checks that are queued or running.
+    pub running: usize,
 }
 
 /// A review by one author, or an outstanding review request.
