@@ -27,6 +27,6 @@ Local checks apply to a commit SHA, not merely a branch name. If a report is **s
 
 ## Releases and terminal display
 
-Before the first stable release, `stack-stat update` exits with `no stable release found`. The version check inside the TUI is background-only and does not prevent startup. If colors look wrong, set `COLORTERM=truecolor` in a capable terminal or let `TERM` select a 256-color palette; basic 16-color terminals still show verdict glyphs and a bold active-branch pulse. If the terminal becomes narrow, review and local columns collapse; resize to see full names. Overflowing details scroll with Page Up/Down or the mouse wheel over the pane.
+Before the first stable release, `stack-stat update` exits with `no stable release found`. The version check inside the TUI is background-only and does not prevent startup. If colors look wrong, set `COLORTERM=truecolor` in a capable terminal or let `TERM` select a 256-color palette; basic 16-color terminals still show verdict glyphs and a bold pulse on the selected row. If the terminal becomes narrow, review and local columns collapse; resize to see full names. Overflowing details scroll with Page Up/Down or the mouse wheel over the pane.
 
 See [configuration](configuration.md) for polling and filter settings.

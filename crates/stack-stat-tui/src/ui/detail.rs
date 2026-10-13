@@ -52,7 +52,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             }),
         ),
         Span::raw(if branch.is_current {
-            "   ← worktree checked out here"
+            "   * current worktree"
         } else {
             ""
         }),

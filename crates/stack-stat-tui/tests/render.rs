@@ -88,7 +88,7 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
         &buf,
         auth,
         &[
-            "►", "✔", "auth", "←wt", "#42", "Open", "1/1", "approved", "lint", "test",
+            "*", "✔", "auth", "#42", "Open", "1/1", "approved", "lint", "test",
         ],
     );
     assert_row_contains(&buf, auth + 1, &["Change 42"]);
@@ -189,12 +189,12 @@ async fn branch_switch_and_stale_check_have_distinct_visual_markers() {
     app.poll_once(Source::Git).await;
     let buf = draw(&app, 120, 40);
     let api = find_row(&buf, "#43").unwrap();
-    assert_row_contains(&buf, api, &["api", "←wt"]);
+    assert_row_contains(&buf, api, &["*", "api"]);
     let auth = find_row(&buf, "#42").unwrap();
     let auth_line: String = (0..buf.area.width)
         .map(|x| buf[(x, auth)].symbol())
         .collect();
-    assert!(!auth_line.contains("←wt"));
+    assert!(!auth_line.contains('*'));
 }
 
 #[tokio::test]
