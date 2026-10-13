@@ -175,6 +175,8 @@ fn compose_pr(pr: &PrResponse, config: &Config) -> PrInfo {
             Some("REVIEW_REQUIRED") => ReviewDecision::ReviewRequired,
             _ => ReviewDecision::None,
         },
+        unresolved_threads: pr.unresolved_threads,
+        threads_gate: config.reviews.gate_on_unresolved_threads,
         checks,
         reviews,
     }

@@ -58,6 +58,8 @@ pub struct LocalCheckConfig {
 pub struct ReviewsConfig {
     /// Review logins the repository identifies as bots.
     pub bots: Vec<String>,
+    /// Whether unresolved review threads block readiness.
+    pub gate_on_unresolved_threads: bool,
     /// Whether bot reviews are visible before toggling them.
     pub show_bots: bool,
 }

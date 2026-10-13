@@ -67,6 +67,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Constraint::Length(7),
         Constraint::Length(9),
         Constraint::Length(if full_reviews { 17 } else { 5 }),
+        Constraint::Length(7),
     ];
     let mut header = vec![
         "",
@@ -76,6 +77,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         "State",
         "Checks",
         if full_reviews { "Reviews" } else { "Rev" },
+        if full_reviews { "Threads" } else { "Thr" },
     ];
     if show_local {
         widths.push(Constraint::Length(if full_local { 22 } else { 4 }));
@@ -125,6 +127,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     app.reviews_expanded(),
                     full_reviews,
                 );
+                let threads = thread_label(branch);
                 let local = local_label(branch, full_local);
                 let branch_name = format!(
                     "{}{}{}",
@@ -188,6 +191,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     Cell::from(Span::styled(
                         reviews.0,
                         style(Column::Reviews, reviews.1.color(theme)),
+                    )),
+                    Cell::from(Span::styled(
+                        threads.0,
+                        style(Column::Threads, threads.1.color(theme)),
                     )),
                 ];
                 if show_local {
@@ -357,6 +364,19 @@ fn review_label(
         },
         health,
     )
+}
+
+fn thread_label(branch: &BranchState) -> (String, Health) {
+    let Some(pr) = &branch.pr else {
+        return ("—".into(), Health::Muted);
+    };
+    if pr.unresolved_threads == 0 {
+        return ("✔ 0".into(), Health::Success);
+    }
+    if pr.threads_gate {
+        return (format!("✖ {}", pr.unresolved_threads), Health::Failure);
+    }
+    (format!("… {}", pr.unresolved_threads), Health::Running)
 }
 
 fn local_label(branch: &BranchState, full: bool) -> (String, Health) {

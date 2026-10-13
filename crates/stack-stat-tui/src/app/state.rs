@@ -199,7 +199,8 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 .count()
         });
         let local = branch.local_checks.len().max(1);
-        // header, optional title and rebase warning, then blank-separated checks, reviews, local sections
+        // Header, optional title and rebase warning, then blank-separated checks, reviews,
+        // threads, and local sections.
         1 + usize::from(title)
             + usize::from(branch.needs_rebase)
             + 1
@@ -207,6 +208,8 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             + 1
             + 1
             + reviews
+            + 1
+            + 1
             + 1
             + 1
             + local

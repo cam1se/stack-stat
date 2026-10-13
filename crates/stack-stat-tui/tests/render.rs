@@ -183,11 +183,11 @@ async fn branch_switch_and_stale_check_have_distinct_visual_markers() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    let buf = draw(&app, 120, 28);
+    let buf = draw(&app, 120, 40);
     assert!(find_row(&buf, "stale (HEAD moved, was aaaaaaa)").is_some());
     handles.git.set_current_branch("api");
     app.poll_once(Source::Git).await;
-    let buf = draw(&app, 120, 28);
+    let buf = draw(&app, 120, 40);
     let api = find_row(&buf, "#43").unwrap();
     assert_row_contains(&buf, api, &["api", "←wt"]);
     let auth = find_row(&buf, "#42").unwrap();

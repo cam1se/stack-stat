@@ -41,6 +41,7 @@ impl BranchState {
         if pr.is_draft
             || self.needs_rebase
             || checks == CheckHealth::Failure
+            || (pr.threads_gate && pr.unresolved_threads > 0)
             || pr.review_decision == ReviewDecision::ChangesRequested
             || reviews == ReviewSummary::ChangesRequested
             || self

@@ -19,6 +19,8 @@ pub enum Column {
     Checks,
     /// Review decision or reviewer list.
     Reviews,
+    /// Unresolved review-thread count.
+    Threads,
     /// Local report results.
     Local,
 }
@@ -145,6 +147,7 @@ pub fn diff_cells(old: &StackState, new: &StackState) -> Vec<CellId> {
                 Column::State,
                 Column::Checks,
                 Column::Reviews,
+                Column::Threads,
                 Column::Local,
             ] {
                 changed.push(CellId::new(&branch.name, column));
@@ -176,6 +179,17 @@ fn compare_branch(old: &BranchState, new: &BranchState, changed: &mut Vec<CellId
         != new.pr.as_ref().map(|pr| (&pr.reviews, pr.review_decision))
     {
         changed.push(CellId::new(name, Column::Reviews));
+    }
+    if old
+        .pr
+        .as_ref()
+        .map(|pr| (pr.unresolved_threads, pr.threads_gate))
+        != new
+            .pr
+            .as_ref()
+            .map(|pr| (pr.unresolved_threads, pr.threads_gate))
+    {
+        changed.push(CellId::new(name, Column::Threads));
     }
     if old.local_checks != new.local_checks {
         changed.push(CellId::new(name, Column::Local));

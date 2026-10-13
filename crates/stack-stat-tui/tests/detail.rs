@@ -79,6 +79,7 @@ fn detail_pr() -> PrResponse {
                 details_url: String::new(),
             },
         ],
+        unresolved_threads: 0,
     }
 }
 

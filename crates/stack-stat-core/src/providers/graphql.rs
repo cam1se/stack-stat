@@ -14,6 +14,7 @@ pub fn build_pr_query(owner: &str, repo: &str, numbers: &[u32]) -> String {
     const FIELDS: &str = "number url title isDraft reviewDecision \
         latestReviews(first:50) { nodes { state submittedAt author { login __typename } } } \
         reviewRequests(first:50) { nodes { requestedReviewer { __typename ... on User { login } ... on Bot { login } ... on Team { name } } } } \
+        reviewThreads(first:100) { nodes { isResolved } } \
         commits(last:1) { nodes { commit { statusCheckRollup { contexts(first:100) { nodes { __typename \
         ... on CheckRun { name status conclusion startedAt completedAt detailsUrl checkSuite { workflowRun { workflow { name } } } } \
         ... on StatusContext { context state targetUrl createdAt } } } } } } }";

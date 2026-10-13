@@ -112,6 +112,26 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     }
 
     lines.push(Line::from(""));
+    if let Some(pr) = &branch.pr {
+        let color = if pr.unresolved_threads == 0 {
+            theme.success
+        } else if pr.threads_gate {
+            theme.error
+        } else {
+            theme.warning
+        };
+        lines.push(Line::styled(
+            format!("Threads: Unresolved threads: {}", pr.unresolved_threads),
+            Style::default().fg(color),
+        ));
+    } else {
+        lines.push(Line::styled(
+            "Threads: — no PR details",
+            Style::default().fg(theme.muted),
+        ));
+    }
+
+    lines.push(Line::from(""));
     lines.push(Line::from("Local checks:"));
     if branch.local_checks.is_empty() {
         lines.push(Line::from("  — none declared or reported"));

@@ -36,6 +36,10 @@ impl ConfigBuilder {
         self.0.reviews.bots.push(name.into());
         self
     }
+    pub fn gate_on_unresolved_threads(mut self, gate: bool) -> Self {
+        self.0.reviews.gate_on_unresolved_threads = gate;
+        self
+    }
     pub fn local(mut self, name: &str) -> Self {
         self.0.checks.local.insert(
             name.into(),
@@ -62,6 +66,7 @@ impl PrBuilder {
             reviews: vec![],
             review_requests: vec![],
             checks: vec![],
+            unresolved_threads: 0,
         })
     }
     pub fn draft(mut self) -> Self {
@@ -117,6 +122,10 @@ impl PrBuilder {
             completed_at: None,
             details_url: "https://example.test/check".into(),
         });
+        self
+    }
+    pub fn unresolved_threads(mut self, count: usize) -> Self {
+        self.0.unresolved_threads = count;
         self
     }
     pub fn checks_all_pass(self) -> Self {
