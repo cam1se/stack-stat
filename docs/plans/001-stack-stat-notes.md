@@ -67,3 +67,8 @@ N/A
 - The user clarified the optional crate was [TachyonFX](https://github.com/ratatui/tachyonfx), a stateful Ratatui buffer-effects engine (not tachyonix, the channel crate). The six required effects are fixed, cell-specific, and tick-deterministic; the in-repo animation state avoids a second scheduler and extra dependency. TachyonFX remains suitable if future designs need composable wipes/fades.
 - A read-only run against the user-supplied stack showed actual in-progress CI spinners and the header fetch indicator; no local status directory existed to be modified. The active branch pulse is also covered by a deterministic `TestBackend` 16-color modifier test.
 - No in-progress check finished during the short read-only real-repo smoke. A throwaway rendered-buffer probe instead transitioned a controlled check from `IN_PROGRESS` to `SUCCESS` and observed `completed-check cell flashed: true`, then `flash ended after five ticks: true`; the probe was removed. This verifies the completion surface without altering CI or the user-supplied repository.
+
+### Task 13: Self-update and startup version check
+
+- GitHub Releases for `tcamise-gpsw/stack-stat` is empty. `cargo run -- update` exited 1 with `no stable release found in tcamise-gpsw/stack-stat`; end-to-end replacement cannot be exercised until the first release exists. Archive checksum/extraction and version selection are covered with generated test archives on disk.
+- The TUI draws its first frame before starting the one-shot release query. A read-only local-stack smoke showed the dashboard and quit successfully while the background check found no release.

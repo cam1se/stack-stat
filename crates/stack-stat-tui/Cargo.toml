@@ -12,17 +12,24 @@ path = "src/main.rs"
 anyhow.workspace = true
 chrono.workspace = true
 crossterm.workspace = true
+flate2.workspace = true
 ratatui.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+self-replace.workspace = true
+sha2.workspace = true
 clap.workspace = true
 futures-util = "0.3"
 stack-stat-core = { path = "../stack-stat-core" }
-serde.workspace = true
-serde_json.workspace = true
+tar.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
+tracing.workspace = true
+zip.workspace = true
 
 [dev-dependencies]
 stack-stat-core = { path = "../stack-stat-core", features = ["test-fakes"] }
-tempfile.workspace = true
 
 [lints]
 workspace = true

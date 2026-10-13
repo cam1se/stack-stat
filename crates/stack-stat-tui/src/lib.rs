@@ -19,3 +19,5 @@ pub mod runtime;
 pub mod theme;
 /// Pure ratatui widgets and dashboard layout.
 pub mod ui;
+/// Release lookup, archive verification, and self replacement.
+pub mod update;

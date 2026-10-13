@@ -48,7 +48,11 @@ async fn main() -> ExitCode {
 
 async fn run() -> Result<()> {
     match Cli::parse().command {
-        Some(Command::Version) => println!("stack-stat {}", env!("CARGO_PKG_VERSION")),
+        Some(Command::Version) => println!(
+            "stack-stat {} ({})",
+            env!("CARGO_PKG_VERSION"),
+            stack_stat_tui::update::compiled_target()
+        ),
         Some(Command::Report(args)) => {
             let git = CliGitProvider::discover(&std::env::current_dir()?)?;
             let config = Config::load(git.worktree_root(), None)?;
@@ -56,7 +60,10 @@ async fn run() -> Result<()> {
             let output = report::run(&args, &git, &store, &config, Utc::now()).await?;
             println!("{output}");
         }
-        Some(Command::Update) => anyhow::bail!("stack-stat update is not yet available"),
+        Some(Command::Update) => println!(
+            "{}",
+            stack_stat_tui::update::run_update(stack_stat_tui::update::RELEASE_REPO).await?
+        ),
         None => {
             preflight::run(&SystemCommandRunner)?;
             let git = CliGitProvider::discover(&std::env::current_dir()?)?;

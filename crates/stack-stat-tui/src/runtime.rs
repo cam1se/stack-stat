@@ -87,6 +87,18 @@ where
     let mut guard = TerminalGuard::enter()?;
     let theme = crate::theme::Theme::for_depth(crate::theme::ColorDepth::detect());
     let (tx, mut rx) = mpsc::unbounded_channel::<AppMessage>();
+    // The dashboard is visible before any release query begins.
+    draw(&mut guard, &app, &theme)?;
+    let update_tx = tx.clone();
+    let _version_check = tokio::spawn(async move {
+        match crate::update::check_latest(crate::update::RELEASE_REPO).await {
+            Ok(Some(version)) => {
+                let _ = update_tx.send(AppMessage::UpdateAvailable(version));
+            }
+            Err(error) => tracing::debug!(%error, "background version check failed"),
+            Ok(None) => {}
+        }
+    });
     let pollers = poll::spawn(git, Arc::clone(&github), store, config, tx.clone());
     let mut keys = EventStream::new();
     let mut ticks = interval(Duration::from_millis(100));

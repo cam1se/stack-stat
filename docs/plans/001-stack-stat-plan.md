@@ -539,9 +539,9 @@
 - [x] Manual smoke: run in a repo with an active stack with CI running; observe the pulse on the worktree row, spinners, and a flash when a check completes
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 12: Animations` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 12: Animations` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 13: Self-update and startup version check
 
@@ -568,16 +568,16 @@
 - `version` prints the version and the target triple.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Asset naming matches the release workflow from Task 3 for all five targets
-- [ ] Checksum mismatch aborts without replacing the binary
-- [ ] Windows replacement goes through `self-replace`
-- [ ] Background check cannot delay the first frame
+- [x] Asset naming matches the release workflow from Task 3 for all five targets
+- [x] Checksum mismatch aborts without replacing the binary
+- [x] Windows replacement goes through `self-replace`
+- [x] Background check cannot delay the first frame
 
 **Tests:**
-- [ ] `cargo test -p stack-stat-tui --test update`
-- [ ] Cover the pure helpers: tag selection ignores drafts, pre-releases, and non-`v` tags and picks the highest semver (not lexical: `v0.10.0` > `v0.9.0`); asset names per target; checksum lookup present/absent; `is_newer` equal/older/newer
-- [ ] Archive extraction tested against a tar.gz and a zip built in a temp dir in the test (no network)
-- [ ] Manual: the end-to-end `stack-stat update` against real releases can only be verified once a release exists. If none exists yet, record that in notes and verify "no release found" error handling instead
+- [x] `cargo test -p stack-stat-tui --test update`
+- [x] Cover the pure helpers: tag selection ignores drafts, pre-releases, and non-`v` tags and picks the highest semver (not lexical: `v0.10.0` > `v0.9.0`); asset names per target; checksum lookup present/absent; `is_newer` equal/older/newer
+- [x] Archive extraction tested against a tar.gz and a zip built in a temp dir in the test (no network)
+- [x] Manual: the end-to-end `stack-stat update` against real releases can only be verified once a release exists. If none exists yet, record that in notes and verify "no release found" error handling instead
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
