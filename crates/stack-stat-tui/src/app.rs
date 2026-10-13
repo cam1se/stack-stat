@@ -82,6 +82,8 @@ pub struct App<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> {
     state: StackState,
     selected_name: Option<String>,
     selected_index: usize,
+    /// Automatic selection tracks the worktree branch until Git reports it or the user picks a row.
+    follow_worktree: bool,
     detail_scroll: usize,
     detail_viewport_rows: usize,
     detail_viewport_width: usize,
@@ -125,6 +127,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             state: StackState::default(),
             selected_name: None,
             selected_index: 0,
+            follow_worktree: true,
             detail_scroll: 0,
             detail_viewport_rows: 12,
             detail_viewport_width: 80,

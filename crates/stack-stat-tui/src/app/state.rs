@@ -24,16 +24,19 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 .iter()
                 .position(|&index| self.state.branches[index].name == *name)
         });
-        self.selected_index = selected_position.unwrap_or_else(|| {
-            if self.selected_name.is_none() {
-                visible
-                    .iter()
-                    .position(|&index| self.state.branches[index].is_current)
-                    .unwrap_or(0)
-            } else {
-                self.selected_index.min(visible.len() - 1)
-            }
-        });
+        let worktree_position = visible
+            .iter()
+            .position(|&index| self.state.branches[index].is_current);
+        let following = self.follow_worktree || self.selected_name.is_none();
+        self.selected_index = match (following, worktree_position, selected_position) {
+            (true, Some(position), _) | (_, _, Some(position)) => position,
+            _ if self.selected_name.is_none() => 0,
+            _ => self.selected_index.min(visible.len() - 1),
+        };
+        // Rows can arrive before Git names the worktree branch; keep following it until then.
+        if self.git.is_some() {
+            self.follow_worktree = false;
+        }
         let name = self.state.branches[visible[self.selected_index]]
             .name
             .clone();
