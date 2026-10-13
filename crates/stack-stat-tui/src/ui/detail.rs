@@ -42,7 +42,15 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Span::raw(identity),
         Span::raw(" · "),
         Span::styled(glyph, Style::default().fg(verdict_color)),
-        Span::raw(format!(" · {lifecycle}")),
+        Span::raw(" · "),
+        Span::styled(
+            lifecycle,
+            Style::default().fg(if lifecycle == "Open" {
+                theme.success
+            } else {
+                theme.muted
+            }),
+        ),
         Span::raw(if branch.is_current {
             "   ← worktree checked out here"
         } else {
@@ -386,7 +394,7 @@ fn render_scrolled<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Paragraph::new(visible).block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(title)
+                .title(super::title(title, theme))
                 .border_style(Style::default().fg(theme.muted)),
         ),
         area,
