@@ -8,7 +8,7 @@
 - [ ] `cargo fmt --all -- --check`
 - [ ] `cargo clippy --workspace --all-targets --locked -- -D warnings`
 - [ ] `cargo test --workspace --locked --no-fail-fast`
-- [ ] TUI smoke in a repo with an active gh stack / N/A because runtime behavior is unchanged
+- [ ] TUI smoke via `make demo` / N/A because runtime behavior is unchanged
 
 ## Docs and architecture
 
