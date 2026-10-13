@@ -72,3 +72,8 @@ N/A
 
 - GitHub Releases for `tcamise-gpsw/stack-stat` is empty. `cargo run -- update` exited 1 with `no stable release found in tcamise-gpsw/stack-stat`; end-to-end replacement cannot be exercised until the first release exists. Archive checksum/extraction and version selection are covered with generated test archives on disk.
 - The TUI draws its first frame before starting the one-shot release query. A read-only local-stack smoke showed the dashboard and quit successfully while the background check found no release.
+
+### Task 14: User documentation, README, and dogfood config
+
+- The MkDocs nav and documentation map already included all planned pages from earlier tasks, so no change to `mkdocs.yml` or `docs/README.md` was needed. The goal framing in `docs/goals.md` also remained accurate.
+- No stable release exists yet; installation and real binary replacement cannot be exercised. The user docs explicitly condition installer use on a published release and document the observed `no stable release found` update error.

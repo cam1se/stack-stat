@@ -580,9 +580,9 @@
 - [x] Manual: the end-to-end `stack-stat update` against real releases can only be verified once a release exists. If none exists yet, record that in notes and verify "no release found" error handling instead
 
 **Commit & document:**
-- [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
-- [ ] Append to `001-stack-stat-notes.md` under a `### Task 13: Self-update and startup version check` heading. Write `N/A` if there is nothing worth recording.
-- [ ] All above checked — call `todo done` to advance.
+- [x] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.
+- [x] Append to `001-stack-stat-notes.md` under a `### Task 13: Self-update and startup version check` heading. Write `N/A` if there is nothing worth recording.
+- [x] All above checked — call `todo done` to advance.
 
 ### Task 14: User documentation, README, and dogfood config
 
@@ -602,14 +602,14 @@
 - All commands in user docs were actually run during Tasks 9–13; copy real output shapes, not invented ones.
 
 **Checklist** *(executing agent: check these off in the file as you complete them)*:
-- [ ] Every user-facing command and config key in the spec is documented
-- [ ] Site builds strictly (`zensical build --strict` via `./scripts/serve-docs.sh` when `uv` is available)
-- [ ] No broken relative links across `docs/`
+- [x] Every user-facing command and config key in the spec is documented
+- [x] Site builds strictly (`zensical build --strict` via `./scripts/serve-docs.sh` when `uv` is available)
+- [x] No broken relative links across `docs/`
 
 **Tests:**
-- [ ] Build the docs site if `uv` is available; otherwise record it as skipped in notes
-- [ ] Run `cargo doc --workspace --no-deps --locked` and confirm no missing-docs failures
-- [ ] Throwaway link check over `docs/**/*.md` relative links (not committed)
+- [x] Build the docs site if `uv` is available; otherwise record it as skipped in notes
+- [x] Run `cargo doc --workspace --no-deps --locked` and confirm no missing-docs failures
+- [x] Throwaway link check over `docs/**/*.md` relative links (not committed)
 
 **Commit & document:**
 - [ ] Read `skill://commit`, stage relevant untracked files, commit with `git commit -m` — you authored these changes, write the message yourself in Conventional Commits format. Then `git push` so the draft PR stays current.

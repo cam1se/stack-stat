@@ -1,0 +1,4 @@
+[checks.local]
+fmt = { description = "cargo fmt --all -- --check" }
+clippy = { description = "cargo clippy --workspace --all-targets --locked -- -D warnings" }
+test = { description = "cargo test --workspace --locked --no-fail-fast" }
