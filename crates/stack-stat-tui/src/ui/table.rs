@@ -143,8 +143,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     "│"
                 };
                 let branch_color = match verdict {
-                    stack_stat_core::model::Verdict::Merged
-                    | stack_stat_core::model::Verdict::Queued => ratatui::style::Color::Reset,
+                    stack_stat_core::model::Verdict::Merged => ratatui::style::Color::Reset,
                     _ => verdict_color,
                 };
                 let cells = vec![
@@ -240,7 +239,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
 fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::style::Color) {
     match branch.lifecycle {
         PrLifecycle::Merged => ("Merged".into(), theme.muted),
-        PrLifecycle::Queued => ("Queued".into(), theme.warning),
+        PrLifecycle::Queued => ("Queued".into(), theme.success),
         PrLifecycle::Open => match branch.pr.as_ref() {
             Some(pr) if pr.is_draft => ("Draft".into(), theme.muted),
             Some(_) => ("Open".into(), theme.success),

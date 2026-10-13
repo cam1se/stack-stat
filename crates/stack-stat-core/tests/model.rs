@@ -59,6 +59,27 @@ fn skipped_checks_are_not_in_count_or_worst_state() {
 }
 
 #[test]
+fn completed_skipped_checks_do_not_inflate_the_total() {
+    let mut checks = vec![check(
+        "build",
+        CheckStatus::Completed,
+        Some(CheckConclusion::Success),
+        false,
+    )];
+    for _ in 0..5 {
+        checks.push(check(
+            "optional",
+            CheckStatus::Completed,
+            Some(CheckConclusion::Skipped),
+            false,
+        ));
+    }
+    let summary = pr(checks, vec![]).check_summary();
+    assert_eq!((summary.passed, summary.total), (1, 1));
+    assert_eq!(summary.worst, CheckHealth::Success);
+}
+
+#[test]
 fn failing_checks_override_running_and_passing() {
     let pr = pr(
         vec![

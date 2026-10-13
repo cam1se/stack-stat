@@ -14,7 +14,7 @@ pub(super) fn slices(summary: StackSummary, theme: &Theme) -> Vec<(usize, Color)
         (summary.wait, theme.warning),
         (summary.no_go, theme.error),
         (summary.merged, theme.muted),
-        (summary.queued, theme.muted),
+        (summary.queued, theme.success),
     ]
     .into_iter()
     .filter(|(count, _)| *count > 0)
@@ -57,7 +57,7 @@ mod tests {
 
         assert_eq!(
             slices(summary, &theme),
-            vec![(2, theme.success), (3, theme.error), (1, theme.muted),]
+            vec![(2, theme.success), (3, theme.error), (1, theme.success)]
         );
     }
 
@@ -81,7 +81,7 @@ mod tests {
                 (2, theme.warning),
                 (3, theme.error),
                 (4, theme.muted),
-                (5, theme.muted),
+                (5, theme.success),
             ]
         );
     }

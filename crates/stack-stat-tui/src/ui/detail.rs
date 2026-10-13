@@ -45,7 +45,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         Span::raw(" · "),
         Span::styled(
             lifecycle,
-            Style::default().fg(if lifecycle == "Open" {
+            Style::default().fg(if matches!(lifecycle, "Open" | "Queued") {
                 theme.success
             } else {
                 theme.muted
