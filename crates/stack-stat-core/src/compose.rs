@@ -85,6 +85,7 @@ pub fn compose(
     state.trunk = stack.trunk.clone();
     let prs: HashMap<_, _> = github.prs.iter().map(|pr| (pr.number, pr)).collect();
     let mut found_non_merged_layer = false;
+    let mut rebase_cascading = false;
     for branch in &stack.branches {
         let head_sha = git
             .and_then(|git| git.branch_shas.get(&branch.name))
@@ -101,13 +102,21 @@ pub fn compose(
         } else {
             PrLifecycle::Open
         };
-        let rebase = if branch.is_merged || !branch.needs_rebase {
+        let own_rebase = if branch.is_merged || !branch.needs_rebase {
             RebaseNeed::None
         } else if found_non_merged_layer {
             RebaseNeed::Parent
         } else {
             RebaseNeed::Trunk
         };
+        let rebase = match own_rebase {
+            RebaseNeed::None | RebaseNeed::Trunk if rebase_cascading && !branch.is_merged => {
+                RebaseNeed::Stacked
+            }
+            other => other,
+        };
+        rebase_cascading |= own_rebase == RebaseNeed::Parent
+            || (own_rebase == RebaseNeed::Trunk && config.rebase.onto_trunk);
         found_non_merged_layer |= !branch.is_merged;
         state.branches.push(BranchState {
             name: branch.name.clone(),

@@ -68,6 +68,8 @@ pub enum RebaseNeed {
     Parent,
     /// Rebase onto the trunk branch.
     Trunk,
+    /// An earlier layer must be rebased, so this layer will move with it.
+    Stacked,
 }
 
 /// GitHub's lifecycle status for a stack layer.
@@ -105,6 +107,8 @@ pub enum Issue {
     RebaseParent,
     /// The branch must be rebased onto trunk.
     RebaseTrunk,
+    /// An earlier layer must be rebased, which will move this layer too.
+    RebaseStacked,
     /// One or more CI checks failed.
     FailingChecks(usize),
     /// GitHub or a reviewer requested changes.
@@ -136,6 +140,7 @@ impl Issue {
             Self::Draft
                 | Self::RebaseParent
                 | Self::RebaseTrunk
+                | Self::RebaseStacked
                 | Self::FailingChecks(_)
                 | Self::ChangesRequested
                 | Self::UnresolvedThreads(_)

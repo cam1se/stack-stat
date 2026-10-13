@@ -42,10 +42,12 @@ impl StackState {
         {
             let issues = branch.issues();
             summary.draft += issues.contains(&Issue::Draft) as usize;
-            summary.rebase += issues
-                .iter()
-                .any(|issue| matches!(issue, Issue::RebaseParent | Issue::RebaseTrunk))
-                as usize;
+            summary.rebase += issues.iter().any(|issue| {
+                matches!(
+                    issue,
+                    Issue::RebaseParent | Issue::RebaseTrunk | Issue::RebaseStacked
+                )
+            }) as usize;
             summary.checks += issues
                 .iter()
                 .any(|issue| matches!(issue, Issue::FailingChecks(_)))
@@ -88,6 +90,7 @@ impl BranchState {
         }
         match self.rebase {
             RebaseNeed::Parent => issues.push(Issue::RebaseParent),
+            RebaseNeed::Stacked => issues.push(Issue::RebaseStacked),
             RebaseNeed::Trunk if self.trunk_rebase_gates => issues.push(Issue::RebaseTrunk),
             RebaseNeed::None | RebaseNeed::Trunk => {}
         }
