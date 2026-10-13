@@ -1,51 +1,42 @@
-//! Serialized external records and typed provider failures.
+//! Normalized external records and typed provider failures.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Result from `gh stack view --json`.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+/// GitHub stack structure normalized from the stack API.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackViewResponse {
-    /// Trunk branch name.
+    /// Stack target branch supplied by GitHub's `baseRefName`.
     pub trunk: String,
-    /// Checked-out branch according to the extension.
+    /// Checked-out Git branch supplied by the caller.
     pub current_branch: String,
-    /// Layers from trunk to top.
+    /// Layers from trunk to top, ordered by their stack-entry positions.
     pub branches: Vec<StackBranch>,
 }
 
-/// One layer of a gh-stack view.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+/// One GitHub PR layer in a normalized stack.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackBranch {
-    /// Local branch name.
+    /// PR head branch name, retained even after the remote ref is deleted.
     pub name: String,
-    /// Commit at the branch tip, when supplied by gh stack. Local Git is the
-    /// authority on the current tip, so an omitted head is valid.
-    pub head: Option<String>,
-    /// Recorded parent base commit.
-    pub base: String,
-    /// Whether the extension considers this branch checked out.
-    pub is_current: bool,
-    /// Whether the layer has merged.
+    /// Whether GitHub reports the PR as merged.
     pub is_merged: bool,
-    /// Whether it is queued for merge.
+    /// Whether GitHub reports the PR in the merge queue.
     pub is_queued: bool,
     /// Linked PR, if one exists.
     pub pr: Option<StackPr>,
 }
 
-/// Linked PR identity in a stack view.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+/// Linked GitHub PR identity and lifecycle in a stack.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackPr {
     /// GitHub PR number.
     pub number: u32,
     /// PR URL.
     pub url: String,
-    /// Extension-provided lifecycle state.
+    /// GitHub lifecycle state: `OPEN`, `MERGED`, or `CLOSED`.
     pub state: String,
 }
 
@@ -182,11 +173,15 @@ pub enum ProviderAction {
     },
 }
 
-/// Classified GitHub CLI failure.
+/// Classified failure while discovering GitHub state or running a CLI action.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GitHubError {
-    /// The checked-out branch is not in a stack.
+    /// Remote discovery found no branch PR or no GitHub stack for that PR.
     NotInStack,
+    /// Push or sync requires local gh-stack tracking before it can proceed.
+    LocalTrackingMissing,
+    /// A stack action requires the gh-stack extension to be installed.
+    MissingStackExtension,
     /// A rebase needs manual conflict resolution.
     RebaseConflict,
     /// Sync stopped without changes because local and remote stacks diverged.
@@ -198,6 +193,8 @@ pub enum GitHubError {
     },
     /// Authentication is missing or expired.
     Auth,
+    /// Local Git state needed for GitHub discovery could not be read.
+    Git(String),
     /// Network operation failed.
     Network(String),
     /// Command returned an exit code and stderr.
@@ -215,6 +212,11 @@ impl std::fmt::Display for GitHubError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotInStack => write!(f, "not in a stack"),
+            Self::LocalTrackingMissing => write!(f, "local gh-stack tracking missing"),
+            Self::MissingStackExtension => write!(
+                f,
+                "gh-stack extension missing; install with: gh extension install github/gh-stack"
+            ),
             Self::RebaseConflict => write!(f, "stack rebase conflict"),
             Self::Diverged(message) => write!(f, "Sync aborted: {message}"),
             Self::RateLimited { reset_hint } => write!(
@@ -223,7 +225,7 @@ impl std::fmt::Display for GitHubError {
                 reset_hint.as_deref().unwrap_or("")
             ),
             Self::Auth => write!(f, "GitHub CLI authentication failed"),
-            Self::Network(msg) | Self::Parse(msg) => write!(f, "{msg}"),
+            Self::Git(msg) | Self::Network(msg) | Self::Parse(msg) => write!(f, "{msg}"),
             Self::Command { code, stderr } => write!(f, "gh exited {code}: {stderr}"),
         }
     }

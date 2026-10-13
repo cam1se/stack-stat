@@ -47,11 +47,18 @@ pub trait GitProvider: Send + Sync {
     fn common_dir(&self) -> &Path;
 }
 
-/// GitHub stack and PR operations performed through `gh`.
+/// Read GitHub stack and PR state via the API; run stack actions through `gh stack`.
 #[async_trait]
 pub trait GitHubProvider: Send + Sync {
-    /// Fetch the stack containing the checked-out branch.
-    async fn stack_view(&self) -> std::result::Result<StackViewResponse, GitHubError>;
+    /// Fetch the GitHub stack containing the supplied checked-out Git branch.
+    ///
+    /// Prefer its newest open PR, then its newest merged or closed PR. A branch
+    /// without a PR or whose selected PR has no stack returns `NotInStack`;
+    /// lookup failures remain errors. Empty and detached branches need no API call.
+    async fn stack_view(
+        &self,
+        current_branch: &str,
+    ) -> std::result::Result<StackViewResponse, GitHubError>;
     /// `owner/name` of the GitHub repository, empty when unknown.
     fn repo(&self) -> String;
     /// Fetch exact PR details and remote rebase comparisons for a stack.
@@ -61,7 +68,7 @@ pub trait GitHubProvider: Send + Sync {
     ) -> std::result::Result<StackDetailsResponse, GitHubError>;
     /// Open a PR in a browser.
     async fn open_pr_in_browser(&self, number: u32) -> std::result::Result<(), GitHubError>;
-    /// Checkout a branch in the stack.
+    /// Checkout a stack branch or PR number and establish local stack tracking.
     async fn checkout_branch(&self, branch: &str) -> std::result::Result<(), GitHubError>;
     /// Push the active stack branches.
     async fn push_stack(&self) -> std::result::Result<(), GitHubError>;

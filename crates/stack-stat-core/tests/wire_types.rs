@@ -1,9 +1,15 @@
-use stack_stat_core::providers::{StackViewResponse, graphql::parse_stack_response};
+use stack_stat_core::providers::{
+    GitHubError,
+    graphql::{StackDiscovery, parse_stack_response},
+};
 
 #[test]
-fn stack_view_fixture_preserves_order_and_ignores_extension_rebase_flag() {
-    let raw = include_str!("fixtures/stack_view.json");
-    let stack: StackViewResponse = serde_json::from_str(raw).unwrap();
+fn github_stack_fixture_preserves_position_order_and_pr_identity() {
+    let stack = StackDiscovery::new("api")
+        .unwrap()
+        .accept_response(0, include_str!("fixtures/stack_view.json"), "")
+        .unwrap()
+        .unwrap();
     assert_eq!(stack.trunk, "main");
     assert_eq!(stack.current_branch, "api");
     assert_eq!(
@@ -19,18 +25,26 @@ fn stack_view_fixture_preserves_order_and_ignores_extension_rebase_flag() {
 }
 
 #[test]
-fn unsubmitted_local_stack_can_omit_head_and_pr_fields() {
-    let stack: StackViewResponse =
-        serde_json::from_str(include_str!("fixtures/stack_view_no_pr.json")).unwrap();
-    assert_eq!(stack.branches[0].name, "test-layer");
-    assert!(stack.branches[0].pr.is_none());
+fn branch_without_a_pull_request_is_not_in_a_remote_stack() {
+    let raw =
+        r#"{"data":{"repository":{"openPullRequests":{"nodes":[]},"pullRequests":{"nodes":[]}}}}"#;
+    assert_eq!(
+        StackDiscovery::new("test-layer")
+            .unwrap()
+            .accept_response(0, raw, "")
+            .unwrap_err(),
+        GitHubError::NotInStack
+    );
 }
 
 #[test]
 fn graphql_fixture_normalizes_checks_reviews_and_requests() {
     let raw = include_str!("fixtures/pr_details.json");
-    let stack: StackViewResponse =
-        serde_json::from_str(include_str!("fixtures/stack_view.json")).unwrap();
+    let stack = StackDiscovery::new("api")
+        .unwrap()
+        .accept_response(0, include_str!("fixtures/stack_view.json"), "")
+        .unwrap()
+        .unwrap();
     let prs = parse_stack_response(raw, &stack).unwrap().prs;
     let draft = prs.iter().find(|pr| pr.number == 43).unwrap();
     assert!(draft.is_draft);

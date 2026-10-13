@@ -8,7 +8,8 @@ use stack_stat_core::{
         CheckHealth, LocalCheckState, LocalSync, PrLifecycle, RebaseNeed, ReviewState, StackStatus,
     },
     providers::{
-        CheckResult, ReportedState, StackViewResponse, StatusEntry, graphql::parse_stack_response,
+        CheckResult, ReportedState, StatusEntry,
+        graphql::{StackDiscovery, parse_stack_response},
     },
 };
 
@@ -28,7 +29,10 @@ fn git(current: &str) -> GitSnapshot {
     }
 }
 fn github() -> GitHubSnapshot {
-    let stack = serde_json::from_str::<StackViewResponse>(include_str!("fixtures/stack_view.json"))
+    let stack = StackDiscovery::new("api")
+        .unwrap()
+        .accept_response(0, include_str!("fixtures/stack_view.json"), "")
+        .unwrap()
         .unwrap();
     let details = parse_stack_response(include_str!("fixtures/pr_details.json"), &stack).unwrap();
     GitHubSnapshot {

@@ -2,6 +2,9 @@
 
 use super::{GitHubError, GraphqlResponse, StackDetailsResponse, StackViewResponse};
 
+mod stack_discovery;
+pub use stack_discovery::StackDiscovery;
+
 /// Build aliased PR and remote parent-comparison selections for a stack.
 #[must_use]
 pub fn build_stack_query(owner: &str, repo: &str, stack: &StackViewResponse) -> String {
@@ -78,13 +81,18 @@ pub fn parse_stack_response(
 /// Classify a nonzero gh exit into an actionable error without relying on stdout.
 #[must_use]
 pub fn classify_gh_failure(args: &[&str], code: i32, stderr: &str) -> GitHubError {
-    if args.starts_with(&["stack", "view"]) && code == 2 {
-        return GitHubError::NotInStack;
-    }
-    if args.first() == Some(&"stack") && matches!(code, 3 | 7) {
-        return GitHubError::RebaseConflict;
-    }
     let lower = stderr.to_ascii_lowercase();
+    if args.first() == Some(&"stack") {
+        if lower.contains("unknown command \"stack\" for \"gh\"") {
+            return GitHubError::MissingStackExtension;
+        }
+        if code == 2 && matches!(args.get(1), Some(&"push" | &"sync")) {
+            return GitHubError::LocalTrackingMissing;
+        }
+        if matches!(code, 3 | 7) {
+            return GitHubError::RebaseConflict;
+        }
+    }
     if lower.contains("rate limit") {
         let hint = stderr
             .lines()

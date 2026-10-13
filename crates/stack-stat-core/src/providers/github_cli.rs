@@ -11,7 +11,7 @@ use tokio::{process::Command, time::timeout};
 
 use super::{
     GitHubError, GitHubProvider, StackDetailsResponse, StackViewResponse,
-    graphql::{build_stack_query, classify_gh_failure, parse_stack_response},
+    graphql::{StackDiscovery, build_stack_query, classify_gh_failure, parse_stack_response},
 };
 
 const READ_TIMEOUT: Duration = Duration::from_secs(20);
@@ -108,10 +108,23 @@ impl CliGitHubProvider {
 
 #[async_trait]
 impl GitHubProvider for CliGitHubProvider {
-    async fn stack_view(&self) -> Result<StackViewResponse, GitHubError> {
-        let raw = self.run(&["stack", "view", "--json"], READ_TIMEOUT).await?;
-        serde_json::from_str(&raw)
-            .map_err(|error| GitHubError::Parse(format!("gh stack view: {error}")))
+    async fn stack_view(&self, current_branch: &str) -> Result<StackViewResponse, GitHubError> {
+        let mut discovery = StackDiscovery::new(current_branch)?;
+        loop {
+            let input = format!("query={}", discovery.query(&self.owner, &self.repo));
+            let output = self
+                .run_process(&["api", "graphql", "-f", &input], READ_TIMEOUT)
+                .await?;
+            let raw = String::from_utf8(output.stdout)
+                .map_err(|error| GitHubError::Parse(error.to_string()))?;
+            if let Some(stack) = discovery.accept_response(
+                output.status.code().unwrap_or(1),
+                &raw,
+                &String::from_utf8_lossy(&output.stderr),
+            )? {
+                return Ok(stack);
+            }
+        }
     }
 
     fn repo(&self) -> String {

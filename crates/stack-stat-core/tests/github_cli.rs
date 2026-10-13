@@ -2,11 +2,15 @@ use std::collections::BTreeSet;
 
 use stack_stat_core::providers::{
     GitHubError, StackViewResponse, classify_graphql_result, classify_sync_output,
-    graphql::{build_stack_query, classify_gh_failure, parse_stack_response},
+    graphql::{StackDiscovery, build_stack_query, classify_gh_failure, parse_stack_response},
 };
 
 fn stack() -> StackViewResponse {
-    serde_json::from_str(include_str!("fixtures/stack_view.json")).unwrap()
+    StackDiscovery::new("api")
+        .unwrap()
+        .accept_response(0, include_str!("fixtures/stack_view.json"), "")
+        .unwrap()
+        .unwrap()
 }
 
 #[test]
@@ -131,11 +135,17 @@ fn parser_rejects_responses_without_data_and_preserves_bot_and_context() {
 }
 
 #[test]
-fn classifier_distinguishes_stack_state_conflict_and_network_failures() {
-    assert_eq!(
-        classify_gh_failure(&["stack", "view"], 2, "not in a stack"),
-        GitHubError::NotInStack
-    );
+fn classifier_distinguishes_local_tracking_from_remote_discovery() {
+    for action in ["push", "sync"] {
+        assert_eq!(
+            classify_gh_failure(&["stack", action], 2, "not in a stack"),
+            GitHubError::LocalTrackingMissing
+        );
+    }
+    assert!(matches!(
+        classify_gh_failure(&["api", "graphql"], 2, "query failed"),
+        GitHubError::Command { code: 2, .. }
+    ));
     assert_eq!(
         classify_gh_failure(&["stack", "sync"], 3, "resolve conflicts"),
         GitHubError::RebaseConflict
@@ -159,6 +169,28 @@ fn classifier_distinguishes_stack_state_conflict_and_network_failures() {
     assert!(matches!(
         classify_gh_failure(&["api"], 5, "unknown"),
         GitHubError::Command { code: 5, .. }
+    ));
+}
+
+#[test]
+fn classifier_reports_missing_extension_only_for_stack_actions() {
+    let stderr = "unknown command \"stack\" for \"gh\"";
+    for action in ["checkout", "push", "sync"] {
+        let error = classify_gh_failure(&["stack", action], 1, stderr);
+        assert_eq!(error, GitHubError::MissingStackExtension);
+        assert!(
+            error
+                .to_string()
+                .contains("gh extension install github/gh-stack")
+        );
+    }
+    assert!(matches!(
+        classify_gh_failure(&["api", "graphql"], 1, stderr),
+        GitHubError::Command { .. }
+    ));
+    assert!(matches!(
+        classify_gh_failure(&["stack", "push"], 1, "unknown command \"push\""),
+        GitHubError::Command { .. }
     ));
 }
 

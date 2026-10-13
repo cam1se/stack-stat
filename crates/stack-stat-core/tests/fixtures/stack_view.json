@@ -1,9 +1,25 @@
 {
-  "trunk": "main",
-  "currentBranch": "api",
-  "branches": [
-    {"name":"auth","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","base":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","isCurrent":false,"isMerged":true,"isQueued":false,"needsRebase":false,"pr":{"number":42,"url":"https://github.com/example/project/pull/42","state":"MERGED"}},
-    {"name":"api","head":"cccccccccccccccccccccccccccccccccccccccc","base":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","isCurrent":true,"isMerged":false,"isQueued":false,"needsRebase":false,"pr":{"number":43,"url":"https://github.com/example/project/pull/43","state":"OPEN"}},
-    {"name":"ui","head":"dddddddddddddddddddddddddddddddddddddddd","base":"cccccccccccccccccccccccccccccccccccccccc","isCurrent":false,"isMerged":false,"isQueued":false,"needsRebase":true,"pr":{"number":44,"url":"https://github.com/example/project/pull/44","state":"OPEN"}}
-  ]
+  "data": {
+    "repository": {
+      "openPullRequests": {
+        "nodes": [{
+          "stack": {
+            "id": "PRS_example",
+            "baseRefName": "main",
+            "size": 3,
+            "entries": {
+              "totalCount": 3,
+              "pageInfo": {"hasNextPage": false, "endCursor": "Mw"},
+              "nodes": [
+                {"position": 3, "pullRequest": {"number": 44, "url": "https://github.com/example/project/pull/44", "headRefName": "ui", "baseRefName": "main", "state": "OPEN", "isInMergeQueue": false}},
+                {"position": 1, "pullRequest": {"number": 42, "url": "https://github.com/example/project/pull/42", "headRefName": "auth", "baseRefName": "main", "state": "MERGED", "isInMergeQueue": false}},
+                {"position": 2, "pullRequest": {"number": 43, "url": "https://github.com/example/project/pull/43", "headRefName": "api", "baseRefName": "main", "state": "OPEN", "isInMergeQueue": false}}
+              ]
+            }
+          }
+        }]
+      },
+      "pullRequests": {"nodes": [{"stack": null}]}
+    }
+  }
 }
