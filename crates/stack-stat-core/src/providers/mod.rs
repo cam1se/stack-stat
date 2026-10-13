@@ -12,7 +12,7 @@ mod github_cli;
 pub mod graphql;
 pub use file_store::FileStatusStore;
 pub use git_cli::{CliGitProvider, DETACHED_HEAD};
-pub use github_cli::CliGitHubProvider;
+pub use github_cli::{CliGitHubProvider, classify_graphql_result, classify_sync_output};
 
 mod retention;
 mod types;

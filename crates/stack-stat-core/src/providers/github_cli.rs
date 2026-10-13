@@ -57,7 +57,36 @@ impl CliGitHubProvider {
     }
 
     async fn run(&self, args: &[&str], deadline: Duration) -> Result<String, GitHubError> {
-        let output = timeout(
+        self.run_output(args, deadline)
+            .await
+            .map(|(stdout, _)| stdout)
+    }
+
+    async fn run_output(
+        &self,
+        args: &[&str],
+        deadline: Duration,
+    ) -> Result<(String, String), GitHubError> {
+        let output = self.run_process(args, deadline).await?;
+        if !output.status.success() {
+            return Err(classify_gh_failure(
+                args,
+                output.status.code().unwrap_or(1),
+                &String::from_utf8_lossy(&output.stderr),
+            ));
+        }
+        let stdout = String::from_utf8(output.stdout)
+            .map_err(|error| GitHubError::Parse(error.to_string()))?;
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        Ok((stdout, stderr))
+    }
+
+    async fn run_process(
+        &self,
+        args: &[&str],
+        deadline: Duration,
+    ) -> Result<std::process::Output, GitHubError> {
+        timeout(
             deadline,
             Command::new("gh")
                 .args(args)
@@ -73,15 +102,7 @@ impl CliGitHubProvider {
         )
         .await
         .map_err(|_| GitHubError::Network("timed out".into()))?
-        .map_err(|error| GitHubError::Network(error.to_string()))?;
-        if !output.status.success() {
-            return Err(classify_gh_failure(
-                args,
-                output.status.code().unwrap_or(1),
-                &String::from_utf8_lossy(&output.stderr),
-            ));
-        }
-        String::from_utf8(output.stdout).map_err(|error| GitHubError::Parse(error.to_string()))
+        .map_err(|error| GitHubError::Network(error.to_string()))
     }
 }
 
@@ -99,10 +120,16 @@ impl GitHubProvider for CliGitHubProvider {
         }
         let query = build_pr_query(&self.owner, &self.repo, numbers);
         let input = format!("query={query}");
-        let raw = self
-            .run(&["api", "graphql", "-f", &input], READ_TIMEOUT)
+        let output = self
+            .run_process(&["api", "graphql", "-f", &input], READ_TIMEOUT)
             .await?;
-        parse_pr_response(&raw)
+        let raw = String::from_utf8(output.stdout)
+            .map_err(|error| GitHubError::Parse(error.to_string()))?;
+        classify_graphql_result(
+            output.status.code().unwrap_or(1),
+            &raw,
+            &String::from_utf8_lossy(&output.stderr),
+        )
     }
 
     async fn open_pr_in_browser(&self, number: u32) -> Result<(), GitHubError> {
@@ -124,7 +151,10 @@ impl GitHubProvider for CliGitHubProvider {
     }
 
     async fn sync_stack(&self) -> Result<String, GitHubError> {
-        self.run(&["stack", "sync"], MUTATION_TIMEOUT).await
+        let (stdout, stderr) = self
+            .run_output(&["stack", "sync"], MUTATION_TIMEOUT)
+            .await?;
+        classify_sync_output(&stdout, &stderr)
     }
 
     async fn toggle_draft(&self, number: u32, make_ready: bool) -> Result<(), GitHubError> {
@@ -135,5 +165,42 @@ impl GitHubProvider for CliGitHubProvider {
             &["pr", "ready", &number, "--undo"]
         };
         self.run(args, MUTATION_TIMEOUT).await.map(|_| ())
+    }
+}
+
+/// Distinguish an exit-0 divergent sync from an actual completed sync.
+pub fn classify_sync_output(stdout: &str, stderr: &str) -> Result<String, GitHubError> {
+    if stdout.to_ascii_lowercase().contains("sync aborted")
+        || stderr.to_ascii_lowercase().contains("sync aborted")
+    {
+        return Err(GitHubError::Diverged(
+            "local and remote stacks diverged".into(),
+        ));
+    }
+    let mut combined = stdout.trim().to_owned();
+    if !stderr.trim().is_empty() {
+        if !combined.is_empty() {
+            combined.push('\n');
+        }
+        combined.push_str(stderr.trim());
+    }
+    Ok(combined)
+}
+
+/// Preserve GraphQL's partial repository data even when `gh api` exits 1.
+pub fn classify_graphql_result(
+    code: i32,
+    stdout: &str,
+    stderr: &str,
+) -> Result<Vec<PrResponse>, GitHubError> {
+    let parsed = parse_pr_response(stdout);
+    if parsed.is_ok() || code == 0 {
+        return parsed;
+    }
+    let error = classify_gh_failure(&["api", "graphql"], code, stderr);
+    if matches!(error, GitHubError::Command { .. }) && !stdout.trim().is_empty() {
+        parsed
+    } else {
+        Err(error)
     }
 }

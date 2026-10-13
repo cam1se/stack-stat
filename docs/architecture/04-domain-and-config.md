@@ -10,7 +10,7 @@ For a local check, the current-SHA report wins; otherwise the newest older repor
 
 ## Derived status
 
-CI checks excluded by repository configuration remain visible in the PR detail view but do not count toward the row's passed/total summary. Failure takes precedence over running, which takes precedence over success; skipped-only checks remain distinct. Review summaries consider visible reviewers: changes requested outranks approval, which outranks an outstanding request. The bot toggle changes visibility without changing the original GitHub data. Missing local checks are configured expectations that were never reported; stale results refer to a previous branch commit.
+CI checks excluded by repository configuration remain visible in the PR detail view but do not count toward the row's passed/total summary. Failure takes precedence over running, which takes precedence over success; skipped-only checks remain distinct. A workflow `STARTUP_FAILURE` and an unknown completed conclusion are treated as failures rather than falsely green. Review summaries consider visible reviewers: changes requested outranks approval, which outranks an outstanding request. The bot toggle changes visibility without changing the original GitHub data. Missing local checks are configured expectations that were never reported; stale results refer to a previous branch commit.
 
 ## Configuration sources
 

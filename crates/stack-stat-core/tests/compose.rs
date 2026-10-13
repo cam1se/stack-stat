@@ -235,3 +235,29 @@ fn queued_stack_layer_is_not_mistaken_for_open() {
     let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
     assert_eq!(state.branches[2].lifecycle, PrLifecycle::Queued);
 }
+
+#[test]
+fn workflow_startup_failure_is_a_failing_check_not_neutral() {
+    let mut snapshot = github();
+    let pr = snapshot.prs.iter_mut().find(|pr| pr.number == 43).unwrap();
+    pr.checks[0].status = "COMPLETED".into();
+    pr.checks[0].conclusion = Some("STARTUP_FAILURE".into());
+    pr.checks.truncate(1);
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
+    let summary = state.branches[1].pr.as_ref().unwrap().check_summary();
+    assert_eq!(summary.worst, CheckHealth::Failure);
+}
+
+#[test]
+fn unrecognized_completed_conclusion_is_not_false_green() {
+    let mut snapshot = github();
+    let pr = snapshot.prs.iter_mut().find(|pr| pr.number == 43).unwrap();
+    pr.checks.truncate(1);
+    pr.checks[0].status = "COMPLETED".into();
+    pr.checks[0].conclusion = Some("FUTURE_ERROR".into());
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
+    assert_eq!(
+        state.branches[1].pr.as_ref().unwrap().check_summary().worst,
+        CheckHealth::Failure
+    );
+}

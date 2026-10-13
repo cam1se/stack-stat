@@ -1,5 +1,5 @@
 use stack_stat_core::providers::{
-    GitHubError,
+    GitHubError, classify_graphql_result, classify_sync_output,
     graphql::{build_pr_query, classify_gh_failure, parse_pr_response},
 };
 
@@ -81,4 +81,30 @@ fn classifier_distinguishes_stack_state_conflict_and_network_failures() {
         classify_gh_failure(&["api"], 5, "unknown"),
         GitHubError::Command { code: 5, .. }
     ));
+}
+
+#[test]
+fn sync_aborted_with_exit_zero_is_not_reported_as_success() {
+    let output = classify_sync_output("local: main ← auth\n", "remote: main ← other\nSync aborted");
+    assert!(matches!(output, Err(GitHubError::Diverged(_))));
+    let success = classify_sync_output("Synced stack", "warning: refreshed PR labels").unwrap();
+    assert!(success.contains("Synced stack"));
+    assert!(success.contains("refreshed PR labels"));
+}
+
+#[test]
+fn graphql_exit_one_with_partial_data_keeps_accessible_pr() {
+    let prs = classify_graphql_result(
+        1,
+        include_str!("fixtures/pr_partial.json"),
+        "GraphQL: one PR inaccessible",
+    )
+    .unwrap();
+    assert_eq!(prs.iter().map(|pr| pr.number).collect::<Vec<_>>(), [42]);
+    let failure = classify_graphql_result(
+        1,
+        r#"{"data":null,"errors":[{"message":"denied"}]}"#,
+        "GraphQL request failed",
+    );
+    assert!(failure.is_err());
 }

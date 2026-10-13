@@ -199,8 +199,9 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 self.fetching.insert(source);
             }
             AppMessage::MutationDone { action, result } => {
-                self.mutation_busy = false;
-                self.errors.remove(&Source::All);
+                if !matches!(action, ProviderAction::OpenPr(_)) {
+                    self.mutation_busy = false;
+                }
                 match result {
                     Ok(output) => {
                         let text = if output.trim().is_empty() {
@@ -218,15 +219,21 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                             is_error: false,
                         };
                     }
-                    Err(GitHubError::RebaseConflict) => self.error(
-                        Source::All,
-                        "⚠ rebase conflict — resolve with gh stack rebase --continue or --abort"
-                            .into(),
-                    ),
-                    Err(error) => self.error(
-                        Source::All,
-                        format!("⚠ {}", error.to_string().lines().next().unwrap_or_default()),
-                    ),
+                    Err(GitHubError::RebaseConflict) => self.status = StatusLine {
+                        text:
+                            "⚠ rebase conflict — resolve with gh stack rebase --continue or --abort"
+                                .into(),
+                        is_error: true,
+                    },
+                    Err(error) => {
+                        self.status = StatusLine {
+                            text: format!(
+                                "⚠ {}",
+                                error.to_string().lines().next().unwrap_or_default()
+                            ),
+                            is_error: true,
+                        }
+                    }
                 }
             }
             AppMessage::UpdateAvailable(version) => {
@@ -254,16 +261,20 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
 
     fn clear_error(&mut self, source: Source) {
         self.errors.remove(&source);
-        self.show_error_if_any();
+        if self.status.is_error {
+            self.show_error_if_any();
+        }
     }
 
     fn error(&mut self, source: Source, text: String) {
         self.errors.insert(source, text);
-        self.show_error_if_any();
+        if !matches!(self.mode, Mode::Confirm(_)) {
+            self.show_error_if_any();
+        }
     }
 
     fn show_error_if_any(&mut self) {
-        if let Some(text) = [Source::All, Source::GitHub, Source::Git, Source::Store]
+        if let Some(text) = [Source::GitHub, Source::Git, Source::Store]
             .iter()
             .find_map(|source| self.errors.get(source))
         {

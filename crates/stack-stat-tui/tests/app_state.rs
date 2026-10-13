@@ -190,3 +190,62 @@ fn active_checks_shorten_github_interval_and_rate_limit_reset_is_bounded() {
     );
     assert_eq!(rate_limit_wait(None, now), Duration::from_secs(300));
 }
+
+#[tokio::test]
+async fn failed_mutation_is_transient_and_does_not_hide_new_remote_failures() {
+    let (mut app, _) = scenario();
+    app.poll_once(Source::Git).await;
+    app.poll_once(Source::GitHub).await;
+    app.apply(stack_stat_tui::message::AppMessage::MutationDone {
+        action: ProviderAction::PushStack,
+        result: Err(GitHubError::Network("push denied".into())),
+    });
+    assert!(app.status_line().text.contains("push denied"));
+    app.poll_once(Source::Git).await;
+    assert!(
+        !app.status_line().text.contains("push denied"),
+        "transient mutation errors clear on fresh local data"
+    );
+    app.apply(stack_stat_tui::message::AppMessage::GitHub(Err(
+        GitHubError::Network("remote offline".into()),
+    )));
+    app.poll_once(Source::Git).await;
+    assert!(app.status_line().text.contains("remote offline"));
+}
+
+#[tokio::test]
+async fn confirmation_prompt_survives_unrelated_local_refresh() {
+    let (mut app, _) = scenario();
+    app.poll_once(Source::Git).await;
+    app.poll_once(Source::GitHub).await;
+    app.apply(stack_stat_tui::message::AppMessage::GitHub(Err(
+        GitHubError::Network("remote offline".into()),
+    )));
+    app.handle_key(key('p'));
+    assert_eq!(app.mode(), Mode::Confirm(ProviderAction::PushStack));
+    app.poll_once(Source::Git).await;
+    assert!(app.status_line().text.contains("Push stack? y/n"));
+    assert_eq!(app.mode(), Mode::Confirm(ProviderAction::PushStack));
+}
+
+#[tokio::test]
+async fn open_pr_completion_cannot_unlock_an_in_flight_push() {
+    let (mut app, _) = scenario();
+    app.poll_once(Source::Git).await;
+    app.poll_once(Source::GitHub).await;
+    app.handle_key(key('p'));
+    assert_eq!(
+        app.handle_key(key('y')),
+        [Effect::Mutate(ProviderAction::PushStack)]
+    );
+    assert_eq!(
+        app.handle_key(key('o')),
+        [Effect::Mutate(ProviderAction::OpenPr(42))]
+    );
+    app.apply(stack_stat_tui::message::AppMessage::MutationDone {
+        action: ProviderAction::OpenPr(42),
+        result: Ok(String::new()),
+    });
+    assert!(app.handle_key(key('S')).is_empty());
+    assert!(app.status_line().text.contains("busy"));
+}

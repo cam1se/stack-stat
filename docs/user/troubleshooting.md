@@ -23,7 +23,7 @@ Local checks apply to a commit SHA, not merely a branch name. If a report is **s
 
 ## Mutations and rebase conflicts
 
-`c`, `p`, `S`, and `m` require a `y` confirmation. Only one operation runs at once. A `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. stack-stat never silently resolves conflicts.
+`c`, `p`, `S`, and `m` require a `y` confirmation. Only one operation runs at once. A `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. A sync that prints `Sync aborted` despite exiting 0 means local and remote stack chains diverge; stack-stat treats it as an abort, not as a successful sync. Inspect the two chains before retrying. stack-stat never silently resolves conflicts.
 
 ## Releases and terminal display
 

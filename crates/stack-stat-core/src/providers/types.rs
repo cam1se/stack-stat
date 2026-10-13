@@ -175,6 +175,8 @@ pub enum GitHubError {
     NotInStack,
     /// A rebase needs manual conflict resolution.
     RebaseConflict,
+    /// Sync stopped without changes because local and remote stacks diverged.
+    Diverged(String),
     /// API request quota is exhausted.
     RateLimited {
         /// Optional reset hint supplied by GitHub.
@@ -200,6 +202,7 @@ impl std::fmt::Display for GitHubError {
         match self {
             Self::NotInStack => write!(f, "not in a stack"),
             Self::RebaseConflict => write!(f, "stack rebase conflict"),
+            Self::Diverged(message) => write!(f, "Sync aborted: {message}"),
             Self::RateLimited { reset_hint } => write!(
                 f,
                 "GitHub rate limited{}",
