@@ -1,5 +1,7 @@
 ![StackStat: GitHub PR stacks, at a glance](assets/hero.png)
 
+![Demo of the stack-stat dashboard: selecting layers, reading checks and reviews, and scrolling details](assets/demo.gif){ width="480" }
+
 # stack-stat
 
 See every layer of the stack containing your worktree's checked-out branch. The table shows branch and PR identity, draft/ready/merged/queued state, CI checks, reviews, and local reports. The header always identifies the actual worktree branch, even when an agent switches branches while the dashboard is open.
