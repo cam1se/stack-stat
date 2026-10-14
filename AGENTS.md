@@ -17,7 +17,7 @@ Architecture starts with [system context](docs/architecture/01-l1-context.md).
 
 - Stable Rust, selected by [`rust-toolchain.toml`](rust-toolchain.toml).
 - Git, GitHub CLI (`gh`), and an authenticated account (`gh auth login`).
-- For checkout, push, and sync actions only, the stacked PR extension: `gh extension install github/gh-stack`. Reading a GitHub stack needs no extension or local stack tracking.
+- For stacked checkout, push, and sync actions only, the stacked PR extension: `gh extension install github/gh-stack`. Reading a GitHub stack or single-mode data needs no extension or local stack tracking; single-mode push uses plain `git push`.
 
 First-time setup: `make dev-setup` checks prerequisites and installs versioned git hooks.
 
@@ -29,7 +29,7 @@ cargo run -- --version
 cargo run
 ```
 
-The dashboard requires the current directory to be inside a Git repository. An active stack supplies the layer rows; outside a stack, the dashboard shows a not-in-stack view. The version command does not require a repository.
+The dashboard requires the current directory to be inside a Git repository. It displays the current branch's GitHub stack or a single-mode row with or without a PR; detached or empty HEAD may show a not-in-stack view. See the [provider architecture](docs/architecture/05-providers-and-store.md#github-adapter) for mode and trunk selection. The version command does not require a repository.
 
 ## Test
 

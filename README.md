@@ -10,12 +10,12 @@
   <a href="https://cam1se.github.io/stack-stat/"><img src="https://img.shields.io/badge/docs-gh--pages-4CAF50?style=flat&colorA=222222" alt="Docs"></a>
 </p>
 
-A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-stack) that answers two questions at a glance: <strong>is each layer ready to merge?</strong> and, if not, <strong>what is blocking it?</strong> It follows the checked-out worktree branch, so it stays accurate while an agent hops between branches.
+A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-stack), single PRs, and branches before PR creation. It answers two questions at a glance: <strong>is each PR ready to merge?</strong> and, if not, <strong>what is blocking it?</strong> It follows the checked-out worktree branch, so it stays accurate while an agent hops between branches.
 
 > [!TIP]
 > Full documentation, including configuration, local checks, and troubleshooting, is at **[cam1se.github.io/stack-stat](https://cam1se.github.io/stack-stat/)**.
 
-Open layers use verdict glyphs: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. Merged and queued layers use separate lifecycle glyphs. The header names the next layer to merge and lists its issues, and the detail pane for the selected layer is always open, with failing checks first. Here it is in action:
+Open PRs use verdict glyphs: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. Merged and queued PRs use separate lifecycle glyphs. The `Next to merge:` header names the next PR and lists its issues, and the detail pane for the selected branch is always open, with failing checks first. A branch with no PR shows local checks and a `no PR yet` hint, not a ready-to-merge PR. Here it is in action:
 
 <p align="center">
   <img src="docs/user/assets/demo.gif" width="840" alt="Demo of the stack-stat dashboard: selecting layers, reading checks and reviews, and scrolling details">
@@ -46,7 +46,7 @@ Windows users can run the [PowerShell installer](scripts/install.ps1). Alternati
 
 ## Use
 
-From a Git worktree whose branch has a PR in a GitHub stack, run `stack-stat`. The detail pane starts on the worktree's branch. Use ↑/↓ to select a layer; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation; push and sync ask before linking missing local tracking.
+From a Git worktree, run `stack-stat`. It shows the current branch's GitHub stack, a single unstacked PR, or a no-PR branch row. The detail pane starts on the worktree's branch. Use ↑/↓ to select a row; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Available mutations ask for confirmation; stacked push and sync ask before linking missing local tracking. Single-mode push uses plain `git push`, while single-mode checkout and sync are disabled. See the [user guide](docs/user/index.md#setup) for trunk selection and mode-specific actions.
 
 ## Configuration
 
