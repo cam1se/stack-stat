@@ -6,6 +6,7 @@ The fake-based suites prove stack-stat's logic; they cannot prove that `gh` and 
 
 ```sh
 make live-test            # needs gh auth with push access to the fixture repository
+make live-fixture-check   # verify tags, branches, PR states, and labels
 make live-fixture-reset   # restore fixture branches to their start tags
 ```
 
@@ -14,6 +15,12 @@ Tests skip silently unless `STACK_STAT_LIVE=1`; `make live-test` sets it. `STACK
 ## Fixture
 
 The fixture lives in this repository under the `fixture/` branch prefix. Branches are protected from deletion and the `fixture-start/*` and `fixture-conflict/*` tags from update or deletion by repository rulesets; admins bypass them. CI skips pull requests whose head branch starts with `fixture/`.
+
+The fixture PRs stay open permanently. Closing and reopening them, like the draft toggles and branch resets, sends notification emails, and the local agent-led TUI tests ([#42](https://github.com/cam1se/stack-stat/issues/42)) need them open. Every fixture PR carries the `fixture` and `do not merge` labels. Four PRs are permanent end states that tests only read: #34 and #35 (merged stack), #45 (merged single PR), and #44 (closed single PR).
+
+Muting the threads cuts the email noise, but GitHub requires the `notifications` token scope for that, which the CI and agent tokens do not have; mute them from each account's notification settings instead.
+
+`scripts/live-fixture.sh check` verifies the tags, branches, PR states, and labels. The tests run it once per process and the workflow runs it before the tests, so a broken fixture fails with `FIXTURE:` lines and is reported as "Live gh fixture broken", not as drift. `scripts/live-fixture.sh up` reopens any fixture PR that was closed by accident. `scripts/live-fixture.sh rebuild` recreates missing branches from their tags and missing PRs for stacks `s1` and `s2` and PR `s5`, and relabels every fixture PR. Merged PRs, the closed PR, and fork PRs cannot be rebuilt by the script; recreate them by hand, as the fixture was first built.
 
 |Stack|Pull requests|Trunk|Role|
 |---|---|---|---|
@@ -25,7 +32,7 @@ The fixture lives in this repository under the `fixture/` branch prefix. Branche
 |`s6`|branch `fixture/s6-nopr`, pushed, no PR|none|No-PR branch; trunk is the default branch|
 |`s7`|one closed, unmerged PR|`fixture/single-base`|Single closed PR; read-only|
 |`s8`|one merged PR|`fixture/single-base`|Single merged PR; read-only, cannot be reset|
-|fork|fork PRs from `fixture/s1-c` and `fixture/s4-same`|`main`|Same head branch name as an upstream PR, different head owner|
+|fork|fork PR #40 from `fixture/s1-c` (open); #38 from `fixture/s4-same` (closed, unused)|`main`|Same head branch name as an upstream PR, different head owner|
 
 [`scripts/live-fixture.sh`](../../scripts/live-fixture.sh) implements `status`, `reset`, and `conflict`. `reset` force-pushes each branch to its `fixture-start/<name>` tag and restores draft state. Read-only tests hold a shared fixture lock; a mutating test holds it exclusively, resets the fixture before it starts, and resets again when it ends, including when it panics, so no test reads a half-reset fixture. The workflow adds a final reset step and a `concurrency` group so two runs never touch the fixture at once.
 
