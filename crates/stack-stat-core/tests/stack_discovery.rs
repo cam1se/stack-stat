@@ -1,9 +1,12 @@
 use std::path::PathBuf;
 
 use serde_json::{Value, json};
-use stack_stat_core::providers::{
-    CliGitHubProvider, DETACHED_HEAD, GitHubError, GitHubProvider, StackViewResponse,
-    graphql::StackDiscovery,
+use stack_stat_core::{
+    model::StackMode,
+    providers::{
+        CliGitHubProvider, DETACHED_HEAD, GitHubError, GitHubProvider, StackViewResponse,
+        graphql::StackDiscovery,
+    },
 };
 
 fn fixture() -> Value {
@@ -18,6 +21,51 @@ fn discover(response: &Value, branch: &str) -> Result<StackViewResponse, GitHubE
     StackDiscovery::new(branch)?
         .accept_response(0, &response.to_string(), "")?
         .ok_or_else(|| GitHubError::Parse("test expected a complete stack".into()))
+}
+
+#[test]
+fn unstacked_pr_is_a_single_layer_against_its_base() {
+    let response = json!({"data": {"repository": {
+        "defaultBranchRef": {"name": "main"},
+        "openPullRequests": {"nodes": [{
+            "number": 51,
+            "url": "https://github.com/example/project/pull/51",
+            "headRefName": "topic",
+            "baseRefName": "release",
+            "state": "OPEN",
+            "isInMergeQueue": true,
+            "headRepository": {"owner": {"login": "example"}},
+            "stack": null
+        }]},
+        "pullRequests": {"nodes": []}
+    }}});
+
+    let view = discover(&response, "topic").unwrap();
+    assert_eq!(view.mode, StackMode::Single);
+    assert_eq!(view.trunk, "release");
+    assert_eq!(view.current_branch, "topic");
+    assert_eq!(view.branches.len(), 1);
+    assert_eq!(view.branches[0].name, "topic");
+    assert!(view.branches[0].is_queued);
+    assert_eq!(view.branches[0].pr.as_ref().unwrap().number, 51);
+}
+
+#[test]
+fn branch_without_pr_is_a_single_layer_against_repository_default() {
+    let response = json!({"data": {"repository": {
+        "defaultBranchRef": {"name": "develop"},
+        "openPullRequests": {"nodes": []},
+        "pullRequests": {"nodes": []}
+    }}});
+
+    let view = discover(&response, "topic").unwrap();
+    assert_eq!(view.mode, StackMode::Single);
+    assert_eq!(view.trunk, "develop");
+    assert_eq!(view.branches.len(), 1);
+    assert_eq!(view.branches[0].name, "topic");
+    assert!(view.branches[0].pr.is_none());
+    assert!(!view.branches[0].is_merged);
+    assert!(!view.branches[0].is_queued);
 }
 
 fn entry(position: u32, branch: &str, state: &str, queued: bool) -> Value {
@@ -82,11 +130,116 @@ fn discovery_orders_by_position_despite_retargeted_merged_bases() {
 }
 
 #[test]
+fn one_entry_github_stack_remains_stacked_mode() {
+    let mut response = fixture();
+    let stack = stack_node(&mut response);
+    stack["size"] = json!(1);
+    stack["entries"]["totalCount"] = json!(1);
+    stack["entries"]["nodes"] = json!([entry(1, "api", "OPEN", false)]);
+
+    let view = discover(&response, "api").unwrap();
+    assert_eq!(view.mode, StackMode::Stacked);
+    assert_eq!(view.branches.len(), 1);
+}
+
+#[test]
+fn malformed_single_pr_metadata_is_an_error_not_a_no_pr_row() {
+    let valid = candidate(Some("example"), Value::Null);
+    for field in [
+        "number",
+        "url",
+        "headRefName",
+        "baseRefName",
+        "state",
+        "isInMergeQueue",
+        "headRepository",
+        "stack",
+    ] {
+        let mut pr = valid.clone();
+        pr.as_object_mut().unwrap().remove(field);
+        let response = json!({"data": {"repository": {
+            "defaultBranchRef": {"name": "main"},
+            "openPullRequests": {"nodes": [pr]},
+            "pullRequests": {"nodes": []}
+        }}});
+        assert!(
+            matches!(discover(&response, "api"), Err(GitHubError::Parse(_))),
+            "missing {field} must not become branch absence"
+        );
+    }
+    for (field, value) in [
+        ("number", json!(0)),
+        ("number", json!("43")),
+        ("url", json!("")),
+        ("headRefName", json!("different-branch")),
+        ("baseRefName", json!(" ")),
+        ("state", json!("UNKNOWN")),
+        ("isInMergeQueue", Value::Null),
+        ("headRepository", json!({})),
+    ] {
+        let mut pr = valid.clone();
+        pr[field] = value;
+        let response = json!({"data": {"repository": {
+            "defaultBranchRef": {"name": "main"},
+            "openPullRequests": {"nodes": [pr]},
+            "pullRequests": {"nodes": []}
+        }}});
+        assert!(
+            matches!(discover(&response, "api"), Err(GitHubError::Parse(_))),
+            "malformed {field} must remain an error"
+        );
+    }
+}
+
+#[test]
+fn no_pr_row_requires_a_valid_repository_default_branch() {
+    for default_branch in [
+        Value::Null,
+        json!({}),
+        json!({"name": ""}),
+        json!({"name": " "}),
+        json!({"name": 1}),
+    ] {
+        let response = json!({"data": {"repository": {
+            "defaultBranchRef": default_branch,
+            "openPullRequests": {"nodes": []},
+            "pullRequests": {"nodes": []}
+        }}});
+        assert!(matches!(
+            discover(&response, "api"),
+            Err(GitHubError::Parse(_))
+        ));
+    }
+    let response = json!({"data": {"repository": {
+        "openPullRequests": {"nodes": []},
+        "pullRequests": {"nodes": []}
+    }}});
+    assert!(matches!(
+        discover(&response, "api"),
+        Err(GitHubError::Parse(_))
+    ));
+}
+
+#[test]
+fn single_pr_uses_its_base_even_when_repository_has_no_default_branch() {
+    let response = json!({"data": {"repository": {
+        "defaultBranchRef": null,
+        "openPullRequests": {"nodes": [candidate(Some("example"), Value::Null)]},
+        "pullRequests": {"nodes": []}
+    }}});
+
+    let view = discover(&response, "api").unwrap();
+    assert_eq!(view.mode, StackMode::Single);
+    assert_eq!(view.trunk, "main");
+}
+
+#[test]
 fn discovery_prefers_newest_open_pr_over_newer_closed_or_merged_pr() {
     let mut response = fixture();
     let mut historical_stack = stack_node(&mut response).clone();
     historical_stack["baseRefName"] = json!("historical-trunk");
-    response["data"]["repository"]["pullRequests"]["nodes"] = json!([{"stack": historical_stack}]);
+    response["data"]["repository"]["pullRequests"]["nodes"] =
+        json!([candidate(Some("example"), historical_stack)]);
 
     assert_eq!(discover(&response, "api").unwrap().trunk, "main");
 }
@@ -95,10 +248,15 @@ fn discovery_prefers_newest_open_pr_over_newer_closed_or_merged_pr() {
 fn discovery_does_not_resurrect_old_stack_when_newest_open_pr_has_no_stack() {
     let mut response = fixture();
     let historical_stack = stack_node(&mut response).clone();
-    response["data"]["repository"]["pullRequests"]["nodes"] = json!([{"stack": historical_stack}]);
+    response["data"]["repository"]["pullRequests"]["nodes"] =
+        json!([candidate(Some("example"), historical_stack)]);
     *stack_node(&mut response) = Value::Null;
 
-    assert_eq!(discover(&response, "api"), Err(GitHubError::NotInStack));
+    let view = discover(&response, "api").unwrap();
+    assert_eq!(view.mode, StackMode::Single);
+    assert_eq!(view.trunk, "main");
+    assert_eq!(view.branches.len(), 1);
+    assert_eq!(view.branches[0].pr.as_ref().unwrap().number, 43);
 }
 
 #[test]
@@ -109,7 +267,10 @@ fn discovery_falls_back_to_newest_lifecycle_pr_for_deleted_merged_branch() {
         node["pullRequest"]["state"] = json!("MERGED");
     }
     response["data"]["repository"]["openPullRequests"]["nodes"] = json!([]);
-    response["data"]["repository"]["pullRequests"]["nodes"] = json!([{"stack": merged_stack}]);
+    let mut merged_candidate = candidate(Some("example"), merged_stack);
+    merged_candidate["headRefName"] = json!("auth");
+    merged_candidate["state"] = json!("MERGED");
+    response["data"]["repository"]["pullRequests"]["nodes"] = json!([merged_candidate]);
 
     let stack = discover(&response, "auth").unwrap();
 
@@ -120,11 +281,17 @@ fn discovery_falls_back_to_newest_lifecycle_pr_for_deleted_merged_branch() {
 }
 
 #[test]
-fn newest_lifecycle_pr_with_null_stack_is_not_in_stack() {
-    let mut response = fixture();
-    response["data"]["repository"]["openPullRequests"]["nodes"] = json!([]);
+fn newest_lifecycle_pr_with_null_stack_retains_merged_or_closed_state() {
+    for state in ["MERGED", "CLOSED"] {
+        let mut response = fixture();
+        response["data"]["repository"]["openPullRequests"]["nodes"] = json!([]);
+        response["data"]["repository"]["pullRequests"]["nodes"][0]["state"] = json!(state);
 
-    assert_eq!(discover(&response, "api"), Err(GitHubError::NotInStack));
+        let view = discover(&response, "api").unwrap();
+        assert_eq!(view.mode, StackMode::Single);
+        assert_eq!(view.branches[0].is_merged, state == "MERGED");
+        assert_eq!(view.branches[0].pr.as_ref().unwrap().state, state);
+    }
 }
 
 #[test]
@@ -133,6 +300,13 @@ fn lookup_query_selects_newest_open_and_lifecycle_with_escaped_branch_name() {
     let query = StackDiscovery::new(branch).unwrap().query("owner", "repo");
     let escaped = serde_json::to_string(branch).unwrap();
 
+    assert!(query.contains("defaultBranchRef { name }"));
+    assert_eq!(
+        query
+            .matches("number url headRefName baseRefName state isInMergeQueue")
+            .count(),
+        2
+    );
     assert!(query.contains("openPullRequests: pullRequests("));
     assert!(query.contains("states:[OPEN]"));
     assert!(query.contains("states:[OPEN,MERGED,CLOSED]"));
@@ -162,7 +336,16 @@ fn lookup_query_selects_newest_open_and_lifecycle_with_escaped_branch_name() {
 
 fn candidate(owner: Option<&str>, stack: Value) -> Value {
     let head_repository = owner.map(|login| json!({"owner": {"login": login}}));
-    json!({"headRepository": head_repository, "stack": stack})
+    json!({
+        "number": 43,
+        "url": "https://github.com/example/project/pull/43",
+        "headRefName": "api",
+        "baseRefName": "main",
+        "state": "OPEN",
+        "isInMergeQueue": false,
+        "headRepository": head_repository,
+        "stack": stack
+    })
 }
 
 fn fork_stack(response: &mut Value) -> Value {
@@ -201,10 +384,11 @@ fn fork_pr_alone_is_not_the_local_branch_stack() {
     response["data"]["repository"]["pullRequests"]["nodes"] =
         json!([candidate(Some("alice"), theirs)]);
 
-    assert_eq!(
-        discover_for(&response, "example"),
-        Err(GitHubError::NotInStack)
-    );
+    let view = discover_for(&response, "example").unwrap();
+    assert_eq!(view.mode, StackMode::Single);
+    assert_eq!(view.trunk, "main");
+    assert_eq!(view.branches[0].name, "api");
+    assert!(view.branches[0].pr.is_none());
 }
 
 #[test]
@@ -372,6 +556,12 @@ fn discovery_errors_are_not_stack_absence_even_with_null_stack_or_partial_data()
         Err(GitHubError::Parse(_))
     ));
     *stack_node(&mut response) = Value::Null;
+    assert!(matches!(
+        discover(&response, "api"),
+        Err(GitHubError::Parse(_))
+    ));
+    response["data"]["repository"]["openPullRequests"]["nodes"] = json!([]);
+    response["data"]["repository"]["pullRequests"]["nodes"] = json!([]);
     assert!(matches!(
         discover(&response, "api"),
         Err(GitHubError::Parse(_))

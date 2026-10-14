@@ -21,7 +21,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration as Age, Utc};
 use stack_stat_core::{
     config::{Config, LocalCheckConfig},
-    model::LocalSync,
+    model::{LocalSync, StackMode},
     providers::{
         CheckResult, FakeGitHubProvider, FakeGitProvider, GitHubError, GitHubProvider,
         MemoryStatusStore, PrCheckResponse, PrResponse, ReportedState, ReviewRequest,
@@ -124,6 +124,9 @@ impl GitHubProvider for SlowFirstFetch {
     }
     async fn push_stack(&self) -> Result<(), GitHubError> {
         self.inner.push_stack().await
+    }
+    async fn push_branch(&self) -> Result<(), GitHubError> {
+        self.inner.push_branch().await
     }
     async fn sync_stack(&self) -> Result<String, GitHubError> {
         self.inner.sync_stack().await
@@ -349,6 +352,7 @@ fn report_local_checks(
 
 fn stack(layers: &[Layer]) -> StackViewResponse {
     StackViewResponse {
+        mode: StackMode::Stacked,
         trunk: "main".into(),
         current_branch: WORKTREE_BRANCH.into(),
         branches: layers

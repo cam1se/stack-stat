@@ -205,6 +205,13 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         }) else {
             return 0;
         };
+        if branch.pr_number.is_none() && branch.pr.is_none() {
+            // Header, branch name, two section gaps, and local heading/results.
+            return 4
+                + wrap::wrap(&branch.name, self.detail_viewport_width).len()
+                + usize::from(branch.rebase != RebaseNeed::None)
+                + branch.local_checks.len().max(1);
+        }
         let title = branch
             .pr
             .as_ref()

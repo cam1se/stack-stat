@@ -5,6 +5,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use chrono::{TimeZone, Utc};
 use stack_stat_core::{
     config::{Config, LocalCheckConfig},
+    model::StackMode,
     providers::{
         CheckResult, FakeGitHubProvider, FakeGitProvider, MemoryStatusStore, PrCheckResponse,
         PrResponse, ProviderAction, ReportedState, ReviewResponse, StackBranch, StackPr,
@@ -145,6 +146,7 @@ impl PrBuilder {
 }
 
 pub struct TestScenario {
+    mode: StackMode,
     trunk: String,
     branches: Vec<String>,
     prs: Vec<(String, PrResponse)>,
@@ -157,6 +159,7 @@ pub struct TestScenario {
 impl TestScenario {
     pub fn builder() -> Self {
         Self {
+            mode: StackMode::Stacked,
             trunk: "main".into(),
             branches: vec![],
             prs: vec![],
@@ -168,8 +171,16 @@ impl TestScenario {
         }
     }
     pub fn stack(mut self, trunk: &str, branches: &[&str]) -> Self {
+        self.mode = StackMode::Stacked;
         self.trunk = trunk.into();
         self.branches = branches.iter().map(|s| (*s).into()).collect();
+        self
+    }
+    pub fn single(mut self, trunk: &str, branch: &str) -> Self {
+        self.mode = StackMode::Single;
+        self.trunk = trunk.into();
+        self.branches = vec![branch.into()];
+        self.current_branch = branch.into();
         self
     }
     pub fn remote_rebase(mut self, branch: &str) -> Self {
@@ -214,6 +225,7 @@ impl TestScenario {
             .map(|(i, name)| (name.clone(), format!("{:040x}", i + 1)))
             .collect();
         let stack = StackViewResponse {
+            mode: self.mode,
             trunk: self.trunk,
             current_branch: self.current_branch.clone(),
             branches: self
@@ -286,9 +298,11 @@ pub fn find_row(buffer: &ratatui::buffer::Buffer, text: &str) -> Option<u16> {
     })
 }
 /// Like [`find_row`] but only searches below the header card, whose "Next: #N" line would
-/// otherwise match PR-number lookups meant for the stack table.
+/// otherwise match PR-number lookups meant for the branch table.
 pub fn find_body_row(buffer: &ratatui::buffer::Buffer, text: &str) -> Option<u16> {
-    let body_start = find_row(buffer, "Stack ─").unwrap_or(0);
+    let body_start = find_row(buffer, "Stack ─")
+        .or_else(|| find_row(buffer, "Branch ─"))
+        .unwrap_or(0);
     (body_start..buffer.area.height).find(|&y| {
         (0..buffer.area.width)
             .map(|x| buffer[(x, y)].symbol())

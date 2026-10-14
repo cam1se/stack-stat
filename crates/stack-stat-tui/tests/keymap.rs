@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use stack_stat_core::providers::ProviderAction;
 use stack_stat_tui::{
     action::{Action, KEYMAP},
-    app::Mode,
+    app::{Mode, NoticeLevel},
     message::{ActionSteps, Effect, Source},
 };
 use support::{PrBuilder, TestScenario};
@@ -216,4 +216,224 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
             Action::Quit => assert_eq!(effects, [Effect::Quit]),
         }
     }
+}
+
+#[tokio::test]
+async fn single_mode_disables_checkout_and_sync_without_confirming_or_calling_provider() {
+    for has_pr in [false, true] {
+        let scenario = TestScenario::builder().single("main", "feature");
+        let scenario = if has_pr {
+            scenario.pr("feature", PrBuilder::new(42))
+        } else {
+            scenario
+        };
+        let (mut app, handles) = scenario.into_app();
+        app.poll_once(Source::All).await;
+
+        for (command, operation) in [('c', "checkout"), ('S', "sync")] {
+            assert!(app.handle_key(key(command)).is_empty());
+            assert_eq!(app.mode(), &Mode::Normal);
+            let notice = app.notice().expect("disabled action explains why");
+            assert_eq!(notice.level, NoticeLevel::Info);
+            assert!(notice.text.to_lowercase().contains(operation));
+            assert!(notice.text.contains("single"));
+            assert!(app.handle_key(key('y')).is_empty());
+        }
+        assert!(handles.github.recorded_actions().is_empty());
+    }
+}
+
+#[tokio::test]
+async fn single_mode_without_pr_reports_pr_actions_without_provider_calls() {
+    let (mut app, handles) = TestScenario::builder().single("main", "feature").into_app();
+    app.poll_once(Source::All).await;
+
+    for command in ['o', 'm'] {
+        assert!(app.handle_key(key(command)).is_empty());
+        assert_eq!(app.mode(), &Mode::Normal);
+        let notice = app.notice().expect("missing PR is explained");
+        assert_eq!(notice.level, NoticeLevel::Info);
+        assert!(notice.text.contains("no PR"));
+        assert!(notice.text.contains("feature"));
+        assert!(app.handle_key(key('y')).is_empty());
+    }
+    assert!(handles.github.recorded_actions().is_empty());
+}
+
+#[tokio::test]
+async fn single_mode_push_requires_confirmation_and_reports_branch_success() {
+    for has_pr in [false, true] {
+        let scenario = TestScenario::builder().single("main", "feature");
+        let scenario = if has_pr {
+            scenario.pr("feature", PrBuilder::new(42))
+        } else {
+            scenario
+        };
+        let (mut app, handles) = scenario.into_app();
+        app.poll_once(Source::All).await;
+
+        assert!(app.handle_key(key('p')).is_empty());
+        let Mode::Confirm(prompt) = app.mode() else {
+            panic!("plain branch push must require confirmation");
+        };
+        assert_eq!(prompt.steps.action, ProviderAction::PushBranch);
+        assert!(prompt.steps.before.is_none());
+        assert!(prompt.detail.contains("git push"));
+        assert!(handles.github.recorded_actions().is_empty());
+        app.handle_key(key('n'));
+        assert_eq!(app.mode(), &Mode::Normal);
+        assert!(handles.github.recorded_actions().is_empty());
+
+        app.handle_key(key('p'));
+        let effect = app.handle_key(key('y')).pop().expect("push is authorized");
+        app.run_effect(effect).await;
+        assert_eq!(
+            handles.github.recorded_actions(),
+            [ProviderAction::PushBranch]
+        );
+        assert_eq!(app.mode(), &Mode::Normal);
+        let notice = app.notice().unwrap();
+        assert_eq!(notice.level, NoticeLevel::Info);
+        assert!(notice.text.to_lowercase().contains("branch"));
+        assert!(!notice.text.to_lowercase().contains("stack"));
+    }
+}
+
+#[tokio::test]
+async fn single_mode_existing_pr_can_open_and_toggle_draft_both_directions() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .pr("feature", PrBuilder::new(42).draft())
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    let effect = app.handle_key(key('o')).pop().expect("existing PR opens");
+    assert_eq!(app.mode(), &Mode::Normal);
+    app.run_effect(effect).await;
+    assert!(app.notice().unwrap().text.contains("42"));
+
+    for make_ready in [true, false] {
+        if !make_ready {
+            handles
+                .github
+                .set_prs(vec![PrBuilder::new(42).ready().build()]);
+            app.poll_once(Source::GitHub).await;
+        }
+        assert!(app.handle_key(key('m')).is_empty());
+        assert_eq!(
+            confirmation_action(&app),
+            &ProviderAction::ToggleDraft {
+                number: 42,
+                make_ready
+            }
+        );
+        let effect = app.handle_key(key('y')).pop().unwrap();
+        app.run_effect(effect).await;
+        assert_eq!(app.notice().unwrap().level, NoticeLevel::Info);
+        assert!(
+            app.notice()
+                .unwrap()
+                .text
+                .contains(if make_ready { "ready" } else { "draft" })
+        );
+    }
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [
+            ProviderAction::OpenPr(42),
+            ProviderAction::ToggleDraft {
+                number: 42,
+                make_ready: true
+            },
+            ProviderAction::ToggleDraft {
+                number: 42,
+                make_ready: false
+            },
+        ]
+    );
+}
+
+#[tokio::test]
+async fn one_entry_real_stack_keeps_checkout_push_sync_and_local_link_recovery() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &["feature"])
+        .pr("feature", PrBuilder::new(42))
+        .current_branch("feature")
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    for (command, action) in [
+        ('c', ProviderAction::Checkout("feature".into())),
+        ('p', ProviderAction::PushStack),
+        ('S', ProviderAction::SyncStack),
+    ] {
+        assert!(app.handle_key(key(command)).is_empty());
+        assert_eq!(confirmation_action(&app), &action);
+        let effect = app.handle_key(key('y')).pop().unwrap();
+        app.run_effect(effect).await;
+        assert_eq!(app.mode(), &Mode::Normal);
+        assert_eq!(app.notice().unwrap().level, NoticeLevel::Info);
+    }
+    handles.github.set_mutation_results([
+        Err(stack_stat_core::providers::GitHubError::LocalTrackingMissing),
+        Ok(String::new()),
+        Ok(String::new()),
+    ]);
+    app.handle_key(key('p'));
+    let effect = app.handle_key(key('y')).pop().unwrap();
+    app.run_effect(effect).await;
+    let Mode::Confirm(prompt) = app.mode() else {
+        panic!("one-entry stack still offers explicit local linking");
+    };
+    assert_eq!(
+        prompt.steps.before,
+        Some(ProviderAction::Checkout("42".into()))
+    );
+    assert_eq!(prompt.steps.action, ProviderAction::PushStack);
+    let effect = app.handle_key(key('y')).pop().unwrap();
+    app.run_effect(effect).await;
+    assert_eq!(app.mode(), &Mode::Normal);
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [
+            ProviderAction::Checkout("feature".into()),
+            ProviderAction::PushStack,
+            ProviderAction::SyncStack,
+            ProviderAction::PushStack,
+            ProviderAction::Checkout("42".into()),
+            ProviderAction::PushStack,
+        ]
+    );
+}
+
+#[tokio::test]
+async fn known_single_pr_without_details_can_open_but_draft_waits_for_details() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .pr("feature", PrBuilder::new(42))
+        .into_app();
+    handles.github.set_prs(vec![]);
+    app.poll_once(Source::All).await;
+    assert_eq!(app.state().branches[0].pr_number, Some(42));
+    assert!(app.state().branches[0].pr.is_none());
+
+    let effect = app
+        .handle_key(key('o'))
+        .pop()
+        .expect("known PR opens without details");
+    app.run_effect(effect).await;
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [ProviderAction::OpenPr(42)]
+    );
+    assert!(app.handle_key(key('m')).is_empty());
+    assert_eq!(app.mode(), &Mode::Normal);
+    let notice = app.notice().expect("missing details are explained");
+    assert_eq!(notice.level, NoticeLevel::Info);
+    assert!(notice.text.contains("details"));
+    assert!(!notice.text.contains("no PR"));
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [ProviderAction::OpenPr(42)]
+    );
 }

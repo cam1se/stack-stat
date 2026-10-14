@@ -58,8 +58,14 @@ pub(super) struct LookupData {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct LookupRepository {
+    pub default_branch_ref: Option<DefaultBranch>,
     pub open_pull_requests: Candidates,
     pub pull_requests: Candidates,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct DefaultBranch {
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,12 +76,14 @@ pub(super) struct Candidates {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Candidate {
-    /// Absent from fixtures that predate head-repository filtering; real
-    /// GitHub responses always include it, with null for a deleted fork.
-    #[serde(default)]
+    /// Null when the PR's fork repository was deleted.
+    #[serde(deserialize_with = "required_nullable")]
     pub head_repository: Option<HeadRepository>,
     #[serde(deserialize_with = "required_nullable")]
     pub stack: Option<StackPage>,
+    #[serde(flatten)]
+    pub pr: StackPullRequest,
+    pub base_ref_name: String,
 }
 
 #[derive(Debug, Deserialize)]

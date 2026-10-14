@@ -7,14 +7,15 @@ use ratatui::{
     text::Line,
     widgets::{Block, Borders, Clear, Paragraph},
 };
+use stack_stat_core::model::StackMode;
 
 use super::status_bar::key_label;
 use crate::{
-    action::{KEYMAP, KeyBinding},
+    action::{Action, KEYMAP, KeyBinding},
     theme::Theme,
 };
 
-pub(super) fn render(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
+pub(super) fn render(frame: &mut Frame<'_>, area: Rect, theme: &Theme, mode: StackMode) {
     if area.width < 8 || area.height < 6 {
         return;
     }
@@ -23,9 +24,9 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
         .iter()
         .position(|binding| binding.context == "Detail")
         .unwrap_or(KEYMAP.len());
-    let left = build_lines(if compact { &KEYMAP[..split] } else { KEYMAP }, theme);
+    let left = build_lines(if compact { &KEYMAP[..split] } else { KEYMAP }, theme, mode);
     let right = if compact {
-        build_lines(&KEYMAP[split..], theme)
+        build_lines(&KEYMAP[split..], theme, mode)
     } else {
         Vec::new()
     };
@@ -59,7 +60,7 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, theme: &Theme) {
     }
 }
 
-fn build_lines(bindings: &[KeyBinding], theme: &Theme) -> Vec<Line<'static>> {
+fn build_lines(bindings: &[KeyBinding], theme: &Theme, mode: StackMode) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     let mut group = "";
     for binding in bindings {
@@ -73,10 +74,18 @@ fn build_lines(bindings: &[KeyBinding], theme: &Theme) -> Vec<Line<'static>> {
                 Style::default().fg(theme.warning),
             ));
         }
+        let help = if binding.action == Action::Push {
+            match mode {
+                StackMode::Single => "push branch",
+                StackMode::Stacked => "push stack",
+            }
+        } else {
+            binding.help
+        };
         lines.push(Line::from(format!(
             "  {:<8} {}",
             key_label(binding.key),
-            binding.help
+            help
         )));
     }
     lines

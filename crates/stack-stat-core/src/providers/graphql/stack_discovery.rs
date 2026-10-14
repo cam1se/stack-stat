@@ -1,16 +1,20 @@
-//! Branch-to-stack selection and complete, position-ordered entry pagination.
+//! Branch-to-stack or single-mode selection with strict stack pagination.
 
-use crate::providers::{DETACHED_HEAD, GitHubError, StackBranch, StackPr, StackViewResponse};
+use crate::{
+    model::StackMode,
+    providers::{DETACHED_HEAD, GitHubError, StackBranch, StackPr, StackViewResponse},
+};
 
+mod single;
 mod wire;
 use wire::{Candidate, LookupData, NodeData, StackPage, parse_response};
 
-/// Incremental GraphQL reader for the GitHub stack containing a Git branch.
+/// Incremental GraphQL reader for a Git branch's stack or single-mode view.
 ///
 /// Send [`Self::query`] through `gh api graphql`, then pass the result to
 /// [`Self::accept_response`]. `None` requests another stack-entry page; `Some`
-/// contains the complete stack. Discard the reader after any error. Reading a
-/// stack never depends on the gh-stack extension or its local tracking.
+/// contains the complete view. Discard the reader after any error. Discovery
+/// never depends on the gh-stack extension or its local tracking.
 #[derive(Debug)]
 pub struct StackDiscovery<'a> {
     current_branch: &'a str,
@@ -75,19 +79,22 @@ impl<'a> StackDiscovery<'a> {
         let branch = quoted(self.current_branch);
         let order = "orderBy:{field:CREATED_AT,direction:DESC}";
         format!(
-            "query {{ repository(owner:{owner},name:{repo}) {{ \
+            "query {{ repository(owner:{owner},name:{repo}) {{ defaultBranchRef {{ name }} \
              openPullRequests: pullRequests(first:{CANDIDATES},headRefName:{branch},states:[OPEN],{order}) \
-             {{ nodes {{ headRepository {{ owner {{ login }} }} stack {{ {fields} }} }} }} \
+             {{ nodes {{ number url headRefName baseRefName state isInMergeQueue \
+             headRepository {{ owner {{ login }} }} stack {{ {fields} }} }} }} \
              pullRequests(first:{CANDIDATES},headRefName:{branch},states:[OPEN,MERGED,CLOSED],{order}) \
-             {{ nodes {{ headRepository {{ owner {{ login }} }} stack {{ {fields} }} }} }} }} }}"
+             {{ nodes {{ number url headRefName baseRefName state isInMergeQueue \
+             headRepository {{ owner {{ login }} }} stack {{ {fields} }} }} }} }} }}"
         )
     }
 
-    /// Consume one `gh api graphql` result, returning only a complete stack.
+    /// Consume one `gh api graphql` result, returning only a complete view.
     ///
     /// Prefer the newest open PR even when its stack is null; only an absent
-    /// open PR permits the newest lifecycle PR fallback. No PR or an explicitly
-    /// null stack returns `NotInStack`. Failed queries, inaccessible entries,
+    /// open PR permits the newest lifecycle PR fallback. An explicitly null
+    /// stack becomes a single-PR view; no PR becomes a current-branch row using
+    /// the repository default branch. Failed queries, inaccessible entries,
     /// malformed metadata, and truncated pagination remain errors. Unlike PR
     /// details and rebase comparisons, discovery cannot use incomplete data.
     pub fn accept_response(
@@ -111,9 +118,19 @@ impl<'a> StackDiscovery<'a> {
                 .map_or_else(
                     || select_candidate(repository.pull_requests.nodes, head_owner),
                     |candidate| Ok(Some(candidate)),
-                )?
-                .ok_or(GitHubError::NotInStack)?;
-            candidate.stack.ok_or(GitHubError::NotInStack)?
+                )?;
+            match candidate {
+                Some(Candidate {
+                    stack: Some(page), ..
+                }) => page,
+                Some(candidate) => {
+                    return single::from_candidate(self.current_branch, candidate).map(Some);
+                }
+                None => {
+                    return single::without_pr(self.current_branch, repository.default_branch_ref)
+                        .map(Some);
+                }
+            }
         };
         self.accept_page(page)
     }
@@ -201,6 +218,7 @@ impl<'a> StackDiscovery<'a> {
             .take()
             .expect("stack metadata was recorded before its entries");
         Ok(Some(StackViewResponse {
+            mode: StackMode::Stacked,
             trunk: stack.trunk,
             current_branch: self.current_branch.to_owned(),
             branches: std::mem::take(&mut self.entries)

@@ -1,6 +1,6 @@
-use stack_stat_core::providers::{
-    GitHubError,
-    graphql::{StackDiscovery, parse_stack_response},
+use stack_stat_core::{
+    model::StackMode,
+    providers::graphql::{StackDiscovery, parse_stack_response},
 };
 
 #[test]
@@ -25,16 +25,17 @@ fn github_stack_fixture_preserves_position_order_and_pr_identity() {
 }
 
 #[test]
-fn branch_without_a_pull_request_is_not_in_a_remote_stack() {
-    let raw =
-        r#"{"data":{"repository":{"openPullRequests":{"nodes":[]},"pullRequests":{"nodes":[]}}}}"#;
-    assert_eq!(
-        StackDiscovery::new("test-layer")
-            .unwrap()
-            .accept_response(0, raw, "")
-            .unwrap_err(),
-        GitHubError::NotInStack
-    );
+fn branch_without_a_pull_request_is_a_single_mode_row() {
+    let raw = r#"{"data":{"repository":{"defaultBranchRef":{"name":"main"},"openPullRequests":{"nodes":[]},"pullRequests":{"nodes":[]}}}}"#;
+    let view = StackDiscovery::new("test-layer")
+        .unwrap()
+        .accept_response(0, raw, "")
+        .unwrap()
+        .unwrap();
+    assert_eq!(view.mode, StackMode::Single);
+    assert_eq!(view.trunk, "main");
+    assert_eq!(view.branches[0].name, "test-layer");
+    assert!(view.branches[0].pr.is_none());
 }
 
 #[test]

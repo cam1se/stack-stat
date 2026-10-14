@@ -3,8 +3,9 @@
 use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
-use stack_stat_core::providers::{
-    GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider,
+use stack_stat_core::{
+    model::StackMode,
+    providers::{GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider},
 };
 
 use super::{App, Mode, NoticeLevel, PointerTarget, Prompt, SortOrder};
@@ -151,11 +152,28 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     }
                     return Vec::new();
                 }
+                if self.state.mode == StackMode::Single
+                    && matches!(action, Action::Checkout | Action::Sync)
+                {
+                    let operation = if action == Action::Checkout {
+                        "checkout"
+                    } else {
+                        "sync"
+                    };
+                    self.notify(
+                        NoticeLevel::Info,
+                        format!("{operation} is unavailable in single mode"),
+                    );
+                    return Vec::new();
+                }
                 let operation = match action {
                     Action::Checkout => self
                         .selected()
                         .map(|branch| ProviderAction::Checkout(branch.name.clone())),
-                    Action::Push => Some(ProviderAction::PushStack),
+                    Action::Push => Some(match self.state.mode {
+                        StackMode::Stacked => ProviderAction::PushStack,
+                        StackMode::Single => ProviderAction::PushBranch,
+                    }),
                     Action::Sync => Some(ProviderAction::SyncStack),
                     Action::ToggleDraft => self.selected().and_then(|branch| {
                         branch.pr.as_ref().map(|pr| ProviderAction::ToggleDraft {
@@ -166,7 +184,18 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     _ => unreachable!(),
                 };
                 let Some(operation) = operation else {
-                    self.no_pr();
+                    if action == Action::ToggleDraft
+                        && self
+                            .selected()
+                            .is_some_and(|branch| branch.pr_number.is_some())
+                    {
+                        self.notify(
+                            NoticeLevel::Info,
+                            "PR details unavailable; refresh before changing draft state".into(),
+                        );
+                    } else {
+                        self.no_pr();
+                    }
                     return Vec::new();
                 };
                 self.mode = Mode::Confirm(Prompt::for_action(operation));

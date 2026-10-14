@@ -2,9 +2,14 @@
 
 use chrono::{DateTime, Utc};
 
+mod mode;
+pub use mode::StackMode;
+
 /// A composed view of the active worktree's stack.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StackState {
+    /// Whether GitHub supplied a real stack or a single branch view.
+    pub mode: StackMode,
     /// Name of the stack's trunk branch, if known.
     pub trunk: String,
     /// `owner/name` of the GitHub repository, empty when unknown.
@@ -29,9 +34,9 @@ pub enum StackStatus {
     /// No GitHub response has arrived.
     #[default]
     Loading,
-    /// The branch is outside a stack.
+    /// The worktree has no attached branch to display.
     NotInStack,
-    /// A stack is available.
+    /// A stacked or single branch view is available.
     Ready,
 }
 
@@ -119,6 +124,8 @@ pub enum Verdict {
 /// A concrete condition affecting a branch's readiness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Issue {
+    /// The branch has no pull request yet.
+    NoPr,
     /// The pull request is still a draft.
     Draft,
     /// The branch must be rebased onto the layer below it.

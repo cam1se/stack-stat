@@ -156,6 +156,72 @@ fn verdict_follows_issues() {
 }
 
 #[test]
+fn absent_pr_is_not_loading_or_ready_even_with_passing_local_checks() {
+    let mut branch = ready_branch("no-pr");
+    branch.pr_number = None;
+    branch.pr = None;
+
+    assert_eq!(branch.issues(), vec![Issue::NoPr]);
+    assert_eq!(branch.verdict(), Verdict::Wait);
+    branch.local_checks.clear();
+    assert_eq!(branch.verdict(), Verdict::Wait);
+}
+
+#[test]
+fn absent_pr_preserves_failed_stale_and_missing_local_issues() {
+    let mut branch = ready_branch("no-pr");
+    branch.pr_number = None;
+    branch.pr = None;
+    branch.local_checks = vec![
+        local(LocalCheckState::Fail, false),
+        local(LocalCheckState::Pass, true),
+        local(LocalCheckState::Missing, false),
+    ];
+
+    assert_eq!(
+        branch.issues(),
+        vec![
+            Issue::LocalFailed(1),
+            Issue::LocalStale(1),
+            Issue::NoPr,
+            Issue::MissingLocal(1),
+        ]
+    );
+    assert_eq!(branch.verdict(), Verdict::NoGo);
+    let stack = StackState {
+        branches: vec![branch],
+        ..StackState::default()
+    };
+    assert_eq!(stack.summary().no_go, 1);
+    assert_eq!(stack.blocker_summary().local, 1);
+}
+
+#[test]
+fn known_pr_without_details_waits_before_evaluating_readiness() {
+    let mut branch = ready_branch("loading");
+    branch.pr = None;
+    branch.rebase = RebaseNeed::Parent;
+    branch.local_checks = vec![
+        local(LocalCheckState::Fail, true),
+        local(LocalCheckState::Missing, false),
+    ];
+
+    assert_eq!(branch.issues(), vec![Issue::LoadingDetails]);
+    assert_eq!(branch.verdict(), Verdict::Wait);
+}
+
+#[test]
+fn absent_pr_with_only_missing_local_checks_waits_without_losing_evidence() {
+    let mut branch = ready_branch("no-pr");
+    branch.pr_number = None;
+    branch.pr = None;
+    branch.local_checks = vec![local(LocalCheckState::Missing, false)];
+
+    assert_eq!(branch.issues(), vec![Issue::NoPr, Issue::MissingLocal(1)]);
+    assert_eq!(branch.verdict(), Verdict::Wait);
+}
+
+#[test]
 fn next_to_merge_returns_lowest_open_layer() {
     let mut merged = ready_branch("merged");
     merged.lifecycle = PrLifecycle::Merged;
@@ -176,6 +242,26 @@ fn next_to_merge_returns_lowest_open_layer() {
         branches: vec![merged, queued],
         ..StackState::default()
     };
+    assert_eq!(stack.next_to_merge(), None);
+}
+
+#[test]
+fn next_to_merge_skips_no_pr_rows_but_keeps_known_prs_loading_details() {
+    let mut no_pr = ready_branch("no-pr");
+    no_pr.pr_number = None;
+    no_pr.pr = None;
+    let mut loading = ready_branch("loading");
+    loading.pr = None;
+    let mut stack = StackState {
+        branches: vec![no_pr, loading, ready_branch("higher")],
+        ..StackState::default()
+    };
+
+    assert_eq!(
+        stack.next_to_merge().map(|branch| branch.name.as_str()),
+        Some("loading")
+    );
+    stack.branches.truncate(1);
     assert_eq!(stack.next_to_merge(), None);
 }
 

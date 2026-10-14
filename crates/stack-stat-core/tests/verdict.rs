@@ -127,9 +127,9 @@ fn outstanding_evidence_without_blockers_is_wait() {
     missing.local_checks[0].state = LocalCheckState::Missing;
     assert_eq!(missing.verdict(), Verdict::Wait);
 
-    let mut no_pr = ready_branch();
-    no_pr.pr = None;
-    assert_eq!(no_pr.verdict(), Verdict::Wait);
+    let mut loading_details = ready_branch();
+    loading_details.pr = None;
+    assert_eq!(loading_details.verdict(), Verdict::Wait);
 }
 
 #[test]

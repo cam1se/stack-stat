@@ -1,6 +1,7 @@
 mod support;
 
 use ratatui::{Terminal, backend::TestBackend};
+use stack_stat_core::providers::GitHubError;
 use stack_stat_tui::{
     message::Source,
     theme::{ColorDepth, Theme},
@@ -228,4 +229,87 @@ async fn compact_header_omits_next_and_blocker_rows() {
     let buffer = draw(&app, 80, 24);
     assert!(find_row(&buffer, "Next:").is_none());
     assert!(find_row(&buffer, "Blocked by:").is_none());
+}
+
+#[tokio::test]
+async fn single_pr_header_identifies_mode_and_preserves_next_to_merge() {
+    let (mut app, _) = TestScenario::builder()
+        .repo("owner/name")
+        .single("main", "feature")
+        .pr(
+            "feature",
+            PrBuilder::new(91).ready().checks_all_pass().approved(),
+        )
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 120, 40);
+    assert!(find_row(&buffer, "owner/name · main · single PR").is_some());
+    let next = find_row(&buffer, "Next: #91 feature").expect("single PR merge candidate");
+    assert!(row_text(&buffer, next).contains("ready to merge"));
+    assert!(find_row(&buffer, "1 layer").is_none());
+}
+
+#[tokio::test]
+async fn single_branch_header_never_claims_all_merged_or_a_merge_candidate() {
+    let (mut app, _) = TestScenario::builder()
+        .repo("owner/name")
+        .single("main", "feature")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    for (width, height) in [(120, 40), (80, 24)] {
+        let buffer = draw(&app, width, height);
+        assert!(find_row(&buffer, "owner/name · main · single branch").is_some());
+        assert!(find_row(&buffer, "no PR yet").is_some());
+        for absent in [
+            "Next:",
+            "ready to merge",
+            "Nothing left to merge",
+            "All merged",
+            "loading",
+        ] {
+            assert!(find_row(&buffer, absent).is_none(), "unexpected {absent}");
+        }
+    }
+}
+
+#[tokio::test]
+async fn one_entry_github_stack_still_uses_layer_identity_and_merge_evidence() {
+    let (mut app, _) = TestScenario::builder()
+        .repo("owner/name")
+        .stack("main", &["feature"])
+        .pr(
+            "feature",
+            PrBuilder::new(92).ready().checks_all_pass().approved(),
+        )
+        .current_branch("feature")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 120, 40);
+    assert!(find_row(&buffer, "owner/name · main · 1 layer").is_some());
+    let next = find_row(&buffer, "Next: #92 feature").expect("stack merge candidate");
+    assert!(row_text(&buffer, next).contains("ready to merge"));
+    assert!(find_row(&buffer, "single PR").is_none());
+}
+
+#[tokio::test]
+async fn detached_head_guidance_is_distinct_from_loading() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &[])
+        .current_branch("")
+        .build()
+        .into_app();
+    handles.github.set_stack_error(GitHubError::NotInStack);
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 120, 28);
+    assert!(find_row(&buffer, "No attached branch").is_some());
+    assert!(find_row(&buffer, "worktree: detached or empty HEAD").is_some());
+    assert!(find_row(&buffer, "Check out").is_some());
+    assert!(find_row(&buffer, "loading").is_none());
 }

@@ -34,6 +34,7 @@ async fn execute_one<H: GitHubProvider>(
             github.checkout_branch(branch).await.map(|()| String::new())
         }
         ProviderAction::PushStack => github.push_stack().await.map(|()| String::new()),
+        ProviderAction::PushBranch => github.push_branch().await.map(|()| String::new()),
         ProviderAction::SyncStack => github.sync_stack().await,
         ProviderAction::ToggleDraft { number, make_ready } => github
             .toggle_draft(*number, *make_ready)

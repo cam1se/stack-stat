@@ -1,8 +1,12 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, fs, path::Path, process::Command};
 
-use stack_stat_core::providers::{
-    GitHubError, StackViewResponse, classify_graphql_result, classify_sync_output,
-    graphql::{StackDiscovery, build_stack_query, classify_gh_failure, parse_stack_response},
+use stack_stat_core::{
+    model::StackMode,
+    providers::{
+        CliGitHubProvider, GitHubError, GitHubProvider, StackBranch, StackViewResponse,
+        classify_graphql_result, classify_sync_output,
+        graphql::{StackDiscovery, build_stack_query, classify_gh_failure, parse_stack_response},
+    },
 };
 
 fn stack() -> StackViewResponse {
@@ -224,4 +228,120 @@ fn graphql_exit_one_with_partial_data_keeps_accessible_pr() {
         &stack,
     );
     assert!(failure.is_err());
+}
+
+#[tokio::test]
+async fn no_pr_view_skips_github_detail_queries() {
+    let temp = tempfile::tempdir().unwrap();
+    let provider = CliGitHubProvider::new(
+        temp.path().join("nonexistent-worktree-no-command-may-run"),
+        "example".into(),
+        "project".into(),
+    );
+    let view = StackViewResponse {
+        mode: StackMode::Single,
+        trunk: "main".into(),
+        current_branch: "topic".into(),
+        branches: vec![StackBranch {
+            name: "topic".into(),
+            is_merged: false,
+            is_queued: false,
+            pr: None,
+        }],
+    };
+
+    let details = provider.pr_details(&view).await.unwrap();
+    assert!(details.prs.is_empty());
+    assert!(details.remote_rebase_branches.is_empty());
+}
+
+fn git(cwd: &Path, args: &[&str]) -> String {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "git {:?}: {}",
+        args,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout).unwrap().trim().to_owned()
+}
+
+fn commit(cwd: &Path, message: &str) {
+    git(
+        cwd,
+        &[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "--allow-empty",
+            "-m",
+            message,
+        ],
+    );
+}
+
+#[tokio::test]
+async fn plain_push_uses_the_provider_worktree_and_existing_upstream() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    let repo = temp.path().join("repo");
+    let worktree = temp.path().join("topic-worktree");
+    fs::create_dir(&repo).unwrap();
+    git(temp.path(), &["init", "--bare", remote.to_str().unwrap()]);
+    git(&repo, &["init", "-b", "main"]);
+    git(&repo, &["config", "push.default", "simple"]);
+    commit(&repo, "base");
+    let main_sha = git(&repo, &["rev-parse", "HEAD"]);
+    git(
+        &repo,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    git(&repo, &["push", "-u", "origin", "main"]);
+    git(
+        &repo,
+        &["worktree", "add", "-b", "topic", worktree.to_str().unwrap()],
+    );
+    git(&worktree, &["push", "-u", "origin", "topic"]);
+    commit(&worktree, "topic change");
+    let topic_sha = git(&worktree, &["rev-parse", "HEAD"]);
+    let provider = CliGitHubProvider::new(worktree, "example".into(), "project".into());
+
+    provider.push_branch().await.unwrap();
+
+    assert_eq!(git(&remote, &["rev-parse", "refs/heads/topic"]), topic_sha);
+    assert_eq!(git(&remote, &["rev-parse", "refs/heads/main"]), main_sha);
+}
+
+#[tokio::test]
+async fn plain_push_preserves_git_upstream_failure_without_linking_a_stack() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    let repo = temp.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    git(temp.path(), &["init", "--bare", remote.to_str().unwrap()]);
+    git(&repo, &["init", "-b", "topic"]);
+    git(&repo, &["config", "push.default", "simple"]);
+    git(&repo, &["config", "push.autoSetupRemote", "false"]);
+    git(
+        &repo,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit(&repo, "base");
+    let provider = CliGitHubProvider::new(repo.clone(), "example".into(), "project".into());
+
+    let error = provider.push_branch().await.unwrap_err();
+
+    assert!(matches!(error, GitHubError::Git(ref stderr) if stderr.contains("upstream")));
+    assert!(git(&remote, &["for-each-ref", "refs/heads"]).is_empty());
+    assert!(
+        !git(&repo, &["config", "--local", "--list"])
+            .lines()
+            .any(|line| line.starts_with("branch."))
+    );
 }

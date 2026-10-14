@@ -2,6 +2,7 @@
 
 use stack_stat_core::{
     compose::StackOutcome,
+    model::StackMode,
     providers::{GitHubError, GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider},
 };
 
@@ -112,6 +113,9 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         let StackOutcome::InStack(stack) = &self.github.as_ref()?.stack else {
             return None;
         };
+        if stack.mode != StackMode::Stacked {
+            return None;
+        }
         let current_branch = self
             .git
             .as_ref()
@@ -136,6 +140,7 @@ fn success_message(action: &ProviderAction) -> String {
         ProviderAction::OpenPr(number) => format!("Opened PR #{number}"),
         ProviderAction::Checkout(branch) => format!("Checked out {branch}"),
         ProviderAction::PushStack => "Pushed stack".into(),
+        ProviderAction::PushBranch => "Pushed branch".into(),
         ProviderAction::SyncStack => "Synced stack".into(),
         ProviderAction::ToggleDraft { number, make_ready } => format!(
             "PR #{number} is {}",

@@ -140,7 +140,7 @@ impl GitHubProvider for CliGitHubProvider {
         &self,
         stack: &StackViewResponse,
     ) -> Result<StackDetailsResponse, GitHubError> {
-        if stack.branches.is_empty() {
+        if !stack.branches.iter().any(|branch| branch.pr.is_some()) {
             return Ok(StackDetailsResponse::default());
         }
         let query = build_stack_query(&self.owner, &self.repo, stack);
@@ -174,6 +174,31 @@ impl GitHubProvider for CliGitHubProvider {
         self.run(&["stack", "push"], MUTATION_TIMEOUT)
             .await
             .map(|_| ())
+    }
+
+    async fn push_branch(&self) -> Result<(), GitHubError> {
+        let output = timeout(
+            MUTATION_TIMEOUT,
+            Command::new("git")
+                .arg("push")
+                .current_dir(&self.worktree_root)
+                .env("GIT_TERMINAL_PROMPT", "0")
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .map_err(|_| GitHubError::Git("git push timed out".into()))?
+        .map_err(|error| GitHubError::Git(error.to_string()))?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(GitHubError::Git(
+                String::from_utf8_lossy(&output.stderr).into_owned(),
+            ))
+        }
     }
 
     async fn sync_stack(&self) -> Result<String, GitHubError> {

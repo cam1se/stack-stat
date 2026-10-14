@@ -8,10 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
 use stack_stat_core::{
-    model::{
-        BranchState, CheckHealth, LocalCheckState, LocalSync, PrLifecycle, RebaseNeed,
-        ReviewDecision, ReviewState, ReviewSummary, StackStatus,
-    },
+    model::{PrLifecycle, RebaseNeed, StackMode, StackStatus},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
@@ -19,6 +16,12 @@ use crate::{
     app::App,
     theme::{ColorDepth, Theme},
     ui::animation::Column,
+};
+
+mod labels;
+use labels::{
+    check_label, lifecycle_label, local_label, rebase_label, review_label, thread_label,
+    worktree_marker,
 };
 
 pub(super) fn view_start<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
@@ -40,7 +43,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     if app.state().stack_status == StackStatus::NotInStack {
         frame.render_widget(
             Paragraph::new(
-                "Not in a stack\nOpen and stack PRs on GitHub, or\nSwitch to a stacked branch.",
+                "No attached branch\nCheck out a branch to view its dashboard,\nwith or without a PR.",
             )
             .block(
                 Block::default()
@@ -128,6 +131,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             .map(|(offset, index)| {
                 let branch = &app.state().branches[index];
                 let selected = app.selected_branch() == Some(branch.name.as_str());
+                let no_pr = branch.pr_number.is_none() && branch.pr.is_none();
                 let verdict = branch.verdict();
                 let (glyph, verdict_color) = super::verdict::style(verdict, theme);
                 let (lifecycle, lifecycle_color) = lifecycle_label(branch, theme);
@@ -142,7 +146,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 let rebase = rebase_label(branch, full_rebase);
                 let local = local_label(branch, full_local);
                 let branch_name = branch.name.as_str();
-                let title = branch.pr.as_ref().map_or("", |pr| pr.title.as_str());
+                let title = if no_pr {
+                    "no PR yet"
+                } else {
+                    branch.pr.as_ref().map_or("", |pr| pr.title.as_str())
+                };
                 // A merged layer is history: every column is dimmed.
                 let dim = branch.lifecycle == PrLifecycle::Merged;
                 let style = |column: Column, foreground| {
@@ -196,7 +204,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     Cell::from(Span::styled(
                         branch
                             .pr_number
-                            .map_or_else(|| "—".into(), |number| format!("#{number}")),
+                            .map_or_else(String::new, |number| format!("#{number}")),
                         style(Column::Pr, ratatui::style::Color::Reset),
                     )),
                     Cell::from(Span::styled(
@@ -260,253 +268,15 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(super::title(" Stack ", theme))
+                .title(super::title(
+                    if app.state().mode == StackMode::Single {
+                        " Branch "
+                    } else {
+                        " Stack "
+                    },
+                    theme,
+                ))
                 .border_style(Style::default().fg(theme.border)),
         );
     frame.render_widget(table, area);
-}
-
-fn worktree_marker(branch: &BranchState) -> (&'static str, &'static str) {
-    if !branch.is_current {
-        return (" ", "");
-    }
-    let suffix = match branch.local_sync {
-        LocalSync::InSync => "",
-        LocalSync::Ahead => "↑",
-        LocalSync::Behind => "↓",
-        LocalSync::Diverged => "⇅",
-        LocalSync::Unpushed => "?",
-    };
-    ("*", suffix)
-}
-
-fn lifecycle_label(branch: &BranchState, theme: &Theme) -> (String, ratatui::style::Color) {
-    match branch.lifecycle {
-        PrLifecycle::Merged => ("Merged".into(), theme.muted),
-        PrLifecycle::Queued => ("Queued".into(), theme.success),
-        PrLifecycle::Open => match branch.pr.as_ref() {
-            Some(pr) if pr.is_draft => ("Draft".into(), theme.error),
-            Some(_) => ("Open".into(), theme.success),
-            None if branch.pr_number.is_some() => ("◷".into(), theme.warning),
-            None => ("—".into(), theme.muted),
-        },
-    }
-}
-
-#[derive(Clone, Copy)]
-enum Health {
-    Success,
-    Failure,
-    Running,
-    Muted,
-}
-impl Health {
-    fn color(self, theme: &Theme) -> ratatui::style::Color {
-        match self {
-            Self::Success => theme.success,
-            Self::Failure => theme.error,
-            Self::Running => theme.warning,
-            Self::Muted => theme.muted,
-        }
-    }
-}
-
-/// Row summary of CI checks. While anything is still running the spinner replaces the icon, keeping
-/// the color of the worst state so a failing PR spins red and the icon returns when checks finish.
-fn check_label(branch: &BranchState, spinner: char) -> (String, Health) {
-    let Some(pr) = &branch.pr else {
-        return ("—".into(), Health::Muted);
-    };
-    let summary = pr.check_summary();
-    if summary.total == 0 {
-        return ("—".into(), Health::Muted);
-    }
-    let (icon, health) = match summary.worst {
-        CheckHealth::Failure => ('✖', Health::Failure),
-        CheckHealth::Running => (spinner, Health::Running),
-        CheckHealth::Success => ('✔', Health::Success),
-        CheckHealth::Skipped | CheckHealth::None => ('░', Health::Muted),
-    };
-    // A merged layer's CI is history: keep the glyph but drop the color and animation.
-    if branch.lifecycle == PrLifecycle::Merged {
-        let icon = if summary.running > 0 { '◷' } else { icon };
-        return (
-            format!("{icon} {}/{}", summary.passed, summary.total),
-            Health::Muted,
-        );
-    }
-    let icon = if summary.running > 0 { spinner } else { icon };
-    (
-        format!("{icon} {}/{}", summary.passed, summary.total),
-        health,
-    )
-}
-
-fn review_label(
-    branch: &BranchState,
-    show_bots: bool,
-    expanded: bool,
-    full: bool,
-) -> (String, Health) {
-    let Some(pr) = &branch.pr else {
-        return ("—".into(), Health::Muted);
-    };
-    let summary = pr.review_summary(show_bots);
-    let summary = if pr.reviews.is_empty() {
-        match pr.review_decision {
-            ReviewDecision::Approved => ReviewSummary::Approved,
-            ReviewDecision::ChangesRequested => ReviewSummary::ChangesRequested,
-            ReviewDecision::ReviewRequired => ReviewSummary::Pending,
-            ReviewDecision::None => summary,
-        }
-    } else {
-        summary
-    };
-    let requested = pr
-        .reviews
-        .iter()
-        .any(|review| review.state == ReviewState::Pending && (show_bots || !review.is_bot));
-    let (icon, label, health) = if pr.review_decision == ReviewDecision::ReviewRequired
-        && summary != ReviewSummary::ChangesRequested
-    {
-        (
-            "◷",
-            if requested { "pending" } else { "required" },
-            Health::Running,
-        )
-    } else {
-        match summary {
-            ReviewSummary::Approved => ("✔", "approved", Health::Success),
-            ReviewSummary::ChangesRequested => ("↺", "changes", Health::Failure),
-            ReviewSummary::Pending => ("◷", "pending", Health::Running),
-            ReviewSummary::None => ("—", "", Health::Muted),
-        }
-    };
-    if !full {
-        return (icon.into(), health);
-    }
-    if expanded {
-        let names: Vec<_> = pr
-            .reviews
-            .iter()
-            .filter(|review| show_bots || !review.is_bot)
-            .map(|review| {
-                let icon = match review.state {
-                    ReviewState::Approved => "✔",
-                    ReviewState::ChangesRequested => "↺",
-                    ReviewState::Pending => "◷",
-                    _ => "·",
-                };
-                format!("{icon}{}", review.author)
-            })
-            .collect();
-        if !names.is_empty() {
-            return (names.join(" "), health);
-        }
-    }
-    (
-        if label.is_empty() {
-            icon.into()
-        } else {
-            format!("{icon} {label}")
-        },
-        health,
-    )
-}
-
-fn thread_label(branch: &BranchState) -> (String, Health) {
-    let Some(pr) = &branch.pr else {
-        return ("—".into(), Health::Muted);
-    };
-    if pr.unresolved_threads == 0 {
-        return ("✔ 0".into(), Health::Success);
-    }
-    if pr.threads_gate {
-        return (format!("✖ {}", pr.unresolved_threads), Health::Failure);
-    }
-    (format!("◷ {}", pr.unresolved_threads), Health::Running)
-}
-
-fn rebase_label(branch: &BranchState, full: bool) -> (String, Health) {
-    match branch.rebase {
-        RebaseNeed::None => (String::new(), Health::Muted),
-        RebaseNeed::Parent | RebaseNeed::Stacked => ("↻".into(), Health::Failure),
-        RebaseNeed::Trunk => (
-            if full { "↻ main" } else { "↻" }.into(),
-            if branch.trunk_rebase_gates {
-                Health::Failure
-            } else {
-                Health::Muted
-            },
-        ),
-    }
-}
-
-fn local_label(branch: &BranchState, full: bool) -> (String, Health) {
-    if branch.local_checks.is_empty() {
-        return ("—".into(), Health::Muted);
-    }
-    if !full {
-        let health = if branch
-            .local_checks
-            .iter()
-            .any(|check| check.state == LocalCheckState::Fail && !check.is_stale)
-        {
-            Health::Failure
-        } else if branch
-            .local_checks
-            .iter()
-            .any(|check| check.is_stale || check.state == LocalCheckState::Missing)
-        {
-            Health::Running
-        } else if branch
-            .local_checks
-            .iter()
-            .any(|check| check.state == LocalCheckState::Pass)
-        {
-            Health::Success
-        } else {
-            Health::Muted
-        };
-        let icon = match health {
-            Health::Failure => "✖",
-            Health::Running => "◷",
-            Health::Success => "✔",
-            Health::Muted => "░░",
-        };
-        return (icon.into(), health);
-    }
-    let items: Vec<_> = branch
-        .local_checks
-        .iter()
-        .map(|check| {
-            let icon = if check.is_stale {
-                "◷"
-            } else {
-                match check.state {
-                    LocalCheckState::Pass => "✔",
-                    LocalCheckState::Fail => "✖",
-                    LocalCheckState::Skip => "░░",
-                    LocalCheckState::Missing => "◷",
-                }
-            };
-            format!("{icon} {}", check.name)
-        })
-        .collect();
-    let health = if branch
-        .local_checks
-        .iter()
-        .any(|check| check.state == LocalCheckState::Fail && !check.is_stale)
-    {
-        Health::Failure
-    } else if branch
-        .local_checks
-        .iter()
-        .any(|check| check.is_stale || check.state == LocalCheckState::Missing)
-    {
-        Health::Running
-    } else {
-        Health::Success
-    };
-    (items.join(" "), health)
 }

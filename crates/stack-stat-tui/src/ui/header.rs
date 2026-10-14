@@ -9,11 +9,14 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use stack_stat_core::{
-    model::{StackState, StackStatus, StackSummary, Verdict},
+    model::{StackMode, StackStatus, StackSummary},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
 use crate::{app::App, theme::Theme};
+
+mod summary;
+use summary::{blocker_line, next_to_merge_lines, summary_line};
 
 pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame: &mut Frame<'_>,
@@ -34,7 +37,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         ),
         StackStatus::NotInStack => (
             Line::styled(
-                "Stack: not in a stack",
+                "No attached branch",
                 Style::default()
                     .fg(theme.muted)
                     .add_modifier(Modifier::BOLD),
@@ -42,8 +45,24 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             None,
         ),
         StackStatus::Ready => {
-            let layers = state.branches.len();
-            let layer_label = if layers == 1 { "layer" } else { "layers" };
+            let identity_label = match state.mode {
+                StackMode::Single => {
+                    if state
+                        .branches
+                        .iter()
+                        .any(|branch| branch.pr_number.is_some() || branch.pr.is_some())
+                    {
+                        "single PR".to_owned()
+                    } else {
+                        "single branch".to_owned()
+                    }
+                }
+                StackMode::Stacked => {
+                    let layers = state.branches.len();
+                    let layer_label = if layers == 1 { "layer" } else { "layers" };
+                    format!("{layers} {layer_label}")
+                }
+            };
             let separator = || Span::styled(" · ", Style::default().fg(theme.muted));
             let mut spans = Vec::new();
             if !state.repo.is_empty() {
@@ -63,7 +82,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
             ));
             spans.push(separator());
             spans.push(Span::styled(
-                format!("{layers} {layer_label}"),
+                identity_label,
                 Style::default().fg(theme.muted),
             ));
             (Line::from(spans), Some(state.summary()))
@@ -72,7 +91,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     let chart_area = chart_area(area, stack_summary, !state.branches.is_empty());
     let text_width = text_width(area, chart_area);
     let branch = if state.worktree_branch.is_empty() {
-        "loading…"
+        if state.stack_status == StackStatus::NotInStack {
+            "detached or empty HEAD"
+        } else {
+            "loading…"
+        }
     } else {
         &state.worktree_branch
     };
@@ -114,7 +137,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 Line::styled("Stack summary: loading…", Style::default().fg(theme.muted))
             }
             StackStatus::NotInStack => Line::styled(
-                "Stack summary: not in a stack",
+                "Check out an attached branch to view its dashboard",
                 Style::default().fg(theme.muted),
             ),
             StackStatus::Ready => unreachable!("ready stacks have a summary"),
@@ -205,80 +228,6 @@ fn text_width(area: Rect, chart_area: Option<Rect>) -> usize {
     }
 }
 
-/// The next layer to merge as a headline plus one indented bullet per issue.
-fn next_to_merge_lines(state: &StackState, theme: &Theme) -> (Line<'static>, Vec<Line<'static>>) {
-    let Some(next) = state.next_to_merge() else {
-        return (
-            Line::styled("Nothing left to merge", Style::default().fg(theme.muted)),
-            Vec::new(),
-        );
-    };
-    let (glyph, verdict_color) = super::verdict::style(next.verdict(), theme);
-    let number = next
-        .pr_number
-        .map_or_else(String::new, |number| format!("#{number} "));
-    let issues = next.issues();
-    let mut head = vec![
-        Span::styled(glyph, Style::default().fg(verdict_color)),
-        Span::styled(" Next: ", Style::default().fg(theme.muted)),
-        Span::styled(number.clone(), Style::default().fg(theme.accent)),
-        Span::raw(next.name.clone()),
-    ];
-    if issues.is_empty() {
-        head.push(Span::raw(" — "));
-        head.push(Span::styled(
-            "ready to merge",
-            Style::default().fg(theme.success),
-        ));
-    }
-    let bullets = issues
-        .into_iter()
-        .map(|issue| {
-            let color = if issue.is_blocking() {
-                theme.error
-            } else {
-                theme.warning
-            };
-            Line::styled(
-                format!("  - {}", super::issues::describe(issue)),
-                Style::default().fg(color),
-            )
-        })
-        .collect();
-    (Line::from(head), bullets)
-}
-
-fn blocker_line(state: &StackState, theme: &Theme) -> Option<Line<'static>> {
-    let summary = state.blocker_summary();
-    let categories = [
-        ("checks", summary.checks, theme.error),
-        ("reviews", summary.reviews, theme.warning),
-        ("threads", summary.threads, theme.error),
-        ("rebase", summary.rebase, theme.error),
-        ("local", summary.local, theme.warning),
-        ("draft", summary.draft, theme.error),
-    ];
-    let mut spans = vec![Span::styled(
-        "Blocked by: ",
-        Style::default().fg(theme.muted),
-    )];
-    let mut has_category = false;
-    for (name, count, color) in categories {
-        if count == 0 {
-            continue;
-        }
-        if has_category {
-            spans.push(Span::raw(" · "));
-        }
-        spans.push(Span::styled(
-            format!("{name} {count}"),
-            Style::default().fg(color),
-        ));
-        has_category = true;
-    }
-    has_category.then(|| Line::from(spans))
-}
-
 fn truncate_line(line: Line<'static>, width: usize) -> Line<'static> {
     let length = line
         .spans
@@ -312,30 +261,6 @@ fn truncate_line(line: Line<'static>, width: usize) -> Line<'static> {
         break;
     }
     spans.push(Span::styled("…", ellipsis_style));
-    Line::from(spans)
-}
-
-fn summary_line(summary: StackSummary, theme: &Theme) -> Line<'static> {
-    let mut spans = Vec::new();
-    for (verdict, count, always_visible) in [
-        (Verdict::Go, summary.go, true),
-        (Verdict::Wait, summary.wait, true),
-        (Verdict::NoGo, summary.no_go, true),
-        (Verdict::Merged, summary.merged, false),
-        (Verdict::Queued, summary.queued, false),
-    ] {
-        if !always_visible && count == 0 {
-            continue;
-        }
-        if !spans.is_empty() {
-            spans.push(Span::raw("   "));
-        }
-        let (glyph, color) = super::verdict::style(verdict, theme);
-        spans.push(Span::styled(
-            format!("{glyph} {count}"),
-            Style::default().fg(color),
-        ));
-    }
     Line::from(spans)
 }
 

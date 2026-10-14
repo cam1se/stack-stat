@@ -5,21 +5,25 @@ use std::collections::{BTreeMap, BTreeSet};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// GitHub stack structure normalized from the stack API.
+use crate::model::StackMode;
+
+/// GitHub stack or single branch structure normalized from discovery.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackViewResponse {
-    /// Stack target branch supplied by GitHub's `baseRefName`.
+    /// Whether this view represents real GitHub stack membership.
+    pub mode: StackMode,
+    /// Stack base, single PR base, or repository default branch for a no-PR row.
     pub trunk: String,
     /// Checked-out Git branch supplied by the caller.
     pub current_branch: String,
-    /// Layers from trunk to top, ordered by their stack-entry positions.
+    /// Rows from trunk to top, ordered by stack-entry position in stacked mode.
     pub branches: Vec<StackBranch>,
 }
 
-/// One GitHub PR layer in a normalized stack.
+/// One branch row, optionally linked to a GitHub pull request.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackBranch {
-    /// PR head branch name, retained even after the remote ref is deleted.
+    /// Branch name, retained from the PR even after its remote ref is deleted.
     pub name: String,
     /// Whether GitHub reports the PR as merged.
     pub is_merged: bool,
@@ -29,7 +33,7 @@ pub struct StackBranch {
     pub pr: Option<StackPr>,
 }
 
-/// Linked GitHub PR identity and lifecycle in a stack.
+/// Linked GitHub PR identity and lifecycle.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StackPr {
     /// GitHub PR number.
@@ -162,6 +166,8 @@ pub enum ProviderAction {
     Checkout(String),
     /// Push the current stack.
     PushStack,
+    /// Push the current single-mode branch with plain Git.
+    PushBranch,
     /// Synchronize with remote.
     SyncStack,
     /// Toggle draft state.
@@ -176,7 +182,7 @@ pub enum ProviderAction {
 /// Classified failure while discovering GitHub state or running a CLI action.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GitHubError {
-    /// Remote discovery found no branch PR or no GitHub stack for that PR.
+    /// The worktree has no attached branch to display.
     NotInStack,
     /// Push or sync requires local gh-stack tracking before it can proceed.
     LocalTrackingMissing,

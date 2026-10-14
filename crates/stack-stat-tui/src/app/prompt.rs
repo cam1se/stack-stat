@@ -21,6 +21,7 @@ impl Prompt {
             ProviderAction::OpenPr(number) => format!("Open PR #{number}"),
             ProviderAction::Checkout(branch) => format!("Checkout {branch}"),
             ProviderAction::PushStack => "Push stack".into(),
+            ProviderAction::PushBranch => "Push branch".into(),
             ProviderAction::SyncStack => "Sync stack".into(),
             ProviderAction::ToggleDraft { number, make_ready } => format!(
                 "Mark PR #{number} {}",
@@ -31,6 +32,7 @@ impl Prompt {
             ProviderAction::OpenPr(_) => "Open the pull request in your browser.",
             ProviderAction::Checkout(_) => "Switch the worktree to the selected stack branch.",
             ProviderAction::PushStack => "Push the stack branches to GitHub.",
+            ProviderAction::PushBranch => "Run plain git push for the current branch.",
             ProviderAction::SyncStack => "Fetch, reconcile, rebase, and push the stack.",
             ProviderAction::ToggleDraft { .. } => {
                 "Change the pull request's draft state on GitHub."
