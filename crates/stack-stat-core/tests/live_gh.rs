@@ -12,7 +12,7 @@ use stack_stat_core::{
 };
 use std::{path::Path, process::Command};
 use tempfile::TempDir;
-use tokio::sync::Mutex;
+use tokio::sync::{RwLock, RwLockWriteGuard};
 
 /// Repository holding the fixture stacks.
 fn fixture_repo() -> String {
@@ -24,8 +24,17 @@ fn fork_repo() -> String {
     std::env::var("STACK_STAT_FIXTURE_FORK").unwrap_or_else(|_| "tcamise-gpsw/stack-stat".into())
 }
 
-/// Mutating tests share one remote fixture, so they take turns.
-static MUTATION_LOCK: Mutex<()> = Mutex::const_new(());
+/// Every test depends on the remote fixture. Read-only tests hold this lock
+/// shared; mutating tests hold it exclusively, so nothing reads a half-reset
+/// fixture.
+static FIXTURE: RwLock<()> = RwLock::const_new(());
+
+/// Take the fixture lock shared for the rest of the test.
+macro_rules! shared {
+    () => {
+        let _shared = FIXTURE.read().await;
+    };
+}
 
 macro_rules! live {
     () => {
@@ -36,14 +45,40 @@ macro_rules! live {
     };
 }
 
-fn script(arg: &str) {
+fn run_script(arg: &str) -> bool {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let status = Command::new("bash")
+    Command::new("bash")
         .arg(root.join("scripts/live-fixture.sh"))
         .arg(arg)
         .status()
-        .unwrap();
-    assert!(status.success(), "live-fixture.sh {arg} failed");
+        .is_ok_and(|status| status.success())
+}
+
+fn script(arg: &str) {
+    assert!(run_script(arg), "live-fixture.sh {arg} failed");
+}
+
+/// Exclusive access to the fixture: resets it before the test and again when
+/// dropped, including when the test panics.
+struct Exclusive {
+    _guard: RwLockWriteGuard<'static, ()>,
+}
+
+impl Exclusive {
+    async fn begin() -> Self {
+        let guard = FIXTURE.write().await;
+        script("reset");
+        Self { _guard: guard }
+    }
+}
+
+impl Drop for Exclusive {
+    fn drop(&mut self) {
+        // Never panic while possibly unwinding; the next run resets again.
+        if !run_script("reset") {
+            eprintln!("warning: fixture reset after test failed");
+        }
+    }
 }
 
 /// Clone `slug` with `gh` and check out `branch`.
@@ -96,6 +131,7 @@ fn isolated_gh(args: &[&str], token: &str) -> (i32, String, String) {
 #[tokio::test]
 async fn resolves_owner_and_name_with_gh_repo_view() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "fixture/s1-b");
     let resolved = CliGitHubProvider::resolve_repo(dir.path()).await.unwrap();
     let expected = fixture_repo();
@@ -105,6 +141,7 @@ async fn resolves_owner_and_name_with_gh_repo_view() {
 #[tokio::test]
 async fn discovers_a_three_pr_stack_and_loads_details() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "fixture/s1-b");
     let github = provider(dir.path());
     let stack = github.stack_view("fixture/s1-b").await.unwrap();
@@ -135,6 +172,7 @@ fn single_row(stack: &StackViewResponse) -> &StackBranch {
 #[tokio::test]
 async fn branch_without_a_pull_request_is_a_single_row_on_the_default_branch() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "fixture/s6-nopr");
     let github = provider(dir.path());
     let stack = github.stack_view("fixture/s6-nopr").await.unwrap();
@@ -150,6 +188,7 @@ async fn branch_without_a_pull_request_is_a_single_row_on_the_default_branch() {
 #[tokio::test]
 async fn unstacked_pull_request_is_a_single_row_based_on_its_base_ref() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "fixture/s4-same");
     let stack = provider(dir.path())
         .stack_view("fixture/s4-same")
@@ -163,6 +202,7 @@ async fn unstacked_pull_request_is_a_single_row_based_on_its_base_ref() {
 #[tokio::test]
 async fn single_pull_request_uses_a_non_default_base_as_trunk() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "fixture/s5-single");
     let github = provider(dir.path());
     let stack = github.stack_view("fixture/s5-single").await.unwrap();
@@ -177,6 +217,7 @@ async fn single_pull_request_uses_a_non_default_base_as_trunk() {
 #[tokio::test]
 async fn closed_and_merged_single_pull_requests_keep_their_lifecycle() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "main");
     let github = provider(dir.path());
     let closed = github.stack_view("fixture/s7-closed").await.unwrap();
@@ -193,6 +234,7 @@ async fn closed_and_merged_single_pull_requests_keep_their_lifecycle() {
 #[tokio::test]
 async fn merged_stack_keeps_deleted_branches() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "main");
     let github = provider(dir.path());
     let stack = github.stack_view("fixture/s3-b").await.unwrap();
@@ -214,6 +256,7 @@ async fn merged_stack_keeps_deleted_branches() {
 #[tokio::test]
 async fn same_branch_name_resolves_by_head_repository_owner() {
     live!();
+    shared!();
     let upstream = clone(&fixture_repo(), "fixture/s1-c");
     let stack = provider(upstream.path())
         .stack_view("fixture/s1-c")
@@ -233,6 +276,7 @@ async fn same_branch_name_resolves_by_head_repository_owner() {
 #[tokio::test]
 async fn push_without_local_tracking_is_classified() {
     live!();
+    shared!();
     let dir = clone(&fixture_repo(), "fixture/s1-b");
     let error = provider(dir.path()).push_stack().await.unwrap_err();
     assert_eq!(error, GitHubError::LocalTrackingMissing);
@@ -278,8 +322,7 @@ fn gh_installs_missing_extension_on_first_use() {
 #[tokio::test]
 async fn link_push_sync_and_draft_toggle_round_trip() {
     live!();
-    let _guard = MUTATION_LOCK.lock().await;
-    script("reset");
+    let _fixture = Exclusive::begin().await;
     let dir = clone(&fixture_repo(), "fixture/s1-b");
     let github = provider(dir.path());
     github.checkout_branch("fixture/s1-b").await.unwrap();
@@ -299,33 +342,28 @@ async fn link_push_sync_and_draft_toggle_round_trip() {
             .is_draft
     );
     github.toggle_draft(27, false).await.unwrap();
-    script("reset");
 }
 
 #[tokio::test]
 async fn sync_against_conflicting_trunk_reports_rebase_conflict() {
     live!();
-    let _guard = MUTATION_LOCK.lock().await;
-    script("reset");
+    let _fixture = Exclusive::begin().await;
     let dir = clone(&fixture_repo(), "fixture/s2-b");
     let github = provider(dir.path());
     github.checkout_branch("fixture/s2-b").await.unwrap();
     script("conflict");
     let result = github.sync_stack().await;
-    script("reset");
     assert_eq!(result.unwrap_err(), GitHubError::RebaseConflict);
 }
 
 #[tokio::test]
 async fn single_pull_request_draft_toggle_round_trip() {
     live!();
-    let _guard = MUTATION_LOCK.lock().await;
-    script("reset");
+    let _fixture = Exclusive::begin().await;
     let dir = clone(&fixture_repo(), "fixture/s5-single");
     let github = provider(dir.path());
     github.toggle_draft(43, true).await.unwrap();
     let stack = github.stack_view("fixture/s5-single").await.unwrap();
     assert!(!github.pr_details(&stack).await.unwrap().prs[0].is_draft);
     github.toggle_draft(43, false).await.unwrap();
-    script("reset");
 }
