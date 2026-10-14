@@ -1,16 +1,26 @@
 name: Live gh
 
-# End-to-end checks against the real gh and gh stack binaries and the live
-# fixture PRs. See docs/architecture/07-live-validation.md. Not run on pull requests: it mutates
-# shared remote state and needs a token with write access.
+# Detects drift in gh and the gh-stack extension. Runs the live suite (see
+# docs/architecture/07-live-validation.md) against the fixture PRs with a
+# known-good pinned toolchain and with the latest releases. A failure in
+# "latest" while "pinned" passes means an upstream change broke stack-stat.
+#
+# Not run on pull requests: it mutates shared remote state and needs a token with
+# write access.
 on:
   schedule:
     - cron: "17 6 * * *"
   workflow_dispatch:
+  # TEMPORARY: lets this branch be exercised before the workflow reaches main.
+  # Remove before merging.
+  push:
+    branches: [tcamise-gpsw/end-to-end-validation-of-gh-and-gh-stack-behavio]
+    paths: [".github/workflows/live-gh.yml"]
 
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 # Tests reset shared fixture branches, so only one run may execute at a time and
 # a cancelled run must never be replaced mid-reset.
@@ -20,32 +30,82 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # A PAT with push access is needed if the default token cannot force-push the
-  # fixture branches; otherwise the workflow token is used.
-  GH_TOKEN: ${{ secrets.STACK_STAT_LIVE_TOKEN || github.token }}
+  # Needs push access to the fixture repository; the default workflow token is
+  # the fallback.
+  GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN || github.token }}
   STACK_STAT_LIVE: "1"
 
 jobs:
   live:
-    name: Live gh and gh stack
+    name: Live gh (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      # Both jobs reset the same fixture branches.
+      max-parallel: 1
+      matrix:
+        include:
+          # Versions the suite was validated against; update deliberately.
+          - name: pinned
+            gh: "2.101.0"
+            extension: "v0.1.1"
+          # Whatever upstream shipped most recently.
+          - name: latest
+            gh: latest
+            extension: latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Install gh ${{ matrix.gh }}
+        run: |
+          version="${{ matrix.gh }}"
+          if [ "$version" = latest ]; then
+            version="$(gh api repos/cli/cli/releases/latest --jq .tag_name)"
+            version="${version#v}"
+          fi
+          curl -fsSL "https://github.com/cli/cli/releases/download/v${version}/gh_${version}_linux_amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          sudo install "$RUNNER_TEMP/gh_${version}_linux_amd64/bin/gh" /usr/local/bin/gh
+          hash -r
+      - name: Install gh-stack ${{ matrix.extension }}
+        run: |
+          if [ "${{ matrix.extension }}" = latest ]; then
+            gh extension install github/gh-stack
+          else
+            gh extension install github/gh-stack --pin "${{ matrix.extension }}"
+          fi
       - name: Configure git for gh
         run: |
           gh auth setup-git
           git config --global user.name "stack-stat live tests"
           git config --global user.email "live-tests@users.noreply.github.com"
-      - name: Show tool versions
+      - name: Record tool versions
         run: |
-          gh --version
-          gh extension install github/gh-stack
-          gh extension list
+          {
+            echo "### Tool versions (${{ matrix.name }})"
+            echo '```'
+            gh --version
+            gh extension list
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Run live tests
         run: cargo test -p stack-stat-core --test live_gh --locked -- --test-threads=4
       - name: Restore fixture
         if: ${{ always() }}
         run: bash scripts/live-fixture.sh reset
+      - name: Report failure
+        # Scheduled runs only: manual and temporary branch runs report in the UI.
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        run: |
+          title="Live gh drift detected"
+          body="Live gh (${{ matrix.name }}: gh ${{ matrix.gh }}, gh-stack ${{ matrix.extension }}) failed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          existing="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --label bug --body "$body
+
+          If only the latest job failed, gh or gh-stack changed in a way that breaks stack-stat. See docs/architecture/07-live-validation.md."
+          fi
