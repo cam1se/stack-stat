@@ -10,7 +10,7 @@ use stack_stat_core::{
         graphql::classify_gh_failure,
     },
 };
-use std::{path::Path, process::Command};
+use std::{path::Path, process::Command, sync::LazyLock};
 use tempfile::TempDir;
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
@@ -29,10 +29,21 @@ fn fork_repo() -> String {
 /// fixture.
 static FIXTURE: RwLock<()> = RwLock::const_new(());
 
+/// Result of `live-fixture.sh check`, run once per test process.
+static FIXTURE_OK: LazyLock<bool> = LazyLock::new(|| run_script("check"));
+
+fn require_fixture() {
+    assert!(
+        *FIXTURE_OK,
+        "fixture check failed; see FIXTURE: lines above and docs/architecture/07-live-validation.md"
+    );
+}
+
 /// Take the fixture lock shared for the rest of the test.
 macro_rules! shared {
     () => {
         let _shared = FIXTURE.read().await;
+        require_fixture();
     };
 }
 
@@ -67,6 +78,7 @@ struct Exclusive {
 impl Exclusive {
     async fn begin() -> Self {
         let guard = FIXTURE.write().await;
+        require_fixture();
         script("reset");
         Self { _guard: guard }
     }
