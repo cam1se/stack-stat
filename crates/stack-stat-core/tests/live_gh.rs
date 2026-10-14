@@ -3,8 +3,12 @@
 //!
 //! Skipped unless `STACK_STAT_LIVE=1`. Run with `make live-test`.
 
-use stack_stat_core::providers::{
-    CliGitHubProvider, GitHubError, GitHubProvider, graphql::classify_gh_failure,
+use stack_stat_core::{
+    model::StackMode,
+    providers::{
+        CliGitHubProvider, GitHubError, GitHubProvider, StackBranch, StackViewResponse,
+        graphql::classify_gh_failure,
+    },
 };
 use std::{path::Path, process::Command};
 use tempfile::TempDir;
@@ -104,6 +108,7 @@ async fn discovers_a_three_pr_stack_and_loads_details() {
     let dir = clone(&fixture_repo(), "fixture/s1-b");
     let github = provider(dir.path());
     let stack = github.stack_view("fixture/s1-b").await.unwrap();
+    assert_eq!(stack.mode, StackMode::Stacked);
     assert_eq!(stack.trunk, "main");
     let names: Vec<_> = stack.branches.iter().map(|b| b.name.as_str()).collect();
     assert_eq!(names, ["fixture/s1-a", "fixture/s1-b", "fixture/s1-c"]);
@@ -120,22 +125,69 @@ async fn discovers_a_three_pr_stack_and_loads_details() {
     assert!(details.remote_rebase_branches.is_empty());
 }
 
-#[tokio::test]
-async fn branch_without_a_pull_request_is_not_in_a_stack() {
-    live!();
-    let dir = clone(&fixture_repo(), "main");
-    let result = provider(dir.path())
-        .stack_view("fixture/no-such-branch")
-        .await;
-    assert_eq!(result.unwrap_err(), GitHubError::NotInStack);
+/// Assert a one-row single-mode view and return its row.
+fn single_row(stack: &StackViewResponse) -> &StackBranch {
+    assert_eq!(stack.mode, StackMode::Single);
+    assert_eq!(stack.branches.len(), 1);
+    &stack.branches[0]
 }
 
 #[tokio::test]
-async fn unstacked_pull_request_is_not_in_a_stack() {
+async fn branch_without_a_pull_request_is_a_single_row_on_the_default_branch() {
+    live!();
+    let dir = clone(&fixture_repo(), "fixture/s6-nopr");
+    let github = provider(dir.path());
+    let stack = github.stack_view("fixture/s6-nopr").await.unwrap();
+    assert_eq!(stack.trunk, "main");
+    let row = single_row(&stack);
+    assert_eq!(row.name, "fixture/s6-nopr");
+    assert!(row.pr.is_none());
+    assert!(github.pr_details(&stack).await.unwrap().prs.is_empty());
+    let unknown = github.stack_view("fixture/no-such-branch").await.unwrap();
+    assert!(single_row(&unknown).pr.is_none());
+}
+
+#[tokio::test]
+async fn unstacked_pull_request_is_a_single_row_based_on_its_base_ref() {
     live!();
     let dir = clone(&fixture_repo(), "fixture/s4-same");
-    let result = provider(dir.path()).stack_view("fixture/s4-same").await;
-    assert_eq!(result.unwrap_err(), GitHubError::NotInStack);
+    let stack = provider(dir.path())
+        .stack_view("fixture/s4-same")
+        .await
+        .unwrap();
+    assert_eq!(stack.trunk, "main");
+    let pr = single_row(&stack).pr.as_ref().unwrap();
+    assert_eq!((pr.number, pr.state.as_str()), (37, "OPEN"));
+}
+
+#[tokio::test]
+async fn single_pull_request_uses_a_non_default_base_as_trunk() {
+    live!();
+    let dir = clone(&fixture_repo(), "fixture/s5-single");
+    let github = provider(dir.path());
+    let stack = github.stack_view("fixture/s5-single").await.unwrap();
+    assert_eq!(stack.trunk, "fixture/single-base");
+    let pr = single_row(&stack).pr.as_ref().unwrap();
+    assert_eq!((pr.number, pr.state.as_str()), (43, "OPEN"));
+    let details = github.pr_details(&stack).await.unwrap();
+    assert_eq!(details.prs.len(), 1);
+    assert!(details.prs[0].is_draft);
+}
+
+#[tokio::test]
+async fn closed_and_merged_single_pull_requests_keep_their_lifecycle() {
+    live!();
+    let dir = clone(&fixture_repo(), "main");
+    let github = provider(dir.path());
+    let closed = github.stack_view("fixture/s7-closed").await.unwrap();
+    let row = single_row(&closed);
+    assert!(!row.is_merged);
+    assert_eq!(row.pr.as_ref().map(|pr| pr.state.as_str()), Some("CLOSED"));
+    let merged = github.stack_view("fixture/s8-merged").await.unwrap();
+    let row = single_row(&merged);
+    assert!(row.is_merged);
+    assert_eq!(row.pr.as_ref().map(|pr| pr.state.as_str()), Some("MERGED"));
+    assert_eq!(merged.trunk, "fixture/single-base");
 }
 
 #[tokio::test]
@@ -144,6 +196,7 @@ async fn merged_stack_keeps_deleted_branches() {
     let dir = clone(&fixture_repo(), "main");
     let github = provider(dir.path());
     let stack = github.stack_view("fixture/s3-b").await.unwrap();
+    assert_eq!(stack.mode, StackMode::Stacked);
     assert_eq!(stack.trunk, "fixture/trunk");
     let names: Vec<_> = stack.branches.iter().map(|b| b.name.as_str()).collect();
     assert_eq!(names, ["fixture/s3-a", "fixture/s3-b"]);
@@ -156,8 +209,8 @@ async fn merged_stack_keeps_deleted_branches() {
     assert_eq!(numbers, [34, 35]);
 }
 
-/// Two PRs use head branch `fixture/s1-c`: #29, the top of stack s1, and a fork
-/// PR that is not stacked. The push remote decides which one is ours.
+/// Two PRs use head branch `fixture/s1-c`: #29, the top of stack s1, and fork
+/// PR #40, which is not stacked. The push remote decides which one is ours.
 #[tokio::test]
 async fn same_branch_name_resolves_by_head_repository_owner() {
     live!();
@@ -166,10 +219,15 @@ async fn same_branch_name_resolves_by_head_repository_owner() {
         .stack_view("fixture/s1-c")
         .await
         .unwrap();
+    assert_eq!(stack.mode, StackMode::Stacked);
     assert_eq!(stack.branches.len(), 3);
     let fork = clone(&fork_repo(), "fixture/s1-c");
-    let from_fork = provider(fork.path()).stack_view("fixture/s1-c").await;
-    assert_eq!(from_fork.unwrap_err(), GitHubError::NotInStack);
+    let from_fork = provider(fork.path())
+        .stack_view("fixture/s1-c")
+        .await
+        .unwrap();
+    let pr = single_row(&from_fork).pr.as_ref().unwrap();
+    assert_eq!(pr.number, 40);
 }
 
 #[tokio::test]
@@ -256,4 +314,18 @@ async fn sync_against_conflicting_trunk_reports_rebase_conflict() {
     let result = github.sync_stack().await;
     script("reset");
     assert_eq!(result.unwrap_err(), GitHubError::RebaseConflict);
+}
+
+#[tokio::test]
+async fn single_pull_request_draft_toggle_round_trip() {
+    live!();
+    let _guard = MUTATION_LOCK.lock().await;
+    script("reset");
+    let dir = clone(&fixture_repo(), "fixture/s5-single");
+    let github = provider(dir.path());
+    github.toggle_draft(43, true).await.unwrap();
+    let stack = github.stack_view("fixture/s5-single").await.unwrap();
+    assert!(!github.pr_details(&stack).await.unwrap().prs[0].is_draft);
+    github.toggle_draft(43, false).await.unwrap();
+    script("reset");
 }

@@ -20,7 +20,11 @@ The fixture lives in this repository under the `fixture/` branch prefix. Branche
 |`s1`|three stacked drafts on `fixture/s1-a`, `-b`, `-c`|`main`|Reads, link, push, sync, draft toggle|
 |`s2`|two stacked drafts on `fixture/s2-a`, `-b`|`fixture/trunk`|Rebase conflict: `scripts/live-fixture.sh conflict` moves trunk to a commit editing the same file|
 |`s3`|two merged PRs, branches deleted|`fixture/trunk`|Merged stack reads; read-only, cannot be reset|
-|`s4`|one unstacked upstream PR on `fixture/s4-same`|`main`|Unstacked PR|
+|`s4`|one unstacked upstream PR on `fixture/s4-same`|`main`|Single PR on the default branch|
+|`s5`|one unstacked draft on `fixture/s5-single`|`fixture/single-base`|Single PR whose base is not the default branch; draft toggle|
+|`s6`|branch `fixture/s6-nopr`, pushed, no PR|none|No-PR branch; trunk is the default branch|
+|`s7`|one closed, unmerged PR|`fixture/single-base`|Single closed PR; read-only|
+|`s8`|one merged PR|`fixture/single-base`|Single merged PR; read-only, cannot be reset|
 |fork|fork PRs from `fixture/s1-c` and `fixture/s4-same`|`main`|Same head branch name as an upstream PR, different head owner|
 
 [`scripts/live-fixture.sh`](../../scripts/live-fixture.sh) implements `status`, `reset`, and `conflict`. `reset` force-pushes each branch to its `fixture-start/<name>` tag and restores draft state. Mutating tests reset before and after themselves and serialize on one lock; the workflow adds a `concurrency` group so two runs never reset the fixture at once.
@@ -41,7 +45,7 @@ Observed with `gh` 2.101.0 and `gh-stack` v0.1.1:
 
 ## Coverage and gaps
 
-Covered live: owner/name resolution; stack discovery and PR details for a stacked, merged, unstacked, missing, and same-name fork PR; link (`gh stack checkout`), push, sync, and draft toggle; sync conflict; missing tracking, repository, extension, and authentication.
+Covered live: owner/name resolution; stacked, merged-stack and single-mode discovery (unstacked, non-default base, no PR, closed, merged) with PR details; same-name fork PR; link (`gh stack checkout`), push, sync, and draft toggle for stacked and single PRs; sync conflict; missing tracking, repository, extension, and authentication.
 
 Not covered:
 

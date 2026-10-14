@@ -13,8 +13,8 @@ set -euo pipefail
 
 repo="${STACK_STAT_FIXTURE_REPO:-cam1se/stack-stat}"
 url="https://github.com/${repo}.git"
-branches=(s1-a s1-b s1-c s2-a s2-b trunk)
-draft_prs=(27 28 29 31 32)
+branches=(s1-a s1-b s1-c s2-a s2-b s5-single s6-nopr trunk)
+draft_prs=(27 28 29 31 32 43)
 
 remote_sha() { git ls-remote "$url" "$1" | cut -f1; }
 
