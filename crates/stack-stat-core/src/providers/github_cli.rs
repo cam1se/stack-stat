@@ -68,7 +68,13 @@ impl CliGitHubProvider {
         args: &[&str],
         deadline: Duration,
     ) -> Result<(String, String), GitHubError> {
-        let output = self.run_process(args, deadline).await?;
+        let mut output = self.run_process(args, deadline).await?;
+        if args.first() == Some(&"stack") && output.status.success() && installed_extension(&output)
+        {
+            // On first use gh installs the extension and exits 0 without running the
+            // subcommand, so the requested action has not happened yet.
+            output = self.run_process(args, deadline).await?;
+        }
         if !output.status.success() {
             return Err(classify_gh_failure(
                 args,
@@ -105,6 +111,13 @@ impl CliGitHubProvider {
         .map_err(|_| GitHubError::Network("timed out".into()))?
         .map_err(|error| GitHubError::Network(error.to_string()))
     }
+}
+
+/// Whether `gh` auto-installed the stack extension instead of running the command.
+fn installed_extension(output: &std::process::Output) -> bool {
+    const MARKER: &str = "Successfully installed github/gh-stack";
+    String::from_utf8_lossy(&output.stdout).contains(MARKER)
+        || String::from_utf8_lossy(&output.stderr).contains(MARKER)
 }
 
 #[async_trait]
