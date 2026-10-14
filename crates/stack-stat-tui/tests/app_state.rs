@@ -2,14 +2,17 @@ mod support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use stack_stat_core::{
-    model::{LocalCheckState, StackStatus},
-    providers::{CheckResult, GitHubError, ProviderAction, ReportedState, StatusStoreProvider},
+    model::{Issue, LocalCheckState, LocalSync, RebaseNeed, StackMode, StackStatus, Verdict},
+    providers::{
+        CheckResult, GitHubError, ProviderAction, ReportedState, StackBranch, StackPr,
+        StackViewResponse, StatusStoreProvider,
+    },
 };
 use stack_stat_tui::{
     app::{Mode, NoticeLevel, SortOrder},
     message::{ActionSteps, Effect, Source},
 };
-use support::{PrBuilder, TestScenario};
+use support::{ConfigBuilder, PrBuilder, TestScenario};
 
 fn key(ch: char) -> KeyEvent {
     KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE)
@@ -318,4 +321,239 @@ async fn open_pr_completion_cannot_unlock_an_in_flight_push() {
     });
     assert!(app.handle_key(key('S')).is_empty());
     assert_eq!(app.notice().unwrap().level, NoticeLevel::Progress);
+}
+
+#[tokio::test]
+async fn single_pr_poll_exposes_remote_readiness_and_local_worktree_evidence() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("develop", "feature")
+        .pr(
+            "feature",
+            PrBuilder::new(42)
+                .title("Ordinary pull request")
+                .draft()
+                .check("ci/build", "COMPLETED", Some("FAILURE"))
+                .check("ci/test", "IN_PROGRESS", None)
+                .changes_requested()
+                .unresolved_threads(2),
+        )
+        .remote_rebase("feature")
+        .repo("acme/widget")
+        .config(ConfigBuilder::new().gate_on_unresolved_threads(true))
+        .into_app();
+    handles.git.set_current_sync(LocalSync::Ahead);
+    app.poll_once(Source::All).await;
+
+    assert_eq!(app.state().mode, StackMode::Single);
+    assert_eq!(app.state().stack_status, StackStatus::Ready);
+    assert_eq!(app.state().trunk, "develop");
+    assert_eq!(app.state().repo, "acme/widget");
+    assert_eq!(app.selected_branch(), Some("feature"));
+    let branch = &app.state().branches[0];
+    let pr = branch.pr.as_ref().expect("single PR details are composed");
+    assert_eq!(pr.title, "Ordinary pull request");
+    assert_eq!(pr.checks.len(), 2);
+    assert_eq!(pr.reviews.len(), 1);
+    assert!(branch.is_current);
+    assert_eq!(branch.local_sync, LocalSync::Ahead);
+    assert_eq!(branch.rebase, RebaseNeed::Trunk);
+    for issue in [
+        Issue::Draft,
+        Issue::FailingChecks(1),
+        Issue::RunningChecks(1),
+        Issue::ChangesRequested,
+        Issue::UnresolvedThreads(2),
+    ] {
+        assert!(branch.issues().contains(&issue), "missing {issue:?}");
+    }
+    assert_eq!(branch.verdict(), Verdict::NoGo);
+    assert_eq!(app.state().next_to_merge().unwrap().name, "feature");
+    assert!(app.ci_active());
+}
+
+#[tokio::test]
+async fn no_pr_poll_keeps_failed_stale_and_missing_local_checks_without_merge_candidate() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .config(
+            ConfigBuilder::new()
+                .local("lint")
+                .local("unit")
+                .local("build"),
+        )
+        .local_check(
+            "feature",
+            &format!("{:040x}", 1),
+            "lint",
+            ReportedState::Fail,
+        )
+        .local_check(
+            "feature",
+            &format!("{:040x}", 1),
+            "unit",
+            ReportedState::Pass,
+        )
+        .into_app();
+    handles.git.set_current_sync(LocalSync::Unpushed);
+    app.poll_once(Source::All).await;
+
+    assert_eq!(app.state().mode, StackMode::Single);
+    assert_eq!(app.state().stack_status, StackStatus::Ready);
+    assert_eq!(app.selected_branch(), Some("feature"));
+    let branch = &app.state().branches[0];
+    assert!(branch.pr_number.is_none());
+    assert!(branch.pr.is_none());
+    assert_eq!(branch.local_sync, LocalSync::Unpushed);
+    let lint = branch
+        .local_checks
+        .iter()
+        .find(|check| check.name == "lint")
+        .unwrap();
+    assert_eq!(lint.state, LocalCheckState::Fail);
+    assert!(!lint.is_stale);
+    let unit = branch
+        .local_checks
+        .iter()
+        .find(|check| check.name == "unit")
+        .unwrap();
+    assert_eq!(unit.state, LocalCheckState::Pass);
+    assert!(!unit.is_stale);
+    let build = branch
+        .local_checks
+        .iter()
+        .find(|check| check.name == "build")
+        .unwrap();
+    assert_eq!(build.state, LocalCheckState::Missing);
+    for issue in [Issue::NoPr, Issue::LocalFailed(1), Issue::MissingLocal(1)] {
+        assert!(branch.issues().contains(&issue), "missing {issue:?}");
+    }
+    assert!(!branch.issues().contains(&Issue::LoadingDetails));
+    assert_ne!(branch.verdict(), Verdict::Go);
+    assert!(app.state().next_to_merge().is_none());
+    assert!(!app.ci_active());
+
+    handles
+        .git
+        .set_branch_sha("feature", &format!("{:040x}", 2));
+    app.poll_once(Source::Git).await;
+    let branch = &app.state().branches[0];
+    for name in ["lint", "unit"] {
+        assert!(
+            branch
+                .local_checks
+                .iter()
+                .find(|check| check.name == name)
+                .unwrap()
+                .is_stale
+        );
+    }
+    for issue in [
+        Issue::NoPr,
+        Issue::LocalFailed(1),
+        Issue::LocalStale(2),
+        Issue::MissingLocal(1),
+    ] {
+        assert!(branch.issues().contains(&issue), "missing {issue:?}");
+    }
+    assert!(app.state().next_to_merge().is_none());
+}
+
+#[tokio::test]
+async fn refresh_changes_modes_and_no_pr_replaces_rows_while_failures_keep_last_snapshot() {
+    let (mut app, handles) = scenario();
+    app.poll_once(Source::All).await;
+    assert_eq!(app.state().mode, StackMode::Stacked);
+    assert_eq!(app.state().branches.len(), 3);
+
+    let mut view = StackViewResponse {
+        mode: StackMode::Single,
+        trunk: "develop".into(),
+        current_branch: "feature".into(),
+        branches: vec![StackBranch {
+            name: "feature".into(),
+            is_merged: false,
+            is_queued: false,
+            pr: Some(StackPr {
+                number: 45,
+                url: "https://example.test/pr/45".into(),
+                state: "OPEN".into(),
+            }),
+        }],
+    };
+    handles.git.set_current_branch("feature");
+    let sha = format!("{:040x}", 4);
+    handles.git.set_branch_sha("feature", &sha);
+    handles
+        .store
+        .write(
+            "feature",
+            &sha,
+            "lint",
+            &CheckResult {
+                state: ReportedState::Fail,
+                message: None,
+                recorded_at: chrono::DateTime::from_timestamp(1_760_000_000, 0).unwrap(),
+            },
+        )
+        .unwrap();
+    handles.github.set_stack(view.clone());
+    handles.github.set_prs(vec![
+        PrBuilder::new(45).checks_all_pass().approved().build(),
+    ]);
+    handles
+        .github
+        .set_remote_rebase_branches(["feature".into()]);
+    app.poll_once(Source::All).await;
+    assert_eq!(app.state().mode, StackMode::Single);
+    assert_eq!(app.state().branches.len(), 1);
+    assert_eq!(app.selected_branch(), Some("feature"));
+    assert_eq!(app.state().branches[0].pr_number, Some(45));
+    assert!(app.state().branches[0].pr.is_some());
+    assert_eq!(app.state().next_to_merge().unwrap().name, "feature");
+    assert_eq!(app.state().branches[0].rebase, RebaseNeed::Trunk);
+    let locals = app.state().branches[0].local_checks.clone();
+    assert_eq!(locals[0].state, LocalCheckState::Fail);
+
+    handles
+        .github
+        .set_stack_error(GitHubError::Network("remote unavailable".into()));
+    app.poll_once(Source::GitHub).await;
+    assert_eq!(app.state().mode, StackMode::Single);
+    assert_eq!(app.state().branches[0].pr_number, Some(45));
+    assert_eq!(app.notice().unwrap().level, NoticeLevel::Error);
+    app.handle_key(key('p'));
+    assert!(
+        matches!(app.mode(), Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::PushBranch)
+    );
+    app.handle_key(key('n'));
+
+    view.branches[0].pr = None;
+    handles.github.set_stack(view.clone());
+    app.poll_once(Source::GitHub).await;
+    assert!(app.notice().is_none());
+    assert_eq!(app.state().mode, StackMode::Single);
+    assert_eq!(app.state().branches.len(), 1);
+    assert!(app.state().branches[0].pr_number.is_none());
+    assert!(app.state().branches[0].pr.is_none());
+    assert_eq!(app.state().branches[0].rebase, RebaseNeed::None);
+    assert_eq!(app.state().branches[0].local_checks, locals);
+    assert!(app.state().next_to_merge().is_none());
+    assert_eq!(app.selected_branch(), Some("feature"));
+
+    handles.github.set_stack_error(GitHubError::Auth);
+    app.poll_once(Source::GitHub).await;
+    assert_eq!(app.state().mode, StackMode::Single);
+    assert!(app.state().branches[0].pr_number.is_none());
+    assert!(app.state().branches[0].pr.is_none());
+    assert!(app.state().next_to_merge().is_none());
+
+    view.mode = StackMode::Stacked;
+    handles.github.set_stack(view);
+    app.poll_once(Source::GitHub).await;
+    assert!(app.notice().is_none());
+    assert_eq!(app.state().mode, StackMode::Stacked);
+    app.handle_key(key('p'));
+    assert!(
+        matches!(app.mode(), Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::PushStack)
+    );
 }

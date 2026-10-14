@@ -29,7 +29,7 @@ pub async fn fetch_git<G: GitProvider>(git: &G, now: DateTime<Utc>) -> anyhow::R
     })
 }
 
-/// Discover the current Git branch's remote stack, treating off-stack as success.
+/// Discover the current branch's stacked or single view; detached HEAD is a successful empty result.
 pub async fn fetch_github<G: GitProvider, H: GitHubProvider>(
     git: &G,
     github: &H,

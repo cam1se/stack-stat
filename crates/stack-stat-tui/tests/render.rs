@@ -3,7 +3,7 @@ mod support;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend};
 use stack_stat_core::{
-    model::StackStatus,
+    model::{LocalSync, StackStatus},
     providers::{GitHubError, ReportedState},
 };
 use stack_stat_tui::{
@@ -105,6 +105,155 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
     assert_row_contains(&buf, ui, &["✖", "ui", "#44", "Open", "✖", "0/1", "changes"]);
     assert!(find_body_row(&buf, "#45").is_some());
     assert!(find_row(&buf, "stale").is_none());
+}
+
+#[tokio::test]
+async fn single_pr_keeps_full_readiness_and_local_evidence() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .pr(
+            "feature",
+            PrBuilder::new(42).ready().checks_all_pass().approved(),
+        )
+        .config(ConfigBuilder::new().local("lint"))
+        .local_check(
+            "feature",
+            &format!("{:040x}", 1),
+            "lint",
+            ReportedState::Pass,
+        )
+        .build()
+        .into_app();
+    handles.git.set_current_sync(LocalSync::Ahead);
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 140, 44);
+    let table = ui::regions(buffer.area, &app).table;
+    let row = table.y + 4;
+    assert_row_contains(
+        &buffer,
+        row,
+        &[
+            "*", "↑", "✔", "feature", "#42", "Open", "✔ 1/1", "approved", "✔ 0", "lint",
+        ],
+    );
+    assert_row_contains(&buffer, row + 1, &["Change 42"]);
+    for evidence in [
+        "PR #42",
+        "ci/build",
+        "Reviews:",
+        "Local checks:",
+        "local ahead of remote",
+    ] {
+        assert!(find_row(&buffer, evidence).is_some(), "missing {evidence}");
+    }
+    assert!(find_row(&buffer, "Not in a stack").is_none());
+}
+
+#[tokio::test]
+async fn no_pr_row_has_empty_pr_cells_and_complete_local_evidence() {
+    let sha = format!("{:040x}", 1);
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .config(
+            ConfigBuilder::new()
+                .local("failed")
+                .local("stale")
+                .local("missing")
+                .local("passed")
+                .local("skipped"),
+        )
+        .local_check("feature", &sha, "failed", ReportedState::Fail)
+        .local_check("feature", &sha, "stale", ReportedState::Pass)
+        .local_check("feature", &sha, "passed", ReportedState::Pass)
+        .local_check("feature", &sha, "skipped", ReportedState::Skip)
+        .build()
+        .into_app();
+    handles.git.set_current_sync(LocalSync::Unpushed);
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 140, 44);
+    let table = ui::regions(buffer.area, &app).table;
+    let row = table.y + 4;
+    assert_row_contains(&buffer, row, &["*", "?", "✖", "feature"]);
+    assert_row_contains(&buffer, row + 1, &["no PR yet"]);
+    let header: Vec<_> = (0..buffer.area.width)
+        .map(|column| buffer[(column, table.y + 1)].symbol())
+        .collect();
+    let pr_start = header.iter().position(|symbol| *symbol == "P").unwrap();
+    let local_start = header.iter().position(|symbol| *symbol == "L").unwrap();
+    assert!(
+        (pr_start..local_start)
+            .all(|column| buffer[(column as u16, row)].symbol().trim().is_empty()),
+        "PR, State, Checks, Reviews, and Threads cells must be empty without a PR"
+    );
+    for (name, result) in [
+        ("failed", "failed"),
+        ("stale", "passed"),
+        ("missing", "missing"),
+        ("passed", "passed"),
+        ("skipped", "skipped"),
+    ] {
+        let evidence = find_row(&buffer, &format!("{name}  {result}")).expect(name);
+        assert_row_contains(&buffer, evidence, &[name, result]);
+    }
+    assert!(find_row(&buffer, "local branch not pushed").is_some());
+    for absent in [
+        "no PR details",
+        "Checks:",
+        "Reviews:",
+        "Threads:",
+        "ready to merge",
+        "Next:",
+    ] {
+        assert!(find_row(&buffer, absent).is_none(), "unexpected {absent}");
+    }
+
+    handles.git.set_branch_sha("feature", &"b".repeat(40));
+    app.poll_once(Source::Git).await;
+    let after_head_change = draw(&app, 140, 44);
+    assert!(find_row(&after_head_change, "stale  stale (HEAD moved, was 0000000)").is_some());
+    assert!(find_row(&after_head_change, "missing  missing").is_some());
+    assert_row_contains(&after_head_change, row + 1, &["no PR yet"]);
+    assert!(find_row(&after_head_change, "ready to merge").is_none());
+    assert!(find_row(&after_head_change, "Next:").is_none());
+}
+
+#[tokio::test]
+async fn single_mode_help_and_confirmation_describe_plain_branch_push() {
+    let (mut app, _) = TestScenario::builder()
+        .single("main", "feature")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+    app.handle_key(key('?'));
+    let help = draw(&app, 120, 32);
+    assert!(find_row(&help, "push branch").is_some());
+    assert!(find_row(&help, "push stack").is_none());
+    app.handle_key(key('?'));
+    app.handle_key(key('p'));
+    let prompt = draw(&app, 120, 32);
+    assert!(find_row(&prompt, "Push branch? y/n").is_some());
+    assert!(find_row(&prompt, "git push").is_some());
+    assert!(find_row(&prompt, "gh stack").is_none());
+}
+
+#[tokio::test]
+async fn known_pr_without_details_is_not_presented_as_no_pr() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .pr("feature", PrBuilder::new(42))
+        .build()
+        .into_app();
+    handles.github.set_prs(Vec::new());
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 120, 40);
+    let table = ui::regions(buffer.area, &app).table;
+    assert_row_contains(&buffer, table.y + 4, &["feature", "#42", "◷"]);
+    assert!(find_row(&buffer, "No PR details").is_some());
+    assert!(find_row(&buffer, "no PR yet").is_none());
+    assert!(find_row(&buffer, "single PR").is_some());
 }
 
 #[tokio::test]
@@ -226,7 +375,11 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
     app.handle_key(key('?'));
     let help = draw(&app, 120, 32);
     assert!(find_row(&help, "checkout branch").is_some());
+    assert!(find_row(&help, "push stack").is_some());
     for binding in stack_stat_tui::action::KEYMAP {
+        if binding.action == stack_stat_tui::action::Action::Push {
+            continue;
+        }
         assert!(
             find_row(&help, binding.help).is_some(),
             "missing help for {:?}",
@@ -234,7 +387,11 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
         );
     }
     let compact_help = draw(&app, 80, 24);
+    assert!(find_row(&compact_help, "push stack").is_some());
     for binding in stack_stat_tui::action::KEYMAP {
+        if binding.action == stack_stat_tui::action::Action::Push {
+            continue;
+        }
         assert!(
             find_row(&compact_help, binding.help).is_some(),
             "short-terminal help hides {:?}",
@@ -248,12 +405,11 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
     app.poll_once(Source::GitHub).await;
     assert_eq!(app.state().stack_status, StackStatus::NotInStack);
     let empty_stack = draw(&app, 120, 26);
-    assert!(find_row(&empty_stack, "Not in a stack").is_some());
-    let github_guidance = find_row(&empty_stack, "GitHub").unwrap();
-    assert_row_contains(&empty_stack, github_guidance, &["PR"]);
-    assert_row_contains(&empty_stack, github_guidance, &["stack"]);
-    let branch_guidance = find_row(&empty_stack, "Switch").unwrap();
-    assert_row_contains(&empty_stack, branch_guidance, &["stacked", "branch"]);
+    assert!(find_row(&empty_stack, "No attached branch").is_some());
+    let branch_guidance = find_row(&empty_stack, "Check out").unwrap();
+    assert_row_contains(&empty_stack, branch_guidance, &["branch"]);
+    assert!(find_row(&empty_stack, "without a PR").is_some());
+    assert!(find_row(&empty_stack, "stacked branch").is_none());
     assert!(find_row(&empty_stack, "gh stack init").is_none());
 }
 

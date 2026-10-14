@@ -1,7 +1,10 @@
 mod support;
 
 use ratatui::{Terminal, backend::TestBackend, style::Color};
-use stack_stat_core::providers::{StackBranch, StackPr, StackViewResponse};
+use stack_stat_core::{
+    model::StackMode,
+    providers::{StackBranch, StackPr, StackViewResponse},
+};
 use stack_stat_tui::{
     message::Source,
     theme::{ColorDepth, Theme},
@@ -23,6 +26,7 @@ fn draw_at(app: &FakeApp, width: u16, height: u16) -> ratatui::buffer::Buffer {
 
 fn merged_stack() -> StackViewResponse {
     StackViewResponse {
+        mode: StackMode::Stacked,
         trunk: "main".into(),
         current_branch: "go".into(),
         branches: [

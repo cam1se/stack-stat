@@ -5,7 +5,8 @@ use stack_stat_core::{
     compose::{GitHubSnapshot, GitSnapshot, StackOutcome, StoreSnapshot, compose},
     config::{Config, LocalCheckConfig},
     model::{
-        CheckHealth, LocalCheckState, LocalSync, PrLifecycle, RebaseNeed, ReviewState, StackStatus,
+        CheckHealth, Issue, LocalCheckState, LocalSync, PrLifecycle, RebaseNeed, ReviewState,
+        StackMode, StackStatus, Verdict,
     },
     providers::{
         CheckResult, ReportedState, StatusEntry,
@@ -41,6 +42,17 @@ fn github() -> GitHubSnapshot {
         details,
         fetched_at: now(),
     }
+}
+fn single_github() -> GitHubSnapshot {
+    let mut snapshot = github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.mode = StackMode::Single;
+    stack.trunk = "release".into();
+    stack.branches.retain(|branch| branch.name == "api");
+    snapshot.details.prs.retain(|pr| pr.number == 43);
+    snapshot
 }
 fn local(branch: &str, sha: &str) -> StatusEntry {
     StatusEntry {
@@ -188,6 +200,161 @@ fn composition_joins_stack_prs_checks_reviews_and_local_checks() {
     );
     assert!(!api.local_checks[0].is_stale);
     assert!(state.branches[0].pr.as_ref().unwrap().reviews[0].is_bot);
+}
+
+#[test]
+fn single_pr_composition_retains_full_readiness_and_its_base_rebase() {
+    let mut snapshot = single_github();
+    snapshot.details.remote_rebase_branches.insert("api".into());
+    let mut git = git("api");
+    git.current_sync = LocalSync::Ahead;
+    let mut config = Config::default();
+    config.rebase.onto_trunk = true;
+    config.reviews.gate_on_unresolved_threads = true;
+    config.checks.local.insert(
+        "lint".into(),
+        LocalCheckConfig {
+            description: "clippy".into(),
+        },
+    );
+    let store = StoreSnapshot {
+        entries: vec![local("api", &"c".repeat(40))],
+        warnings: vec![],
+        fetched_at: now(),
+    };
+
+    let state = compose(Some(&git), Some(&snapshot), Some(&store), &config);
+
+    assert_eq!(state.mode, StackMode::Single);
+    assert_eq!(state.stack_status, StackStatus::Ready);
+    assert_eq!(state.trunk, "release");
+    assert_eq!(state.branches.len(), 1);
+    let branch = &state.branches[0];
+    assert_eq!(branch.lifecycle, PrLifecycle::Open);
+    assert_eq!(branch.pr_number, Some(43));
+    assert!(branch.is_current);
+    assert_eq!(branch.local_sync, LocalSync::Ahead);
+    assert_eq!(branch.rebase, RebaseNeed::Trunk);
+    assert_eq!(branch.local_checks[0].state, LocalCheckState::Pass);
+    assert!(!branch.local_checks[0].is_stale);
+    let pr = branch.pr.as_ref().unwrap();
+    assert!(pr.is_draft);
+    assert_eq!(pr.check_summary().running, 1);
+    assert_eq!(pr.check_summary().worst, CheckHealth::Failure);
+    assert!(
+        pr.reviews
+            .iter()
+            .any(|review| { review.author == "bob" && review.state == ReviewState::Pending })
+    );
+    assert_eq!(
+        branch.issues(),
+        vec![
+            Issue::Draft,
+            Issue::RebaseTrunk,
+            Issue::FailingChecks(1),
+            Issue::UnresolvedThreads(2),
+            Issue::RunningChecks(1),
+        ]
+    );
+    assert_eq!(branch.verdict(), Verdict::NoGo);
+    assert_eq!(state.next_to_merge(), Some(branch));
+
+    config.rebase.onto_trunk = false;
+    let state = compose(Some(&git), Some(&snapshot), Some(&store), &config);
+    assert_eq!(state.branches[0].rebase, RebaseNeed::Trunk);
+    assert!(!state.branches[0].issues().contains(&Issue::RebaseTrunk));
+}
+
+#[test]
+fn no_pr_composition_keeps_commit_local_evidence_sync_and_no_merge_candidate() {
+    let mut snapshot = single_github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.branches[0].pr = None;
+    let mut git = git("api");
+    git.current_sync = LocalSync::Unpushed;
+    let mut config = Config::default();
+    for name in ["lint", "test"] {
+        config.checks.local.insert(
+            name.into(),
+            LocalCheckConfig {
+                description: String::new(),
+            },
+        );
+    }
+    let mut old = local("api", &"b".repeat(40));
+    old.checks.get_mut("lint").unwrap().state = ReportedState::Fail;
+    let cases = [
+        (
+            vec![old.clone(), local("api", &"c".repeat(40))],
+            LocalCheckState::Pass,
+            false,
+            vec![Issue::NoPr, Issue::MissingLocal(1)],
+            Verdict::Wait,
+        ),
+        (
+            vec![old],
+            LocalCheckState::Fail,
+            true,
+            vec![
+                Issue::LocalFailed(1),
+                Issue::LocalStale(1),
+                Issue::NoPr,
+                Issue::MissingLocal(1),
+            ],
+            Verdict::NoGo,
+        ),
+        (
+            vec![],
+            LocalCheckState::Missing,
+            false,
+            vec![Issue::NoPr, Issue::MissingLocal(2)],
+            Verdict::Wait,
+        ),
+    ];
+    for (entries, expected_local, is_stale, issues, verdict) in cases {
+        let store = StoreSnapshot {
+            entries,
+            warnings: vec![],
+            fetched_at: now(),
+        };
+
+        let state = compose(Some(&git), Some(&snapshot), Some(&store), &config);
+
+        assert_eq!(state.mode, StackMode::Single);
+        assert_eq!(state.stack_status, StackStatus::Ready);
+        assert_eq!(state.branches.len(), 1);
+        let branch = &state.branches[0];
+        assert!(branch.pr_number.is_none());
+        assert!(branch.pr.is_none());
+        assert!(branch.is_current);
+        assert_eq!(branch.local_sync, LocalSync::Unpushed);
+        assert_eq!(branch.head_sha, "c".repeat(40));
+        assert_eq!(branch.local_checks.len(), 2);
+        assert_eq!(branch.local_checks[0].state, expected_local);
+        assert_eq!(branch.local_checks[0].is_stale, is_stale);
+        assert_eq!(branch.local_checks[1].state, LocalCheckState::Missing);
+        assert_eq!(branch.issues(), issues);
+        assert_eq!(branch.verdict(), verdict);
+        assert_eq!(state.summary().go, 0);
+        assert!(state.next_to_merge().is_none());
+    }
+}
+
+#[test]
+fn genuine_one_entry_stack_stays_stacked_and_remains_a_merge_candidate() {
+    let mut snapshot = github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.branches.retain(|branch| branch.name == "api");
+
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
+
+    assert_eq!(state.mode, StackMode::Stacked);
+    assert_eq!(state.branches.len(), 1);
+    assert_eq!(state.next_to_merge(), state.branches.first());
 }
 
 #[test]
@@ -370,6 +537,8 @@ fn missing_pr_details_retain_number_without_claiming_ready() {
     let state = compose(Some(&git("api")), Some(&github), None, &Config::default());
     assert_eq!(state.branches[1].pr_number, Some(43));
     assert!(state.branches[1].pr.is_none());
+    assert_eq!(state.branches[1].issues(), vec![Issue::LoadingDetails]);
+    assert_eq!(state.branches[1].verdict(), Verdict::Wait);
 }
 
 #[test]

@@ -165,6 +165,7 @@ fn command(action: &ProviderAction) -> Cow<'_, str> {
     match action {
         ProviderAction::Checkout(target) => Cow::Owned(format!("gh stack checkout {target}")),
         ProviderAction::PushStack => Cow::Borrowed("gh stack push"),
+        ProviderAction::PushBranch => Cow::Borrowed("git push"),
         ProviderAction::SyncStack => Cow::Borrowed("gh stack sync"),
         ProviderAction::OpenPr(number) => Cow::Owned(format!("gh pr view {number} --web")),
         ProviderAction::ToggleDraft { number, make_ready } => Cow::Owned(format!(

@@ -27,23 +27,23 @@ pub struct GitSnapshot {
     pub fetched_at: DateTime<Utc>,
 }
 
-/// Stack discovery outcome, separate from transport failures.
+/// Normalized GitHub discovery outcome, separate from transport failures.
 #[derive(Clone, Debug)]
 pub enum StackOutcome {
-    /// The checked-out branch belongs to the supplied stack.
+    /// A stacked or single-mode view is available.
     InStack(StackViewResponse),
-    /// The checked-out branch is not in a stack.
+    /// No attached branch with a HEAD commit is available to display.
     NotInStack,
 }
 
-/// Successful GitHub poll result, including an off-stack result.
+/// Successful GitHub poll result, including an unavailable-branch result.
 #[derive(Clone, Debug)]
 pub struct GitHubSnapshot {
     /// `owner/name` of the GitHub repository, empty when unknown.
     pub repo: String,
-    /// GitHub stack discovery result or off-stack condition.
+    /// Normalized stacked/single view or unavailable-branch outcome.
     pub stack: StackOutcome,
-    /// Remote PR details and rebase comparisons for this stack.
+    /// Remote PR details and rebase comparisons for this view.
     pub details: StackDetailsResponse,
     /// Poll completion time.
     pub fetched_at: DateTime<Utc>,
@@ -84,6 +84,7 @@ pub fn compose(
         return state;
     };
     state.stack_status = StackStatus::Ready;
+    state.mode = stack.mode;
     state.trunk = stack.trunk.clone();
     let prs: HashMap<_, _> = github
         .details

@@ -4,7 +4,8 @@ use chrono::{DateTime, Duration, TimeZone, Utc};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use stack_stat_core::{
     compose::StoreSnapshot,
-    providers::{GitHubError, ProviderAction},
+    model::StackMode,
+    providers::{GitHubError, ProviderAction, StackBranch, StackPr, StackViewResponse},
 };
 use stack_stat_tui::{
     app::{Mode, NoticeLevel, Prompt},
@@ -418,4 +419,97 @@ async fn modified_confirmation_keys_do_not_authorize_actions() {
             ProviderAction::PushStack
         ))]
     );
+}
+
+#[tokio::test]
+async fn single_branch_push_errors_remain_errors_without_offering_stack_linking() {
+    for error in [
+        GitHubError::Command {
+            code: 128,
+            stderr: "fatal: The current branch feature has no upstream branch".into(),
+        },
+        GitHubError::Git("fatal: not a tracked stack branch".into()),
+        GitHubError::Network("push transport disconnected".into()),
+        GitHubError::LocalTrackingMissing,
+    ] {
+        let (mut app, handles) = TestScenario::builder().single("main", "feature").into_app();
+        app.tick(clock());
+        app.poll_once(Source::All).await;
+        handles.github.set_mutation_error(error.clone());
+        let effect = confirm(&mut app, 'p');
+        app.run_effect(effect).await;
+
+        assert_eq!(app.mode(), &Mode::Normal);
+        assert_eq!(
+            handles.github.recorded_actions(),
+            [ProviderAction::PushBranch]
+        );
+        let notice = app.notice().expect("push error is visible");
+        assert_eq!(notice.level, NoticeLevel::Error);
+        assert!(notice.text.contains(error.to_string().as_str()));
+        app.tick(clock() + Duration::hours(1));
+        app.poll_once(Source::All).await;
+        assert_eq!(app.notice().unwrap().level, NoticeLevel::Error);
+        assert_eq!(app.mode(), &Mode::Normal);
+        assert!(app.handle_key(key(KeyCode::Char('y'))).is_empty());
+        assert_eq!(
+            handles.github.recorded_actions(),
+            [ProviderAction::PushBranch]
+        );
+    }
+}
+
+#[tokio::test]
+async fn ordinary_stacked_push_error_does_not_infer_missing_local_tracking() {
+    let (mut app, handles) = dashboard().await;
+    handles.github.set_mutation_error(GitHubError::Command {
+        code: 128,
+        stderr: "fatal: upstream unavailable; local stack may not be initialized".into(),
+    });
+    let effect = confirm(&mut app, 'p');
+    app.run_effect(effect).await;
+
+    assert_eq!(app.mode(), &Mode::Normal);
+    assert_eq!(app.notice().unwrap().level, NoticeLevel::Error);
+    assert!(app.notice().unwrap().text.contains("upstream unavailable"));
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [ProviderAction::PushStack]
+    );
+    assert!(app.handle_key(key(KeyCode::Char('y'))).is_empty());
+}
+
+#[tokio::test]
+async fn old_stacked_push_failure_cannot_offer_linking_after_refresh_to_single_mode() {
+    let (mut app, handles) = dashboard().await;
+    let effect = confirm(&mut app, 'p');
+    handles.github.set_stack(StackViewResponse {
+        mode: StackMode::Single,
+        trunk: "main".into(),
+        current_branch: "api".into(),
+        branches: vec![StackBranch {
+            name: "api".into(),
+            is_merged: false,
+            is_queued: false,
+            pr: Some(StackPr {
+                number: 43,
+                url: "https://example.test/pr/43".into(),
+                state: "OPEN".into(),
+            }),
+        }],
+    });
+    app.poll_once(Source::GitHub).await;
+    assert_eq!(app.state().mode, StackMode::Single);
+    handles
+        .github
+        .set_mutation_error(GitHubError::LocalTrackingMissing);
+    app.run_effect(effect).await;
+
+    assert_eq!(app.mode(), &Mode::Normal);
+    assert_eq!(app.notice().unwrap().level, NoticeLevel::Error);
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [ProviderAction::PushStack]
+    );
+    assert!(app.handle_key(key(KeyCode::Char('y'))).is_empty());
 }

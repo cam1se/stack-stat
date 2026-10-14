@@ -1,8 +1,16 @@
 {
   "data": {
     "repository": {
+      "defaultBranchRef": {"name": "main"},
       "openPullRequests": {
         "nodes": [{
+          "number": 43,
+          "url": "https://github.com/example/project/pull/43",
+          "headRefName": "api",
+          "baseRefName": "main",
+          "state": "OPEN",
+          "isInMergeQueue": false,
+          "headRepository": {"owner": {"login": "example"}},
           "stack": {
             "id": "PRS_example",
             "baseRefName": "main",
@@ -19,7 +27,18 @@
           }
         }]
       },
-      "pullRequests": {"nodes": [{"stack": null}]}
+      "pullRequests": {
+        "nodes": [{
+          "number": 43,
+          "url": "https://github.com/example/project/pull/43",
+          "headRefName": "api",
+          "baseRefName": "main",
+          "state": "CLOSED",
+          "isInMergeQueue": false,
+          "headRepository": {"owner": {"login": "example"}},
+          "stack": null
+        }]
+      }
     }
   }
 }

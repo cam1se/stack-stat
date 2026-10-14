@@ -103,3 +103,25 @@ async fn detail_scroll_reaches_local_checks_after_wrapped_header() {
     assert!(find_row(&buffer, "Local checks:").is_some());
     assert!(app.detail_scroll() > 0);
 }
+
+#[tokio::test]
+async fn no_pr_details_do_not_scroll_past_visible_local_evidence() {
+    let (mut app, _) = TestScenario::builder().single("main", "feature").into_app();
+    app.poll_once(Source::All).await;
+
+    let area = Rect::new(0, 0, 120, 23);
+    let detail = ui::regions(area, &app)
+        .detail
+        .expect("no-PR branch has details");
+    app.set_detail_viewport(
+        usize::from(detail.height.saturating_sub(2)),
+        usize::from(detail.width.saturating_sub(2)),
+    );
+    let buffer = draw(&app, area.width, area.height);
+    assert!(find_row(&buffer, "no PR yet").is_some());
+    assert!(find_row(&buffer, "Local checks:").is_some());
+    assert!(find_row(&buffer, "none declared or reported").is_some());
+
+    app.handle_key(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
+    assert_eq!(app.detail_scroll(), 0, "all no-PR details already fit");
+}

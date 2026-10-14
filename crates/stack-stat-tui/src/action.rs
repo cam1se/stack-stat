@@ -19,9 +19,9 @@ pub enum Action {
     DetailPageUp,
     /// Open a PR in the browser.
     OpenPr,
-    /// Checkout the selected branch.
+    /// Checkout the selected stacked branch.
     Checkout,
-    /// Push the active stack.
+    /// Push the active branch or stack according to its discovered mode.
     Push,
     /// Sync the active stack.
     Sync,
@@ -125,7 +125,7 @@ pub const KEYMAP: &[KeyBinding] = &[
         KeyCode::Char('p'),
         KeyModifiers::NONE,
         Action::Push,
-        "push stack",
+        "push branch or stack",
         "Table"
     ),
     binding!(

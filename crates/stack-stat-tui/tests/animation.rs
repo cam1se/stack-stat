@@ -2,7 +2,7 @@ mod support;
 
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 use stack_stat_core::{
-    model::LocalSync,
+    model::{LocalSync, StackMode},
     providers::{PrResponse, StackBranch, StackViewResponse},
 };
 use stack_stat_tui::{
@@ -63,6 +63,7 @@ async fn rebase_change_flashes_the_rebase_column() {
         .github
         .set_remote_rebase_branches(["feature".into()]);
     handles.github.set_stack(StackViewResponse {
+        mode: StackMode::Stacked,
         trunk: "main".into(),
         current_branch: "feature".into(),
         branches: vec![

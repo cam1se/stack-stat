@@ -6,6 +6,7 @@ use stack_stat_core::model::Issue;
 #[must_use]
 pub(super) fn describe(issue: Issue) -> String {
     match issue {
+        Issue::NoPr => "no PR yet".into(),
         Issue::Draft => "draft".into(),
         Issue::RebaseParent => "rebase onto layer below".into(),
         Issue::RebaseTrunk => "behind trunk".into(),
@@ -39,6 +40,7 @@ mod tests {
     #[test]
     fn describes_issues_with_correct_plurality() {
         let descriptions = [
+            (Issue::NoPr, "no PR yet"),
             (Issue::Draft, "draft"),
             (Issue::RebaseParent, "rebase onto layer below"),
             (Issue::RebaseTrunk, "behind trunk"),

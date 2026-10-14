@@ -156,6 +156,6 @@ pub fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     }
     status_bar::render(frame, layout.status, app, theme);
     if matches!(app.mode(), Mode::Help) {
-        help::render(frame, area, theme);
+        help::render(frame, area, theme, app.state().mode);
     }
 }

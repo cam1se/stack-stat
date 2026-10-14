@@ -7,6 +7,8 @@ use std::{
 
 use async_trait::async_trait;
 
+use crate::model::StackMode;
+
 use super::{
     DETACHED_HEAD, GitHubError, GitHubProvider, PrResponse, ProviderAction, StackDetailsResponse,
     StackViewResponse,
@@ -134,6 +136,7 @@ impl GitHubProvider for FakeGitHubProvider {
         let state = self.state.lock().expect("fake GitHub mutex poisoned");
         match &state.stack {
             Ok(stack) => Ok(StackViewResponse {
+                mode: stack.mode,
                 trunk: stack.trunk.clone(),
                 current_branch: current_branch.into(),
                 branches: stack.branches.clone(),
@@ -154,6 +157,11 @@ impl GitHubProvider for FakeGitHubProvider {
         &self,
         stack: &StackViewResponse,
     ) -> Result<StackDetailsResponse, GitHubError> {
+        if stack.mode == StackMode::Single
+            && stack.branches.iter().all(|branch| branch.pr.is_none())
+        {
+            return Ok(StackDetailsResponse::default());
+        }
         let state = self.state.lock().expect("fake GitHub mutex poisoned");
         let mut details = state.details.clone();
         details.prs.retain(|pr| {
@@ -184,6 +192,10 @@ impl GitHubProvider for FakeGitHubProvider {
 
     async fn push_stack(&self) -> Result<(), GitHubError> {
         self.record(ProviderAction::PushStack).map(|_| ())
+    }
+
+    async fn push_branch(&self) -> Result<(), GitHubError> {
+        self.record(ProviderAction::PushBranch).map(|_| ())
     }
 
     async fn sync_stack(&self) -> Result<String, GitHubError> {

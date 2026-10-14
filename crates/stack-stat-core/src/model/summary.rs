@@ -23,12 +23,12 @@ impl StackState {
         summary
     }
 
-    /// Lowest layer in stack order whose lifecycle is open.
+    /// Lowest open PR layer in stack order, even while its details are loading.
     #[must_use]
     pub fn next_to_merge(&self) -> Option<&BranchState> {
         self.branches
             .iter()
-            .find(|branch| branch.lifecycle == PrLifecycle::Open)
+            .find(|branch| branch.lifecycle == PrLifecycle::Open && branch.pr_number.is_some())
     }
 
     /// Count open layers with blockers in each category.
@@ -80,47 +80,52 @@ impl BranchState {
         if self.lifecycle != PrLifecycle::Open {
             return Vec::new();
         }
-        let Some(pr) = &self.pr else {
+        if self.pr.is_none() && self.pr_number.is_some() {
             return vec![Issue::LoadingDetails];
-        };
+        }
 
         let mut issues = Vec::new();
-        if pr.is_draft {
-            issues.push(Issue::Draft);
-        }
-        match self.rebase {
-            RebaseNeed::Parent => issues.push(Issue::RebaseParent),
-            RebaseNeed::Stacked => issues.push(Issue::RebaseStacked),
-            RebaseNeed::Trunk if self.trunk_rebase_gates => issues.push(Issue::RebaseTrunk),
-            RebaseNeed::None | RebaseNeed::Trunk => {}
-        }
-        let failing_checks = pr
-            .checks
-            .iter()
-            .filter(|check| !check.skipped_by_config)
-            .filter(|check| {
-                check.status == CheckStatus::Completed
-                    && !matches!(
-                        check.conclusion,
-                        Some(
-                            CheckConclusion::Success
-                                | CheckConclusion::Neutral
-                                | CheckConclusion::Skipped
+        let reviews = self
+            .pr
+            .as_ref()
+            .map_or(ReviewSummary::None, |pr| pr.review_summary(true));
+        if let Some(pr) = &self.pr {
+            if pr.is_draft {
+                issues.push(Issue::Draft);
+            }
+            match self.rebase {
+                RebaseNeed::Parent => issues.push(Issue::RebaseParent),
+                RebaseNeed::Stacked => issues.push(Issue::RebaseStacked),
+                RebaseNeed::Trunk if self.trunk_rebase_gates => issues.push(Issue::RebaseTrunk),
+                RebaseNeed::None | RebaseNeed::Trunk => {}
+            }
+            let failing_checks = pr
+                .checks
+                .iter()
+                .filter(|check| !check.skipped_by_config)
+                .filter(|check| {
+                    check.status == CheckStatus::Completed
+                        && !matches!(
+                            check.conclusion,
+                            Some(
+                                CheckConclusion::Success
+                                    | CheckConclusion::Neutral
+                                    | CheckConclusion::Skipped
+                            )
                         )
-                    )
-            })
-            .count();
-        if failing_checks > 0 {
-            issues.push(Issue::FailingChecks(failing_checks));
-        }
-        let reviews = pr.review_summary(true);
-        if pr.review_decision == ReviewDecision::ChangesRequested
-            || reviews == ReviewSummary::ChangesRequested
-        {
-            issues.push(Issue::ChangesRequested);
-        }
-        if pr.threads_gate && pr.unresolved_threads > 0 {
-            issues.push(Issue::UnresolvedThreads(pr.unresolved_threads));
+                })
+                .count();
+            if failing_checks > 0 {
+                issues.push(Issue::FailingChecks(failing_checks));
+            }
+            if pr.review_decision == ReviewDecision::ChangesRequested
+                || reviews == ReviewSummary::ChangesRequested
+            {
+                issues.push(Issue::ChangesRequested);
+            }
+            if pr.threads_gate && pr.unresolved_threads > 0 {
+                issues.push(Issue::UnresolvedThreads(pr.unresolved_threads));
+            }
         }
         let failed_local = self
             .local_checks
@@ -139,14 +144,20 @@ impl BranchState {
             issues.push(Issue::LocalStale(stale_local));
         }
 
-        let running_checks = pr.check_summary().running;
-        if running_checks > 0 {
-            issues.push(Issue::RunningChecks(running_checks));
-        }
-        if pr.review_decision == ReviewDecision::ReviewRequired {
-            issues.push(Issue::ReviewRequired);
-        } else if pr.review_decision == ReviewDecision::None && reviews == ReviewSummary::Pending {
-            issues.push(Issue::ReviewPending);
+        if let Some(pr) = &self.pr {
+            let running_checks = pr.check_summary().running;
+            if running_checks > 0 {
+                issues.push(Issue::RunningChecks(running_checks));
+            }
+            if pr.review_decision == ReviewDecision::ReviewRequired {
+                issues.push(Issue::ReviewRequired);
+            } else if pr.review_decision == ReviewDecision::None
+                && reviews == ReviewSummary::Pending
+            {
+                issues.push(Issue::ReviewPending);
+            }
+        } else {
+            issues.push(Issue::NoPr);
         }
         let missing_local = self
             .local_checks
