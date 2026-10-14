@@ -86,7 +86,10 @@ pub fn classify_gh_failure(args: &[&str], code: i32, stderr: &str) -> GitHubErro
         if lower.contains("unknown command \"stack\" for \"gh\"") {
             return GitHubError::MissingStackExtension;
         }
-        if code == 2 && matches!(args.get(1), Some(&"push" | &"sync")) {
+        if code == 2
+            && matches!(args.get(1), Some(&"push" | &"sync"))
+            && lower.contains("is not part of a stack")
+        {
             return GitHubError::LocalTrackingMissing;
         }
         if matches!(code, 3 | 7) {
@@ -103,7 +106,8 @@ pub fn classify_gh_failure(args: &[&str], code: i32, stderr: &str) -> GitHubErro
             .map(str::to_owned);
         return GitHubError::RateLimited { reset_hint: hint };
     }
-    if lower.contains("auth")
+    if code == 4
+        || lower.contains("auth")
         || lower.contains("gh auth login")
         || lower.contains("bad credentials")
     {

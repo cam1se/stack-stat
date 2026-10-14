@@ -142,9 +142,22 @@ fn parser_rejects_responses_without_data_and_preserves_bot_and_context() {
 fn classifier_distinguishes_local_tracking_from_remote_discovery() {
     for action in ["push", "sync"] {
         assert_eq!(
-            classify_gh_failure(&["stack", action], 2, "not in a stack"),
+            classify_gh_failure(
+                &["stack", action],
+                2,
+                "✗ current branch \"feature\" is not part of a stack"
+            ),
             GitHubError::LocalTrackingMissing
         );
+        // Observed on gh-stack v0.1.1: exit 2 is also used outside a repository.
+        assert!(matches!(
+            classify_gh_failure(
+                &["stack", action],
+                2,
+                "✗ not a git repository: failed to run git: fatal: not a git repository"
+            ),
+            GitHubError::Command { code: 2, .. }
+        ));
     }
     assert!(matches!(
         classify_gh_failure(&["api", "graphql"], 2, "query failed"),
@@ -164,6 +177,15 @@ fn classifier_distinguishes_local_tracking_from_remote_discovery() {
     ));
     assert_eq!(
         classify_gh_failure(&["pr", "list"], 1, "gh auth login first"),
+        GitHubError::Auth
+    );
+    // Observed on gh 2.101.0 with no token: exit 4 and no "auth login" hint.
+    assert_eq!(
+        classify_gh_failure(
+            &["api", "user"],
+            4,
+            "gh: To use GitHub CLI in automation, set the GH_TOKEN environment variable."
+        ),
         GitHubError::Auth
     );
     assert!(matches!(
