@@ -9,7 +9,8 @@ Number ADRs chronologically with zero-padded permanent IDs (`0001-short-slug.md`
 | ADR | Title | Status |
 |---|---|---|
 |[ADR-0001](0001-remote-rebase-status.md)|Derive rebase status from remote state|Proposed|
-|[ADR-0002](0002-read-stack-from-github.md)|Read stack structure from GitHub; use gh stack only for actions|Accepted|
+|[ADR-0002](0002-read-stack-from-github.md)|Read stack structure from GitHub; use gh stack only for actions|Accepted; single-mode missing-data and action rules superseded by [ADR-0003](0003-single-pr-and-no-pr-mode.md)|
+|[ADR-0003](0003-single-pr-and-no-pr-mode.md)|Show a single PR or current branch without a GitHub stack|Accepted|
 
 ## Template
 

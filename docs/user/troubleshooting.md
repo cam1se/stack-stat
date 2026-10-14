@@ -8,11 +8,17 @@
 | `gh not authenticated` | Run `gh auth login`, then `gh auth status`. |
 | `not in a git repository` | Run from a worktree; `git rev-parse --show-toplevel` should print its root. |
 
-`stack-stat version` does not need a repository or GitHub login. `stack-stat report` needs Git but does not need GitHub authentication. The dashboard needs authenticated `gh`, but neither reading stacks nor reporting checks requires the `gh stack` extension.
+`stack-stat version` does not need a repository or GitHub login. `stack-stat report` needs Git but does not need GitHub authentication. The dashboard needs authenticated `gh`, but neither reading stacked or single-mode data nor reporting checks requires the `gh stack` extension.
+
+## Single PR or “no PR yet”
+
+The TUI follows the **checked-out worktree branch** and reads its PR's stack from GitHub, not local `gh stack` tracking. An unstacked PR appears as one entry with the PR's base branch as trunk and the usual CI, review, draft, and remote rebase details. A branch without a matching PR appears as one row with the repository's default branch as trunk, empty PR-only cells, and a `no PR yet` hint. Local checks still apply, including missing or stale reports; passing local checks do not make the branch a ready-to-merge PR or a `Next to merge` candidate. Open a PR when you want PR details; there is no need to create a stack just to use the dashboard.
+
+Checkout (`c`) and sync (`S`) are disabled in single mode and report that status without running a stack command. Push (`p`) uses plain `git push` after confirmation and needs no extension or local stack tracking. If Git reports no upstream or another push configuration error, inspect the configured remote and branch in a terminal and set the upstream explicitly, for example with `git push --set-upstream <remote> <branch>`. stack-stat does not choose an upstream or link a stack for you. Browser opening (`o`) and draft/ready toggling (`m`) work when a PR exists; they are unavailable on a no-PR row.
 
 ## “Not in a stack”
 
-The TUI follows the **checked-out worktree branch** and reads its PR's stack from GitHub, not local `gh stack` tracking. A branch without a PR, or a PR with no GitHub stack, shows this view and clears any earlier stack. Open the branch's PR and stack it on GitHub, or switch to an existing stacked PR branch. A fresh clone or worktree can read an existing stack without initializing or linking it locally.
+A detached or empty HEAD may still show this view because there is no current branch to display. Check out a branch to use the dashboard. A PR with a non-null GitHub stack uses stacked mode even when the stack has only one entry. A fresh clone or worktree can read that stack without initializing or linking it locally.
 
 ## Data looks old or incomplete
 
@@ -24,11 +30,11 @@ The muted suffix beside the `*` worktree marker is local sync information only: 
 
 ## Mutations and rebase conflicts
 
-`c`, `p`, `S`, and `m` require a `y` confirmation. Only one operation runs at once. A `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. A sync that prints `Sync aborted` despite exiting 0 means local and remote stack chains diverge; stack-stat treats it as an abort, not as a successful sync. Inspect the two chains before retrying. stack-stat never silently resolves conflicts.
+Available mutations require a `y` confirmation. Only one operation runs at once. In stacked mode, a `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. A sync that prints `Sync aborted` despite exiting 0 means local and remote stack chains diverge; stack-stat treats it as an abort, not as a successful sync. Inspect the two chains before retrying. stack-stat never silently resolves conflicts.
 
-If checkout, push, or sync reports that `gh stack` is unavailable, run `gh extension install github/gh-stack` and verify with `gh extension list`. The extension is needed only for these actions; its absence does not prevent the dashboard from opening.
+If stacked checkout, push, or sync reports that `gh stack` is unavailable, run `gh extension install github/gh-stack` and verify with `gh extension list`. The extension is needed only for these stacked actions; its absence does not prevent the dashboard from opening or a single-mode push from running.
 
-Push and sync need local stack tracking. When it is missing, stack-stat asks for confirmation before running `gh stack checkout <pr-number-or-branch>` to link it, then continues the requested action. Checkout can change the worktree, so inspect the target in the prompt. Declining does not link or retry and leaves a cancellation message. No read or refresh links a stack automatically.
+Stacked push and sync need local stack tracking. When it is missing, stack-stat asks for confirmation before running `gh stack checkout <pr-number-or-branch>` to link it, then continues the requested action. Checkout can change the worktree, so inspect the target in the prompt. Declining does not link or retry and leaves a cancellation message. No read or refresh links a stack automatically.
 
 ## Releases and terminal display
 
