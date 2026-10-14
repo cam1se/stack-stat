@@ -85,6 +85,9 @@ jobs:
             gh extension list
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Check fixture
+        id: fixture
+        run: bash scripts/live-fixture.sh check
       - name: Run live tests
         run: cargo test -p stack-stat-core --test live_gh --locked -- --test-threads=4
       - name: Restore fixture
@@ -93,8 +96,16 @@ jobs:
       - name: Report failure
         # Scheduled runs only: manual and temporary branch runs report in the UI.
         if: ${{ failure() && github.event_name == 'schedule' }}
+        env:
+          FIXTURE_FAILED: ${{ steps.fixture.outcome == 'failure' }}
         run: |
-          title="Live gh drift detected"
+          if [ "$FIXTURE_FAILED" = true ]; then
+            title="Live gh fixture broken"
+            hint="The fixture check failed, so this is not gh drift. Run scripts/live-fixture.sh check and see docs/architecture/07-live-validation.md."
+          else
+            title="Live gh drift detected"
+            hint="If only the latest job failed, gh or gh-stack changed in a way that breaks stack-stat. See docs/architecture/07-live-validation.md."
+          fi
           body="Live gh (${{ matrix.name }}: gh ${{ matrix.gh }}, gh-stack ${{ matrix.extension }}) failed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           existing="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
           if [ -n "$existing" ]; then
@@ -102,5 +113,5 @@ jobs:
           else
             gh issue create --title "$title" --label bug --body "$body
 
-          If only the latest job failed, gh or gh-stack changed in a way that breaks stack-stat. See docs/architecture/07-live-validation.md."
+          $hint"
           fi
