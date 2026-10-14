@@ -20,6 +20,7 @@ Add a live suite that runs the real binaries against long-lived fixture pull req
 - **Tags reset state.** Branch drift is undone by force-pushing a branch to its tag. A merged stack cannot be reset, so it is read-only.
 - **Rulesets protect the fixture.** Branch deletion and tag updates are blocked for everyone but admins. CI skips `fixture/*` pull requests.
 - **Opt-in and off the PR path.** Tests run only with `STACK_STAT_LIVE=1`. CI runs them on a schedule and by manual dispatch with a serializing `concurrency` group, because they mutate shared remote state, depend on rate limits, and need a write token that fork PRs must not reach.
+- **Pinned and latest toolchains.** The nightly run tests a pinned known-good `gh` and `gh-stack` pair and the latest releases of both. A latest-only failure is upstream drift; the pinned pair moves only after the suite passes against it. A failed scheduled run opens or updates a tracking issue.
 - **Classify by text and code together.** Exit 2 maps to `LocalTrackingMissing` only with `is not part of a stack`; exit 4 maps to `Auth`; a first-use auto-install is retried once.
 - **No PTY harness.** The `AGENTS.md` rule against PTY tests and visual snapshots stands. Dashboard behavior stays covered by `TestBackend`; the live suite targets the adapter boundary where the real binaries matter.
 - **Existing fake tests stay.** They run offline on every pull request and cover logic the live suite does not. None is deleted; the classifier tests were rewritten to the observed output.

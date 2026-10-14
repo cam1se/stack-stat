@@ -11,11 +11,6 @@ on:
   schedule:
     - cron: "17 6 * * *"
   workflow_dispatch:
-  # TEMPORARY: lets this branch be exercised before the workflow reaches main.
-  # Remove before merging.
-  push:
-    branches: [tcamise-gpsw/end-to-end-validation-of-gh-and-gh-stack-behavio]
-    paths: [".github/workflows/live-gh.yml"]
 
 permissions:
   contents: write

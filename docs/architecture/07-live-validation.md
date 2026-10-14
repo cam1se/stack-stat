@@ -49,9 +49,13 @@ Not covered:
 - **Fork clone pushing to its own fork.** The fork PR is read with a fork checkout, but push and sync from a fork are not exercised.
 - **Exact conflict exit code.** The test asserts the classified result, not whether `gh stack` returned 3 or 7.
 - **Real dashboard rendering.** There is no headless stack printer; the TUI is still covered through `TestBackend` and fake providers. Revisit if a non-interactive resolved-stack command is added.
-- **Version matrix.** CI runs the runner's preinstalled `gh` and the latest extension daily; older `gh` versions are not tested.
+- **Older `gh` versions.** The workflow tests one pinned known-good pair and the latest releases; versions in between are not tested.
 - **`s3` and fork PR drift.** If someone closes a fixture PR or deletes a fork branch, tests fail until the fixture is rebuilt by hand.
 
 ## Credentials
 
-CI uses `GH_TOKEN` from the `STACK_STAT_LIVE_TOKEN` secret when set, otherwise the workflow token with `contents: write` and `pull-requests: write`. A token must force-push `fixture/*` branches and mark the `s1`/`s2` PRs ready or draft. It never needs to merge. The workflow runs on a schedule and on manual dispatch only, never on pull requests, so a fork PR cannot reach the token.
+The workflow uses the `GH_ACCESS_TOKEN` repository secret, falling back to the workflow token. The token must force-push `fixture/*` branches, toggle draft state on the `s1`/`s2` PRs, and open issues; it never needs to merge. The workflow runs on a schedule and on manual dispatch only, never on pull requests, so a fork PR cannot reach the token.
+
+## Detecting version drift
+
+The workflow runs a two-job matrix nightly (06:17 UTC) and on dispatch. `pinned` uses the versions the suite was validated against (`gh` 2.101.0, `gh-stack` v0.1.1); `latest` installs the newest `gh` release and the newest extension. A failure in `latest` with `pinned` passing means an upstream change breaks stack-stat; a failure in both points at the fixture or the adapter. Raise the pinned versions only after the suite passes against them. A failed scheduled run opens or updates the issue titled "Live gh drift detected". Each job records the exact versions in its step summary.
