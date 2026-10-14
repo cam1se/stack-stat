@@ -1,0 +1,51 @@
+name: Live gh
+
+# End-to-end checks against the real gh and gh stack binaries and the live
+# fixture PRs. See docs/architecture/07-live-validation.md. Not run on pull requests: it mutates
+# shared remote state and needs a token with write access.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Tests reset shared fixture branches, so only one run may execute at a time and
+# a cancelled run must never be replaced mid-reset.
+concurrency:
+  group: live-gh
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  # A PAT with push access is needed if the default token cannot force-push the
+  # fixture branches; otherwise the workflow token is used.
+  GH_TOKEN: ${{ secrets.STACK_STAT_LIVE_TOKEN || github.token }}
+  STACK_STAT_LIVE: "1"
+
+jobs:
+  live:
+    name: Live gh and gh stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Configure git for gh
+        run: |
+          gh auth setup-git
+          git config --global user.name "stack-stat live tests"
+          git config --global user.email "live-tests@users.noreply.github.com"
+      - name: Show tool versions
+        run: |
+          gh --version
+          gh extension install github/gh-stack
+          gh extension list
+      - name: Run live tests
+        run: cargo test -p stack-stat-core --test live_gh --locked -- --test-threads=4
+      - name: Restore fixture
+        if: ${{ always() }}
+        run: bash scripts/live-fixture.sh reset
