@@ -48,4 +48,32 @@ Windows users can run the [PowerShell installer](scripts/install.ps1). Alternati
 
 From a Git worktree whose branch has a PR in a GitHub stack, run `stack-stat`. The detail pane starts on the worktree's branch. Use ↑/↓ to select a layer; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Mutating stack operations ask for confirmation; push and sync ask before linking missing local tracking.
 
-External agents and scripts can publish local results with `stack-stat report lint pass`; see [local checks](docs/user/local-checks.md) and [configuration](docs/user/configuration.md). [User documentation](https://cam1se.github.io/stack-stat/) covers the full UI and troubleshooting. Developers should read [AGENTS.md](AGENTS.md), the [contributor guide](CONTRIBUTING.md), and [architecture](docs/architecture/01-l1-context.md).
+## Configuration
+
+No configuration is required. To tune the display, add a `.stack-stat.toml` at the worktree root: skip noisy GitHub checks, declare the local checks you expect, name bot reviewers, and adjust poll intervals.
+
+```toml
+[checks.skip]
+patterns = ["codecov/*"]
+
+[checks.local]
+lint = { description = "cargo clippy --workspace --all-targets --locked -- -D warnings" }
+```
+
+Personal preferences such as poll intervals and review layout go in `~/.config/stack-stat/config.toml`. See [configuration](docs/user/configuration.md) for every option, defaults, and file locations.
+
+## Local checks
+
+Checks that run on your machine, such as lint and tests, can be recorded against the branch and commit they ran on, so the dashboard shows them next to CI. An agent or script reports a result with `stack-stat report`:
+
+```sh
+stack-stat report lint pass
+stack-stat report test fail --message 'three assertions failed'
+stack-stat report --list
+```
+
+A result goes stale when the branch tip moves, so an old pass is never shown as current. The description in `[checks.local]` is display text only; stack-stat never runs the command. See [local checks](docs/user/local-checks.md) for flags, JSON output, and storage.
+
+## More
+
+[User documentation](https://cam1se.github.io/stack-stat/) covers the full UI and troubleshooting. Developers should read [AGENTS.md](AGENTS.md), the [contributor guide](CONTRIBUTING.md), and [architecture](docs/architecture/01-l1-context.md).
