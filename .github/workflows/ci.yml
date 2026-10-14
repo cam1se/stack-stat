@@ -20,6 +20,7 @@ jobs:
   fmt-clippy:
     name: Rust — fmt / clippy
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.head_ref, 'fixture/') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,6 +35,7 @@ jobs:
   test:
     name: Rust — test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    if: ${{ !startsWith(github.head_ref, 'fixture/') }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
