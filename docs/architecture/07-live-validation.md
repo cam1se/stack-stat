@@ -27,7 +27,7 @@ The fixture lives in this repository under the `fixture/` branch prefix. Branche
 |`s8`|one merged PR|`fixture/single-base`|Single merged PR; read-only, cannot be reset|
 |fork|fork PRs from `fixture/s1-c` and `fixture/s4-same`|`main`|Same head branch name as an upstream PR, different head owner|
 
-[`scripts/live-fixture.sh`](../../scripts/live-fixture.sh) implements `status`, `reset`, and `conflict`. `reset` force-pushes each branch to its `fixture-start/<name>` tag and restores draft state. Mutating tests reset before and after themselves and serialize on one lock; the workflow adds a `concurrency` group so two runs never reset the fixture at once.
+[`scripts/live-fixture.sh`](../../scripts/live-fixture.sh) implements `status`, `reset`, and `conflict`. `reset` force-pushes each branch to its `fixture-start/<name>` tag and restores draft state. Read-only tests hold a shared fixture lock; a mutating test holds it exclusively, resets the fixture before it starts, and resets again when it ends, including when it panics, so no test reads a half-reset fixture. The workflow adds a final reset step and a `concurrency` group so two runs never touch the fixture at once.
 
 Tag a new baseline with `git tag -f fixture-start/<branch> <sha>` only after temporarily lifting the tag ruleset.
 
