@@ -1,6 +1,6 @@
 # Developer convenience targets for stack-stat.
 .DEFAULT_GOAL := help
-.PHONY: help dev-setup setup-hooks format lint tests preflight rustdoc docs-serve demo demo-gif clean
+.PHONY: help dev-setup setup-hooks format lint tests live-test live-fixture-reset preflight rustdoc docs-serve demo demo-gif clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
@@ -29,6 +29,12 @@ tests: ## Run the full suite
 	cargo test --workspace --locked --no-fail-fast
 
 preflight: lint tests ## Run the CI-equivalent checks
+
+live-test: ## Run end-to-end tests against real gh and gh stack (needs auth and push access to the fixture repo)
+	STACK_STAT_LIVE=1 cargo test -p stack-stat-core --test live_gh --locked -- --test-threads=4
+
+live-fixture-reset: ## Restore the live fixture branches to their start tags
+	bash scripts/live-fixture.sh reset
 
 rustdoc: ## Build rustdoc and open it
 	cargo doc --workspace --no-deps --locked
