@@ -35,6 +35,7 @@ Read in this order:
 | [04 Domain and config](architecture/04-domain-and-config.md) | Model vocabulary and configuration precedence |
 | [05 Providers and store](architecture/05-providers-and-store.md) | CLI adapters and local check retention |
 | [06 Terminal application](architecture/06-tui.md) | App modes, polling, effects, and rendering |
+| [07 Live validation](architecture/07-live-validation.md) | End-to-end suite, fixture, pinned gh behavior, and gaps |
 
 The first two pages follow the [C4 model](https://c4model.com); later numbered pages cover subsystems. Put extending recipes beside their subsystem. Do not hand-model generated schemas or public Rust signatures. Link to rustdoc instead.
 

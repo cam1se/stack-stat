@@ -88,5 +88,6 @@ Do not change production invariants or expose broad internals solely for tests. 
 | App state machine | `crates/stack-stat-tui/tests/` | Fake providers, state transitions, action effects |
 | Rendering | `crates/stack-stat-tui/tests/` | `ratatui::TestBackend` frame contracts |
 | CLI | `crates/stack-stat-tui/tests/` | Report and update behavior against isolated temp repos |
+| Live gh | `crates/stack-stat-core/tests/live_gh.rs` | Real `gh`/`gh stack` against fixture PRs; opt-in with `make live-test` ([guide](docs/architecture/07-live-validation.md)) |
 
 Do not add PTY-based integration tests or visual snapshots: direct App behavior and `TestBackend` buffer checks are more precise.
