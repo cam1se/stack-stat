@@ -114,7 +114,10 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         }
     }
 
-    lines.push(Line::from(""));
+    if !no_pr {
+        // A no-PR row has no checks or reviews; the local-checks gap below separates it.
+        lines.push(Line::from(""));
+    }
     if let Some(pr) = &branch.pr {
         let counts = check_counts(&pr.checks);
         lines.push(Line::from(check_title(counts)));

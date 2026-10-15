@@ -206,8 +206,8 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             return 0;
         };
         if branch.pr_number.is_none() && branch.pr.is_none() {
-            // Header, branch name, two section gaps, and local heading/results.
-            return 4
+            // Header, branch name, one section gap, and local heading/results.
+            return 3
                 + wrap::wrap(&branch.name, self.detail_viewport_width).len()
                 + usize::from(branch.rebase != RebaseNeed::None)
                 + branch.local_checks.len().max(1);
