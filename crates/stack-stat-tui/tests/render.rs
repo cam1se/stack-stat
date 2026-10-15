@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend};
 use stack_stat_core::{
     model::{LocalSync, StackStatus},
-    providers::{GitHubError, ReportedState},
+    providers::ReportedState,
 };
 use stack_stat_tui::{
     message::Source,
@@ -401,14 +401,15 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
     app.handle_key(key('?'));
     app.handle_key(key('p'));
     assert!(find_row(&draw(&app, 120, 26), "Push stack? y/n").is_some());
-    handles.github.set_stack_error(GitHubError::NotInStack);
-    app.poll_once(Source::GitHub).await;
+    handles.git.set_current_branch("");
+    app.poll_once(Source::All).await;
     assert_eq!(app.state().stack_status, StackStatus::NotInStack);
     let empty_stack = draw(&app, 120, 26);
     assert!(find_row(&empty_stack, "No attached branch").is_some());
     let branch_guidance = find_row(&empty_stack, "Check out").unwrap();
     assert_row_contains(&empty_stack, branch_guidance, &["branch"]);
     assert!(find_row(&empty_stack, "without a PR").is_some());
+    assert!(find_row(&empty_stack, "worktree: auth").is_none());
     assert!(find_row(&empty_stack, "stacked branch").is_none());
     assert!(find_row(&empty_stack, "gh stack init").is_none());
 }

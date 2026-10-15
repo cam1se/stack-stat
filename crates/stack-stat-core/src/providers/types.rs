@@ -182,7 +182,7 @@ pub enum ProviderAction {
 /// Classified failure while discovering GitHub state or running a CLI action.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GitHubError {
-    /// The worktree has no attached branch to display.
+    /// Nothing to display: no attached branch, or the repository default branch without a PR.
     NotInStack,
     /// Push or sync requires local gh-stack tracking before it can proceed.
     LocalTrackingMissing,

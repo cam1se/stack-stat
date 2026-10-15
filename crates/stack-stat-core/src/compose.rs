@@ -32,7 +32,7 @@ pub struct GitSnapshot {
 pub enum StackOutcome {
     /// A stacked or single-mode view is available.
     InStack(StackViewResponse),
-    /// No attached branch with a HEAD commit is available to display.
+    /// Nothing to display: no attached branch, or the repository default branch without a PR.
     NotInStack,
 }
 

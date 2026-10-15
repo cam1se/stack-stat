@@ -21,8 +21,9 @@ Discovery normalizes successful results into explicit modes:
 | Selected PR has a non-null stack | Stacked; entry positions supply layer order and entry PRs supply identities and lifecycle state, even for a one-entry stack | Stack base ref |
 | Selected PR has `stack: null` | Single; one entry with that PR's identity and lifecycle state | PR base ref |
 | No matching PR | Single; one current-branch row without PR identity or details; local checks still apply | Repository default branch |
+| No matching PR on the default branch itself | `NotInStack`; a row against itself would be meaningless | — |
 
-A detached or empty HEAD may return `NotInStack`. Transport and parse failures remain errors rather than evidence of absence.
+A detached or empty HEAD also returns `NotInStack`. Transport and parse failures remain errors rather than evidence of absence.
 
 Discovery precedes the aliased `gh api graphql` detail/comparison query because its PR numbers and parent refs are query inputs. This adds one GraphQL round trip per ordinary poll with PRs, not one request per layer; stacks with more than 100 entries need additional discovery pages. A no-PR result needs no PR detail query. For each non-merged layer, the detail query compares the remote parent ref—trunk for the first non-merged layer, otherwise the nearest non-merged layer below it—with the layer head; a positive `behindBy` requires a rebase. A single PR reuses the same detail query and compares against its trunk. Missing or failed comparisons require no rebase. PR details include draft state, the latest reviews and outstanding review requests, and head-commit check runs plus legacy status contexts. A GraphQL response with partial repository data is parsed even if `gh api` exits nonzero because one alias failed; deleted or inaccessible PR aliases are omitted while valid siblings remain available. Local Git refs supply current local SHAs for check freshness; a remote layer need not have a local branch.
 

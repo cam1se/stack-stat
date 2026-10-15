@@ -6,7 +6,10 @@ use ratatui::{
     style::{Modifier, Style},
     text::Span,
 };
-use stack_stat_core::providers::{GitHubProvider, GitProvider, StatusStoreProvider};
+use stack_stat_core::{
+    model::{StackState, StackStatus},
+    providers::{DETACHED_HEAD, GitHubProvider, GitProvider, StatusStoreProvider},
+};
 
 use crate::{
     app::{App, Mode, PointerTarget},
@@ -33,6 +36,18 @@ fn title(text: impl Into<std::borrow::Cow<'static, str>>, theme: &Theme) -> Span
             .fg(theme.header_title)
             .add_modifier(Modifier::BOLD),
     )
+}
+
+/// Name of the checked-out default branch when GitHub discovery has nothing to show for it.
+///
+/// Discovery reports `NotInStack` for an attached branch only when it is the repository default
+/// branch; a detached or empty HEAD keeps the generic guidance. The branch comes from the GitHub
+/// result, not the newer Git poll, so a stale result is never relabelled.
+fn default_branch_name(state: &StackState) -> Option<&str> {
+    (state.stack_status == StackStatus::NotInStack
+        && !state.github_branch.is_empty()
+        && state.github_branch != DETACHED_HEAD)
+        .then_some(state.github_branch.as_str())
 }
 
 /// Rectangles shared by pure drawing and mouse hit testing.

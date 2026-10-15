@@ -68,6 +68,17 @@ fn branch_without_pr_is_a_single_layer_against_repository_default() {
     assert!(!view.branches[0].is_queued);
 }
 
+#[test]
+fn default_branch_without_pr_has_nothing_to_show() {
+    let response = json!({"data": {"repository": {
+        "defaultBranchRef": {"name": "develop"},
+        "openPullRequests": {"nodes": []},
+        "pullRequests": {"nodes": []}
+    }}});
+
+    assert_eq!(discover(&response, "develop"), Err(GitHubError::NotInStack));
+}
+
 fn entry(position: u32, branch: &str, state: &str, queued: bool) -> Value {
     json!({
         "position": position,

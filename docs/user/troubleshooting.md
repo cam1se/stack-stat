@@ -12,15 +12,15 @@
 
 ## Single PR or “no PR yet”
 
-The TUI follows the **checked-out worktree branch** and reads its PR's stack from GitHub, not local `gh stack` tracking. An unstacked PR appears as one entry with the PR's base branch as trunk and the usual CI, review, draft, and remote rebase details. A branch without a matching PR appears as one row with the repository's default branch as trunk, empty PR-only cells, and a `no PR yet` hint. Local checks still apply, including missing or stale reports; passing local checks do not make the branch a ready-to-merge PR or a `Next to merge` candidate. Open a PR when you want PR details; there is no need to create a stack just to use the dashboard. A PR closed without merging is shown as closed history and cannot be marked draft or ready.
+The TUI follows the **checked-out worktree branch** and reads its PR's stack from GitHub, not local `gh stack` tracking. A PR with a non-null GitHub stack uses stacked mode even when the stack has only one entry, and a fresh clone or worktree can read that stack without initializing or linking it locally. An unstacked PR appears as one entry with the PR's base branch as trunk and the usual CI, review, draft, and remote rebase details. A branch without a matching PR appears as one row with the repository's default branch as trunk, empty PR-only cells, and a `no PR yet` hint. Local checks still apply, including missing or stale reports; passing local checks do not make the branch a ready-to-merge PR or a `Next to merge` candidate. Open a PR when you want PR details; there is no need to create a stack just to use the dashboard. A PR closed without merging is shown as closed history and cannot be marked draft or ready.
 
 Checkout (`c`) and sync (`S`) are disabled in single mode and report that status without running a stack command. Push (`p`) uses plain `git push` after confirmation and needs no extension or local stack tracking. If Git reports no upstream or another push configuration error, inspect the configured remote and branch in a terminal and set the upstream explicitly, for example with `git push --set-upstream <remote> <branch>`. stack-stat does not choose an upstream or link a stack for you. Browser opening (`o`) and draft/ready toggling (`m`) work when a PR exists; they are unavailable on a no-PR row.
 
 If you switch branches outside the dashboard, push, checkout, and sync wait for the next GitHub result instead of acting on the previous branch's mode; the status bar reports the refresh, and the key works again once it completes.
 
-## “Not in a stack”
+## “No attached branch” or “Default branch”
 
-A detached or empty HEAD may still show this view because there is no current branch to display. Check out a branch to use the dashboard. A PR with a non-null GitHub stack uses stacked mode even when the stack has only one entry. A fresh clone or worktree can read that stack without initializing or linking it locally.
+A detached or empty HEAD shows “No attached branch” because there is no current branch to display. Check out a branch to use the dashboard. The repository's default branch without its own PR shows “Default branch”, because there is nothing to compare it against; check out a feature branch to see its row.
 
 ## Data looks old or incomplete
 

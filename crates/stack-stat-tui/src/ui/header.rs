@@ -37,7 +37,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         ),
         StackStatus::NotInStack => (
             Line::styled(
-                "No attached branch",
+                if super::default_branch_name(state).is_some() {
+                    "Default branch"
+                } else {
+                    "No attached branch"
+                },
                 Style::default()
                     .fg(theme.muted)
                     .add_modifier(Modifier::BOLD),
@@ -137,7 +141,11 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 Line::styled("Stack summary: loading…", Style::default().fg(theme.muted))
             }
             StackStatus::NotInStack => Line::styled(
-                "Check out an attached branch to view its dashboard",
+                if super::default_branch_name(state).is_some() {
+                    "Check out a feature branch to view its dashboard"
+                } else {
+                    "Check out an attached branch to view its dashboard"
+                },
                 Style::default().fg(theme.muted),
             ),
             StackStatus::Ready => unreachable!("ready stacks have a summary"),

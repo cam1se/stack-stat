@@ -34,7 +34,7 @@ From a Git repository, run `stack-stat`. The tool follows **the current worktree
 - If no matching PR exists, show one row for the current branch, with the repository's default branch as trunk. PR-only cells remain empty and a `no PR yet` hint explains the absence; [local checks](local-checks.md) still show current, failed, stale, or missing results. This row is not a merge-ready PR.
 - If the newest PR for the branch was closed without merging, show it as closed history: never ready to merge and never the next PR to merge.
 
-Detached or empty HEAD may still show "Not in a stack." Startup requires GitHub CLI and authentication, not the stack extension.
+The default branch itself, without a PR, shows "Default branch" and asks you to check out a feature branch. A detached or empty HEAD shows "No attached branch" and asks you to check out a branch. Startup requires GitHub CLI and authentication, not the stack extension.
 
 Install [gh stack](https://github.com/github/gh-stack) only to use **stacked** checkout, push, or sync: `gh extension install github/gh-stack`. These actions ask for confirmation. If stacked push or sync finds no local tracking, a further prompt asks to link the stack through `gh stack checkout` before continuing; declining leaves it unchanged. In single mode, push instead runs plain `git push`, while checkout and sync are disabled with a status message. Opening a PR and toggling draft/ready state need no extension and work for a single PR; without a PR, those actions are unavailable.
 

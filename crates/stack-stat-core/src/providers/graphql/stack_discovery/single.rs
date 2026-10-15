@@ -38,6 +38,9 @@ pub(super) fn from_candidate(
     ))
 }
 
+/// Build the attached current branch's no-PR row against the repository default branch.
+///
+/// The default branch itself has nothing to compare against, so it is `NotInStack`.
 pub(super) fn without_pr(
     current_branch: &str,
     default_branch: Option<DefaultBranch>,
@@ -48,6 +51,9 @@ pub(super) fn without_pr(
         .ok_or_else(|| {
             GitHubError::Parse("GraphQL branch discovery had no default branch name".into())
         })?;
+    if trunk == current_branch {
+        return Err(GitHubError::NotInStack);
+    }
     Ok(view(
         current_branch,
         trunk,
