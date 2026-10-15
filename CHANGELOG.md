@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0](https://github.com/cam1se/stack-stat/compare/v0.6.0...v0.7.0) (2026-10-15)
+
+
+### Features
+
+* **core:** show unstacked prs and no-pr branches as a one-layer view ([298d871](https://github.com/cam1se/stack-stat/commit/298d871ad41f318b5d047d8af79f244bc74ef9b5)), closes [#26](https://github.com/cam1se/stack-stat/issues/26)
+
+
+### Bug Fixes
+
+* **core:** treat a closed unmerged pr as closed history ([b205aa3](https://github.com/cam1se/stack-stat/commit/b205aa3a209dc00a3a87bc75cbe508da19e8979d))
+* **providers:** classify gh failures by observed output ([54fe616](https://github.com/cam1se/stack-stat/commit/54fe616a10adf258b0b8330ec4631ada599d4a08)), closes [#23](https://github.com/cam1se/stack-stat/issues/23)
+* **providers:** lead failed git push errors with the rejection ([9d7c08d](https://github.com/cam1se/stack-stat/commit/9d7c08d8a030b036102c481278bba249d5d32d57))
+* **providers:** show nothing to compare on the default branch ([59cd5ff](https://github.com/cam1se/stack-stat/commit/59cd5ff76ad437b2f2ed76aae7eb6fd0ac9aab6f))
+* **tui:** name the actual trunk in the wide rebase label ([a2059c6](https://github.com/cam1se/stack-stat/commit/a2059c614adc79e72252d290e8e4bc56071ff40b))
+* **tui:** refresh before mode-dependent actions after a branch switch ([cc75b35](https://github.com/cam1se/stack-stat/commit/cc75b359c6d452de8c00b07a5842e190ec6352ce))
+* **tui:** remove the doubled blank line in no-pr details ([4b1d249](https://github.com/cam1se/stack-stat/commit/4b1d24980578198070bbc35febb4c8193a3c2d53))
+
 ## [0.6.0](https://github.com/cam1se/stack-stat/compare/v0.5.1...v0.6.0) (2026-10-13)
 
 
