@@ -195,9 +195,9 @@ impl GitHubProvider for CliGitHubProvider {
         if output.status.success() {
             Ok(())
         } else {
-            Err(GitHubError::Git(
-                String::from_utf8_lossy(&output.stderr).into_owned(),
-            ))
+            Err(GitHubError::Git(push_failure_message(
+                &String::from_utf8_lossy(&output.stderr),
+            )))
         }
     }
 
@@ -216,6 +216,34 @@ impl GitHubProvider for CliGitHubProvider {
             &["pr", "ready", &number, "--undo"]
         };
         self.run(args, MUTATION_TIMEOUT).await.map(|_| ())
+    }
+}
+
+/// Lead a failed push's stderr with its cause; only the first line reaches the status bar.
+///
+/// Git prints the remote (`To <url>`) and hook output before a rejection, so the first
+/// `[rejected]`, `fatal:`, or `error:` line moves to the front. The full stderr follows it.
+fn push_failure_message(stderr: &str) -> String {
+    let stderr = stderr.trim();
+    let lines = || stderr.lines().map(str::trim);
+    let headline = lines()
+        .find(|line| line.contains("rejected]"))
+        .map(|line| {
+            line.trim_start_matches('!')
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .or_else(|| {
+            lines()
+                .find(|line| line.starts_with("fatal:") || line.starts_with("error:"))
+                .map(str::to_owned)
+        });
+    match headline {
+        Some(headline) if lines().next() != Some(headline.as_str()) => {
+            format!("{headline}\n{stderr}")
+        }
+        _ => stderr.to_owned(),
     }
 }
 
