@@ -352,3 +352,23 @@ async fn detached_head_guidance_is_distinct_from_loading() {
     assert!(find_row(&buffer, "Check out").is_some());
     assert!(find_row(&buffer, "loading").is_none());
 }
+
+#[tokio::test]
+async fn default_branch_guidance_names_the_branch_instead_of_detached_head() {
+    let (mut app, handles) = TestScenario::builder()
+        .stack("main", &[])
+        .current_branch("main")
+        .build()
+        .into_app();
+    handles.github.set_stack_error(GitHubError::NotInStack);
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 120, 28);
+    assert!(find_row(&buffer, "Default branch").is_some());
+    assert!(find_row(&buffer, "worktree: main").is_some());
+    assert!(find_row(&buffer, "main is the repository default branch").is_some());
+    assert!(find_row(&buffer, "Check out a feature branch").is_some());
+    for absent in ["No attached branch", "detached", "loading"] {
+        assert!(find_row(&buffer, absent).is_none(), "unexpected {absent}");
+    }
+}

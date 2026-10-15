@@ -94,7 +94,8 @@ impl<'a> StackDiscovery<'a> {
     /// Prefer the newest open PR even when its stack is null; only an absent
     /// open PR permits the newest lifecycle PR fallback. An explicitly null
     /// stack becomes a single-PR view; no PR becomes a current-branch row using
-    /// the repository default branch. Failed queries, inaccessible entries,
+    /// the repository default branch, or `NotInStack` on the default branch
+    /// itself. Failed queries, inaccessible entries,
     /// malformed metadata, and truncated pagination remain errors. Unlike PR
     /// details and rebase comparisons, discovery cannot use incomplete data.
     pub fn accept_response(

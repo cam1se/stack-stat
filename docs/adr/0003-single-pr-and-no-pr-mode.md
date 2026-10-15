@@ -14,7 +14,7 @@
 Keep GitHub as the authority for real stack membership. Distinguish stacked mode from single mode by the presence of GitHub stack metadata, not the number of rows: a non-null stack with one entry remains stacked mode.
 
 - A selected PR with `stack: null` produces one single-mode entry. Its base branch is trunk. Reuse the existing PR detail query for lifecycle, draft state, checks, reviews, and remote rebase comparison against that trunk.
-- An attached current branch with no matching PR produces one single-mode row. The repository's GitHub default branch is trunk. Show a `no PR yet` hint, leave PR-only cells empty, and retain local sync information and commit-specific local checks, including failed, stale, and missing results. This row is not a ready-to-merge PR and is excluded from `Next to merge` selection.
+- An attached current branch with no matching PR produces one single-mode row. The repository's GitHub default branch is trunk. Show a `no PR yet` hint, leave PR-only cells empty, and retain local sync information and commit-specific local checks, including failed, stale, and missing results. This row is not a ready-to-merge PR and is excluded from `Next to merge` selection. The default branch itself has nothing to compare against, so without a PR it produces `NotInStack`, labelled as the default branch rather than as a detached HEAD.
 - Detached or empty HEAD may still produce `NotInStack`. Authentication, network, rate-limit, and malformed-response failures remain errors, not proof that no PR exists.
 - A selected PR closed without merging is closed history: it has no readiness issues, is never ready to merge or the next PR to merge, and cannot toggle draft state.
 

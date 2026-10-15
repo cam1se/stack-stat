@@ -36,7 +36,7 @@ pub enum StackStatus {
     /// No GitHub response has arrived.
     #[default]
     Loading,
-    /// The worktree has no attached branch to display.
+    /// Nothing to display: no attached branch, or the repository default branch without a PR.
     NotInStack,
     /// A stacked or single branch view is available.
     Ready,

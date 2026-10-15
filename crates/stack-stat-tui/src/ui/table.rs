@@ -41,11 +41,19 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     theme: &Theme,
 ) {
     if app.state().stack_status == StackStatus::NotInStack {
+        let guidance = super::default_branch_name(app.state()).map_or_else(
+            || {
+                "No attached branch\nCheck out a branch to view its dashboard,\nwith or without a PR."
+                    .to_owned()
+            },
+            |branch| {
+                format!(
+                    "{branch} is the repository default branch\nCheck out a feature branch to view its dashboard,\nwith or without a PR."
+                )
+            },
+        );
         frame.render_widget(
-            Paragraph::new(
-                "No attached branch\nCheck out a branch to view its dashboard,\nwith or without a PR.",
-            )
-            .block(
+            Paragraph::new(guidance).block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title(super::title(" Stack ", theme)),
