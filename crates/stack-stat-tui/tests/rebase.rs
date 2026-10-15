@@ -128,6 +128,22 @@ async fn gated_trunk_rebase_is_blocking() {
 }
 
 #[tokio::test]
+async fn wide_trunk_rebase_label_names_the_single_pr_base() {
+    let (mut app, _) = TestScenario::builder()
+        .single("release/2026.10", "feature")
+        .remote_rebase("feature")
+        .pr("feature", PrBuilder::new(7).checks_all_pass().approved())
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    let (buffer, _) = draw(&app, 120);
+    let row = find_body_row(&buffer, "#7").expect("feature row");
+    assert!(row_text(&buffer, row).contains("↻ release/2026.10"));
+    assert!(!row_text(&buffer, row).contains("main"));
+}
+
+#[tokio::test]
 async fn narrow_rebase_column_uses_short_header_and_glyph() {
     let app = app_with_rebase("feature", false, "feature").await;
     let (buffer, _) = draw(&app, 90);
