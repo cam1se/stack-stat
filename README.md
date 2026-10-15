@@ -15,7 +15,7 @@ A Rust terminal dashboard for [GitHub stacked PRs](https://github.com/github/gh-
 > [!TIP]
 > Full documentation, including configuration, local checks, and troubleshooting, is at **[cam1se.github.io/stack-stat](https://cam1se.github.io/stack-stat/)**.
 
-Open PRs use verdict glyphs: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. Merged and queued PRs use separate lifecycle glyphs. The `Next to merge:` header names the next PR and lists its issues, and the detail pane for the selected branch is always open, with failing checks first. A branch with no PR shows local checks and a `no PR yet` hint, not a ready-to-merge PR. Here it is in action:
+Open PRs use verdict glyphs: `✔` ready to merge, `◷` still waiting on CI, a review, or a local result, and `✖` blocked. Merged, queued, and closed PRs use separate lifecycle glyphs. The `Next to merge:` header names the next PR and lists its issues, and the detail pane for the selected branch is always open, with failing checks first. A branch with no PR shows local checks and a `no PR yet` hint, not a ready-to-merge PR. Here it is in action:
 
 <p align="center">
   <img src="docs/user/assets/demo.gif" width="840" alt="Demo of the stack-stat dashboard: selecting layers, reading checks and reviews, and scrolling details">

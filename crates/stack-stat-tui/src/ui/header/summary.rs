@@ -102,6 +102,7 @@ pub(super) fn summary_line(summary: StackSummary, theme: &Theme) -> Line<'static
         (Verdict::NoGo, summary.no_go, true),
         (Verdict::Merged, summary.merged, false),
         (Verdict::Queued, summary.queued, false),
+        (Verdict::Closed, summary.closed, false),
     ] {
         if !always_visible && count == 0 {
             continue;

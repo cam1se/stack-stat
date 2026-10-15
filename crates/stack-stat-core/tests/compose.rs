@@ -267,6 +267,28 @@ fn single_pr_composition_retains_full_readiness_and_its_base_rebase() {
 }
 
 #[test]
+fn closed_unmerged_single_pr_is_never_open_or_a_merge_candidate() {
+    let mut snapshot = single_github();
+    let StackOutcome::InStack(stack) = &mut snapshot.stack else {
+        unreachable!();
+    };
+    stack.branches[0].pr.as_mut().unwrap().state = "CLOSED".into();
+
+    let state = compose(Some(&git("api")), Some(&snapshot), None, &Config::default());
+
+    let branch = &state.branches[0];
+    assert_eq!(branch.lifecycle, PrLifecycle::Closed);
+    assert_eq!(branch.verdict(), Verdict::Closed);
+    assert!(branch.issues().is_empty());
+    assert_eq!(state.next_to_merge(), None);
+    assert_eq!(state.summary().closed, 1);
+    assert_eq!(
+        state.summary().go + state.summary().wait + state.summary().no_go,
+        0
+    );
+}
+
+#[test]
 fn no_pr_composition_keeps_commit_local_evidence_sync_and_no_merge_candidate() {
     let mut snapshot = single_github();
     let StackOutcome::InStack(stack) = &mut snapshot.stack else {

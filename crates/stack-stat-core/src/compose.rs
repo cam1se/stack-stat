@@ -114,6 +114,8 @@ pub fn compose(
             PrLifecycle::Merged
         } else if branch.is_queued {
             PrLifecycle::Queued
+        } else if branch.pr.as_ref().is_some_and(|pr| pr.state == "CLOSED") {
+            PrLifecycle::Closed
         } else {
             PrLifecycle::Open
         };

@@ -4,7 +4,7 @@ use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
 use stack_stat_core::{
-    model::StackMode,
+    model::{PrLifecycle, StackMode},
     providers::{GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider},
 };
 
@@ -162,6 +162,18 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                         "branch changed; refreshing before running actions".into(),
                     );
                     return vec![Effect::Refresh(Source::All)];
+                }
+                if action == Action::ToggleDraft
+                    && let Some(number) = self
+                        .selected()
+                        .filter(|branch| branch.lifecycle == PrLifecycle::Closed)
+                        .and_then(|branch| branch.pr_number)
+                {
+                    self.notify(
+                        NoticeLevel::Info,
+                        format!("PR #{number} is closed; draft state cannot change"),
+                    );
+                    return Vec::new();
                 }
                 if self.state.mode == StackMode::Single
                     && matches!(action, Action::Checkout | Action::Sync)

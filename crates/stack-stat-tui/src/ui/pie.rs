@@ -15,6 +15,7 @@ pub(super) fn slices(summary: StackSummary, theme: &Theme) -> Vec<(usize, Color)
         (summary.no_go, theme.error),
         (summary.merged, theme.muted),
         (summary.queued, theme.success),
+        (summary.closed, theme.muted),
     ]
     .into_iter()
     .filter(|(count, _)| *count > 0)
@@ -53,6 +54,7 @@ mod tests {
             no_go: 3,
             merged: 0,
             queued: 1,
+            closed: 0,
         };
 
         assert_eq!(
@@ -70,10 +72,11 @@ mod tests {
             no_go: 3,
             merged: 4,
             queued: 5,
+            closed: 6,
         };
 
         let slices = slices(summary, &theme);
-        assert_eq!(slices.iter().map(|(count, _)| count).sum::<usize>(), 15);
+        assert_eq!(slices.iter().map(|(count, _)| count).sum::<usize>(), 21);
         assert_eq!(
             slices,
             vec![
@@ -82,6 +85,7 @@ mod tests {
                 (3, theme.error),
                 (4, theme.muted),
                 (5, theme.success),
+                (6, theme.muted),
             ]
         );
     }
