@@ -28,6 +28,7 @@ pub(super) fn lifecycle_label(
     match branch.lifecycle {
         PrLifecycle::Merged => ("Merged".into(), theme.muted),
         PrLifecycle::Queued => ("Queued".into(), theme.success),
+        PrLifecycle::Closed => ("Closed".into(), theme.muted),
         PrLifecycle::Open => match branch.pr.as_ref() {
             Some(pr) if pr.is_draft => ("Draft".into(), theme.error),
             Some(_) => ("Open".into(), theme.success),
@@ -71,8 +72,8 @@ pub(super) fn check_label(branch: &BranchState, spinner: char) -> (String, Healt
         CheckHealth::Success => ('✔', Health::Success),
         CheckHealth::Skipped | CheckHealth::None => ('░', Health::Muted),
     };
-    // A merged layer's CI is history: keep the glyph but drop the color and animation.
-    if branch.lifecycle == PrLifecycle::Merged {
+    // A merged or closed layer's CI is history: keep the glyph but drop the color and animation.
+    if matches!(branch.lifecycle, PrLifecycle::Merged | PrLifecycle::Closed) {
         let icon = if summary.running > 0 { '◷' } else { icon };
         return (
             format!("{icon} {}/{}", summary.passed, summary.total),

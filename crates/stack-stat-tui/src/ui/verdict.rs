@@ -15,5 +15,6 @@ pub(super) fn style(verdict: Verdict, theme: &Theme) -> (&'static str, Color) {
         Verdict::NoGo => ("✖", theme.error),
         Verdict::Merged => ("✓", theme.muted),
         Verdict::Queued => ("»", theme.success),
+        Verdict::Closed => ("⊘", theme.muted),
     }
 }

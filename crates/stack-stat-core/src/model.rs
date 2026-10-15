@@ -106,6 +106,8 @@ pub enum PrLifecycle {
     Merged,
     /// The PR is in a merge queue.
     Queued,
+    /// The PR was closed without merging.
+    Closed,
 }
 
 /// Go/no-go readiness of a stack layer.
@@ -121,6 +123,8 @@ pub enum Verdict {
     Merged,
     /// In the merge queue.
     Queued,
+    /// Closed without merging.
+    Closed,
 }
 
 /// A concrete condition affecting a branch's readiness.
@@ -190,6 +194,8 @@ pub struct StackSummary {
     pub merged: usize,
     /// Layers in the merge queue.
     pub queued: usize,
+    /// Layers whose PR was closed without merging.
+    pub closed: usize,
 }
 
 /// Count of open layers with blockers in each category.

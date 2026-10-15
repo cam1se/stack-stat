@@ -351,6 +351,25 @@ async fn mode_dependent_actions_refresh_after_an_outside_branch_switch() {
 }
 
 #[tokio::test]
+async fn closed_single_pr_refuses_draft_toggle_without_calling_provider() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .pr("feature", PrBuilder::new(42).draft())
+        .into_app();
+    handles
+        .github
+        .set_stack(view(StackMode::Single, "feature", "CLOSED"));
+    app.poll_once(Source::All).await;
+
+    assert!(app.handle_key(key('m')).is_empty());
+    assert_eq!(app.mode(), &Mode::Normal);
+    let notice = app.notice().expect("refusal is explained");
+    assert_eq!(notice.level, NoticeLevel::Info);
+    assert!(notice.text.contains("closed"));
+    assert!(handles.github.recorded_actions().is_empty());
+}
+
+#[tokio::test]
 async fn single_mode_existing_pr_can_open_and_toggle_draft_both_directions() {
     let (mut app, handles) = TestScenario::builder()
         .single("main", "feature")

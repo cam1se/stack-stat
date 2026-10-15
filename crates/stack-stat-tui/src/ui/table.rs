@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
 use stack_stat_core::{
-    model::{PrLifecycle, RebaseNeed, StackMode, StackStatus},
+    model::{PrLifecycle, RebaseNeed, StackMode, StackStatus, Verdict},
     providers::{GitHubProvider, GitProvider, StatusStoreProvider},
 };
 
@@ -151,8 +151,8 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                 } else {
                     branch.pr.as_ref().map_or("", |pr| pr.title.as_str())
                 };
-                // A merged layer is history: every column is dimmed.
-                let dim = branch.lifecycle == PrLifecycle::Merged;
+                // A merged or closed layer is history: every column is dimmed.
+                let dim = matches!(branch.lifecycle, PrLifecycle::Merged | PrLifecycle::Closed);
                 let style = |column: Column, foreground| {
                     let style = Style::default().fg(if dim { theme.muted } else { foreground });
                     if app.animation().is_flashing_for(&branch.name, column) {
@@ -168,7 +168,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     "│"
                 };
                 let branch_color = match verdict {
-                    stack_stat_core::model::Verdict::Merged => ratatui::style::Color::Reset,
+                    Verdict::Merged | Verdict::Closed => ratatui::style::Color::Reset,
                     _ => verdict_color,
                 };
                 let mut cells = vec![

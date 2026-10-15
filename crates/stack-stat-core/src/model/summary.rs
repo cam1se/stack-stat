@@ -18,6 +18,7 @@ impl StackState {
                 Verdict::NoGo => summary.no_go += 1,
                 Verdict::Merged => summary.merged += 1,
                 Verdict::Queued => summary.queued += 1,
+                Verdict::Closed => summary.closed += 1,
             }
         }
         summary
@@ -177,6 +178,7 @@ impl BranchState {
         match self.lifecycle {
             PrLifecycle::Merged => return Verdict::Merged,
             PrLifecycle::Queued => return Verdict::Queued,
+            PrLifecycle::Closed => return Verdict::Closed,
             PrLifecycle::Open => {}
         }
         let issues = self.issues();

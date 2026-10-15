@@ -21,6 +21,7 @@ pub(super) fn lifecycle_word(branch: &BranchState) -> &'static str {
     match branch.lifecycle {
         PrLifecycle::Merged => "Merged",
         PrLifecycle::Queued => "Queued",
+        PrLifecycle::Closed => "Closed",
         PrLifecycle::Open if branch.pr.as_ref().is_some_and(|pr| pr.is_draft) => "Draft",
         PrLifecycle::Open if branch.pr.is_some() => "Open",
         PrLifecycle::Open => "No PR details",

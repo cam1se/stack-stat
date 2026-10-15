@@ -32,7 +32,7 @@ Every `gh` process runs with piped input/output and prompts disabled. Read opera
 
 Stacked checkout, push, and sync use `gh stack`; only these actions check that the extension is installed. Missing extension errors direct the user to `gh extension install github/gh-stack` without blocking dashboard startup. Stacked push and sync that lack local tracking return to a confirmation prompt; only approval runs `gh stack checkout <pr-number-or-branch>` to link the target and then retries the requested action. Declining does nothing beyond a cancellation status. Rebase conflicts do not trigger automatic linking or retries.
 
-Single-mode push runs plain `git push` and reports ordinary Git errors, including a missing upstream, without trying to link a stack or set an upstream. Single-mode checkout and sync are disabled by the App with a status message, not sent to `gh stack`. PR browser and draft/ready actions need no extension and remain available whenever the selected entry has a PR.
+Single-mode push runs plain `git push` and reports ordinary Git errors, including a missing upstream, without trying to link a stack or set an upstream. Single-mode checkout and sync are disabled by the App with a status message, not sent to `gh stack`. PR browser and draft/ready actions need no extension and remain available whenever the selected entry has a PR; a closed PR cannot toggle draft state.
 
 ## Local check results
 

@@ -1,7 +1,10 @@
 mod support;
 
 use ratatui::{Terminal, backend::TestBackend};
-use stack_stat_core::providers::GitHubError;
+use stack_stat_core::{
+    model::StackMode,
+    providers::{GitHubError, StackBranch, StackPr, StackViewResponse},
+};
 use stack_stat_tui::{
     message::Source,
     theme::{ColorDepth, Theme},
@@ -273,6 +276,42 @@ async fn single_branch_header_never_claims_all_merged_or_a_merge_candidate() {
         ] {
             assert!(find_row(&buffer, absent).is_none(), "unexpected {absent}");
         }
+    }
+}
+
+#[tokio::test]
+async fn closed_single_pr_is_history_rather_than_a_merge_candidate() {
+    let (mut app, handles) = TestScenario::builder()
+        .repo("owner/name")
+        .single("main", "feature")
+        .pr(
+            "feature",
+            PrBuilder::new(91).ready().checks_all_pass().approved(),
+        )
+        .build()
+        .into_app();
+    handles.github.set_stack(StackViewResponse {
+        mode: StackMode::Single,
+        trunk: "main".into(),
+        current_branch: "feature".into(),
+        branches: vec![StackBranch {
+            name: "feature".into(),
+            is_merged: false,
+            is_queued: false,
+            pr: Some(StackPr {
+                number: 91,
+                url: "https://example.test/pr/91".into(),
+                state: "CLOSED".into(),
+            }),
+        }],
+    });
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app, 120, 40);
+    let row = find_row(&buffer, "#91").expect("closed PR row");
+    assert!(row_text(&buffer, row).contains("Closed"));
+    for absent in ["Next:", "ready to merge", "Open"] {
+        assert!(find_row(&buffer, absent).is_none(), "unexpected {absent}");
     }
 }
 
