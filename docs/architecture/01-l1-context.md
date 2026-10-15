@@ -27,6 +27,7 @@ flowchart LR
   Stat --> Store
   Stat --> Git
   Stat --> Gh --> GitHub
+  Git -->|git push| GitHub
 ```
 
 GitHub is the authority on stack membership and layer order; no local stack tracking is required to read them. The dashboard follows the worktree's checked-out branch. A branch whose PR has no GitHub stack, or which has no matching PR, uses a single-mode view rather than inferred stack membership. [Provider normalization](05-providers-and-store.md#github-adapter) defines its rows and trunk. The read/action split is recorded in [ADR-0002](../adr/0002-read-stack-from-github.md); [ADR-0003](../adr/0003-single-pr-and-no-pr-mode.md) supersedes its single-mode missing-data and action rules.
