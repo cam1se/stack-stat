@@ -379,3 +379,41 @@ async fn single_pull_request_draft_toggle_round_trip() {
     assert!(!github.pr_details(&stack).await.unwrap().prs[0].is_draft);
     github.toggle_draft(43, false).await.unwrap();
 }
+
+fn commit_here(dir: &Path, message: &str) {
+    let status = Command::new("git")
+        .args([
+            "-c",
+            "user.name=stack-stat live tests",
+            "-c",
+            "user.email=live-tests@users.noreply.github.com",
+            "commit",
+            "--allow-empty",
+            "-m",
+            message,
+        ])
+        .current_dir(dir)
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
+/// Single mode pushes with plain `git push`, not `gh stack push`: it succeeds
+/// without any local stack tracking and reports a rejection as a Git error.
+#[tokio::test]
+async fn single_mode_push_uses_plain_git_and_reports_rejection() {
+    live!();
+    let _fixture = Exclusive::begin().await;
+    let dir = clone(&fixture_repo(), "fixture/s6-nopr");
+    let other = clone(&fixture_repo(), "fixture/s6-nopr");
+    let github = provider(dir.path());
+    commit_here(dir.path(), "fixture: live push");
+    github.push_branch().await.unwrap();
+    // The second clone predates that push, so its commit cannot fast-forward.
+    commit_here(other.path(), "fixture: diverging");
+    let error = provider(other.path()).push_branch().await.unwrap_err();
+    let GitHubError::Git(message) = error else {
+        panic!("expected a Git error, got {error:?}");
+    };
+    assert!(message.contains("rejected"), "{message}");
+}
