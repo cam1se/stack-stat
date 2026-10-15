@@ -108,6 +108,7 @@ fn discovery_orders_by_position_despite_retargeted_merged_bases() {
 
     let stack = discover(&response, "api").unwrap();
 
+    assert_eq!(stack.mode, StackMode::Stacked);
     assert_eq!(stack.trunk, "main");
     assert_eq!(stack.current_branch, "api");
     assert_eq!(
@@ -285,6 +286,7 @@ fn discovery_falls_back_to_newest_lifecycle_pr_for_deleted_merged_branch() {
 
     let stack = discover(&response, "auth").unwrap();
 
+    assert_eq!(stack.mode, StackMode::Stacked);
     assert_eq!(stack.current_branch, "auth");
     assert!(stack.branches.iter().all(|branch| branch.is_merged));
     assert_eq!(stack.branches[0].name, "auth");
@@ -312,12 +314,19 @@ fn lookup_query_selects_newest_open_and_lifecycle_with_escaped_branch_name() {
     let escaped = serde_json::to_string(branch).unwrap();
 
     assert!(query.contains("defaultBranchRef { name }"));
-    assert_eq!(
-        query
-            .matches("number url headRefName baseRefName state isInMergeQueue")
-            .count(),
-        2
-    );
+    for connection in ["states:[OPEN]", "states:[OPEN,MERGED,CLOSED]"] {
+        let fields = candidate_fields(&query, connection);
+        for field in [
+            "number",
+            "url",
+            "headRefName",
+            "baseRefName",
+            "state",
+            "isInMergeQueue",
+        ] {
+            assert!(fields.contains(&field), "{connection} is missing {field}");
+        }
+    }
     assert!(query.contains("openPullRequests: pullRequests("));
     assert!(query.contains("states:[OPEN]"));
     assert!(query.contains("states:[OPEN,MERGED,CLOSED]"));
@@ -343,6 +352,16 @@ fn lookup_query_selects_newest_open_and_lifecycle_with_escaped_branch_name() {
     ] {
         assert!(query.contains(field), "missing {field}");
     }
+}
+
+/// Candidate fields selected by one PR connection, excluding its nested stack selection.
+fn candidate_fields<'q>(query: &'q str, connection: &str) -> Vec<&'q str> {
+    let selection = &query[query.find(connection).expect("connection") + connection.len()..];
+    let selection = &selection[selection.find("nodes").expect("candidate nodes")..];
+    selection[..selection.find("stack").expect("stack selection")]
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|field| !field.is_empty())
+        .collect()
 }
 
 fn candidate(owner: Option<&str>, stack: Value) -> Value {
@@ -480,6 +499,7 @@ fn discovery_fetches_every_entry_across_pages_before_returning_stack() {
         .unwrap()
         .unwrap();
 
+    assert_eq!(stack.mode, StackMode::Stacked);
     assert_eq!(stack.branches.len(), 101);
     assert_eq!(stack.branches[0].name, "layer1");
     assert_eq!(stack.branches[100].name, "layer101");

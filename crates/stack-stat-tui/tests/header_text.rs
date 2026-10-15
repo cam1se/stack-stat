@@ -255,7 +255,7 @@ async fn single_pr_header_identifies_mode_and_preserves_next_to_merge() {
 }
 
 #[tokio::test]
-async fn single_branch_header_never_claims_all_merged_or_a_merge_candidate() {
+async fn single_branch_header_hints_to_create_a_pr_and_names_no_merge_candidate() {
     let (mut app, _) = TestScenario::builder()
         .repo("owner/name")
         .single("main", "feature")
@@ -263,15 +263,16 @@ async fn single_branch_header_never_claims_all_merged_or_a_merge_candidate() {
         .into_app();
     app.poll_once(Source::All).await;
 
+    // Only the header renders this hint; the table and details say just "no PR yet".
+    let full = draw(&app, 120, 40);
+    assert!(find_row(&full, "create a PR when this branch is ready").is_some());
     for (width, height) in [(120, 40), (80, 24)] {
         let buffer = draw(&app, width, height);
         assert!(find_row(&buffer, "owner/name · main · single branch").is_some());
-        assert!(find_row(&buffer, "no PR yet").is_some());
         for absent in [
             "Next:",
             "ready to merge",
             "Nothing left to merge",
-            "All merged",
             "loading",
         ] {
             assert!(find_row(&buffer, absent).is_none(), "unexpected {absent}");
