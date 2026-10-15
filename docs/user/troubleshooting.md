@@ -16,6 +16,8 @@ The TUI follows the **checked-out worktree branch** and reads its PR's stack fro
 
 Checkout (`c`) and sync (`S`) are disabled in single mode and report that status without running a stack command. Push (`p`) uses plain `git push` after confirmation and needs no extension or local stack tracking. If Git reports no upstream or another push configuration error, inspect the configured remote and branch in a terminal and set the upstream explicitly, for example with `git push --set-upstream <remote> <branch>`. stack-stat does not choose an upstream or link a stack for you. Browser opening (`o`) and draft/ready toggling (`m`) work when a PR exists; they are unavailable on a no-PR row.
 
+If you switch branches outside the dashboard, push, checkout, and sync wait for the next GitHub result instead of acting on the previous branch's mode; the status bar reports the refresh, and the key works again once it completes.
+
 ## “Not in a stack”
 
 A detached or empty HEAD may still show this view because there is no current branch to display. Check out a branch to use the dashboard. A PR with a non-null GitHub stack uses stacked mode even when the stack has only one entry. A fresh clone or worktree can read that stack without initializing or linking it locally.

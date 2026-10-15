@@ -46,6 +46,7 @@ pub async fn fetch_github<G: GitProvider, H: GitHubProvider>(
                 stack: StackOutcome::InStack(stack),
                 details,
                 repo: github.repo(),
+                branch: current_branch,
                 fetched_at: now,
             })
         }
@@ -53,6 +54,7 @@ pub async fn fetch_github<G: GitProvider, H: GitHubProvider>(
             stack: StackOutcome::NotInStack,
             details: Default::default(),
             repo: github.repo(),
+            branch: current_branch,
             fetched_at: now,
         }),
         Err(error) => Err(error),

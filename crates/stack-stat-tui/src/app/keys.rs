@@ -152,6 +152,17 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     }
                     return Vec::new();
                 }
+                // Push picks its command from the GitHub mode, and checkout/sync are gated by
+                // it, so a GitHub result for another branch must be refreshed first.
+                if action != Action::ToggleDraft
+                    && self.state.github_branch != self.state.worktree_branch
+                {
+                    self.notify(
+                        NoticeLevel::Info,
+                        "branch changed; refreshing before running actions".into(),
+                    );
+                    return vec![Effect::Refresh(Source::All)];
+                }
                 if self.state.mode == StackMode::Single
                     && matches!(action, Action::Checkout | Action::Sync)
                 {

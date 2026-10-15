@@ -174,6 +174,8 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                             stack: stack_stat_core::compose::StackOutcome::NotInStack,
                             details: Default::default(),
                             repo,
+                            // A bare error does not say which branch it was for.
+                            branch: String::new(),
                             fetched_at: self.now,
                         });
                         self.clear_error(Source::GitHub);

@@ -18,6 +18,8 @@ pub struct StackState {
     pub branches: Vec<BranchState>,
     /// Branch currently checked out in this worktree.
     pub worktree_branch: String,
+    /// Branch the latest GitHub result was discovered for; empty when unknown.
+    pub github_branch: String,
     /// Current state of stack discovery.
     pub stack_status: StackStatus,
     /// Last successful Git refresh.
