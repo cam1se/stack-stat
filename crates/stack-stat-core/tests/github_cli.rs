@@ -345,3 +345,33 @@ async fn plain_push_preserves_git_upstream_failure_without_linking_a_stack() {
             .any(|line| line.starts_with("branch."))
     );
 }
+
+#[tokio::test]
+async fn rejected_plain_push_leads_with_the_rejection_and_keeps_git_output() {
+    let temp = tempfile::tempdir().unwrap();
+    let remote = temp.path().join("remote.git");
+    let repo = temp.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    git(temp.path(), &["init", "--bare", remote.to_str().unwrap()]);
+    git(&repo, &["init", "-b", "topic"]);
+    git(&repo, &["config", "push.default", "simple"]);
+    git(
+        &repo,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit(&repo, "base");
+    commit(&repo, "published");
+    git(&repo, &["push", "-u", "origin", "topic"]);
+    git(&repo, &["reset", "--hard", "HEAD~1"]);
+    commit(&repo, "rewritten");
+    let provider = CliGitHubProvider::new(repo, "example".into(), "project".into());
+
+    let GitHubError::Git(message) = provider.push_branch().await.unwrap_err() else {
+        panic!("plain push failures are Git errors");
+    };
+
+    let headline = message.lines().next().unwrap();
+    assert!(headline.starts_with("[rejected]"), "{message}");
+    assert!(headline.contains("non-fast-forward"), "{message}");
+    assert!(message.contains("failed to push some refs"), "{message}");
+}
