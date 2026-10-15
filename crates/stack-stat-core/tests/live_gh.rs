@@ -171,7 +171,10 @@ async fn discovers_a_three_pr_stack_and_loads_details() {
     let details = github.pr_details(&stack).await.unwrap();
     assert_eq!(details.prs.len(), 3);
     assert!(details.prs.iter().all(|pr| pr.is_draft));
-    assert!(details.remote_rebase_branches.is_empty());
+    // s1-a is based on `main`, which moves, so it may legitimately be behind.
+    // s1-b and s1-c sit on fixture branches that only reset moves.
+    assert!(!details.remote_rebase_branches.contains("fixture/s1-b"));
+    assert!(!details.remote_rebase_branches.contains("fixture/s1-c"));
 }
 
 /// Assert a one-row single-mode view and return its row.
