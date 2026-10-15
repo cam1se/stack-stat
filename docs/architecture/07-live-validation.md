@@ -52,7 +52,7 @@ Observed with `gh` 2.101.0 and `gh-stack` v0.1.1:
 
 ## Coverage and gaps
 
-Covered live: owner/name resolution; stacked, merged-stack and single-mode discovery (unstacked, non-default base, no PR, closed, merged) with PR details; same-name fork PR; link (`gh stack checkout`), push, sync, and draft toggle for stacked and single PRs; sync conflict; missing tracking, repository, extension, and authentication.
+Covered live: owner/name resolution; single-mode push with plain `git push` and its rejection; stacked, merged-stack and single-mode discovery (unstacked, non-default base, no PR, closed, merged) with PR details; same-name fork PR; link (`gh stack checkout`), push, sync, and draft toggle for stacked and single PRs; sync conflict; missing tracking, repository, extension, and authentication.
 
 Not covered:
 
