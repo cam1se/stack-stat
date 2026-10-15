@@ -143,3 +143,21 @@ async fn detail_identifies_the_current_branch_local_sync_state() {
         &["* current worktree", "local ahead of remote"],
     );
 }
+
+#[tokio::test]
+async fn no_pr_detail_separates_branch_and_local_checks_with_one_blank_line() {
+    let (mut app, _) = TestScenario::builder().single("main", "feature").into_app();
+    app.poll_once(Source::All).await;
+
+    let buffer = draw(&app);
+    let local = find_row(&buffer, "Local checks:").expect("local checks heading");
+    let inner = |row: u16| {
+        (0..buffer.area.width)
+            .map(|x| buffer[(x, row)].symbol())
+            .collect::<String>()
+            .trim_matches(|c: char| c == '│' || c.is_whitespace())
+            .to_owned()
+    };
+    assert_eq!(inner(local - 1), "");
+    assert_eq!(inner(local - 2), "feature");
+}
