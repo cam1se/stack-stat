@@ -38,6 +38,7 @@ fn github() -> GitHubSnapshot {
     let details = parse_stack_response(include_str!("fixtures/pr_details.json"), &stack).unwrap();
     GitHubSnapshot {
         repo: String::new(),
+        branch: "api".into(),
         stack: StackOutcome::InStack(stack),
         details,
         fetched_at: now(),
@@ -486,6 +487,7 @@ fn previous_commit_result_is_stale_and_declared_unreported_check_is_missing() {
 fn no_stack_and_off_stack_branch_do_not_mark_any_row_current() {
     let not_in_stack = GitHubSnapshot {
         repo: String::new(),
+        branch: "main".into(),
         stack: StackOutcome::NotInStack,
         details: Default::default(),
         fetched_at: now(),

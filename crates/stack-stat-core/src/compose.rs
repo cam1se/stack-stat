@@ -41,6 +41,8 @@ pub enum StackOutcome {
 pub struct GitHubSnapshot {
     /// `owner/name` of the GitHub repository, empty when unknown.
     pub repo: String,
+    /// Git branch this discovery ran for; empty when unknown.
+    pub branch: String,
     /// Normalized stacked/single view or unavailable-branch outcome.
     pub stack: StackOutcome,
     /// Remote PR details and rebase comparisons for this view.
@@ -71,6 +73,7 @@ pub fn compose(
     let mut state = StackState {
         repo: github.map_or_else(String::new, |github| github.repo.clone()),
         worktree_branch: git.map_or_else(String::new, |git| git.current_branch.clone()),
+        github_branch: github.map_or_else(String::new, |github| github.branch.clone()),
         last_git_fetch: git.map(|snapshot| snapshot.fetched_at),
         last_github_fetch: github.map(|snapshot| snapshot.fetched_at),
         last_store_fetch: store.map(|snapshot| snapshot.fetched_at),

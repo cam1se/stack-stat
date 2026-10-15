@@ -1,7 +1,10 @@
 mod support;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use stack_stat_core::providers::ProviderAction;
+use stack_stat_core::{
+    model::StackMode,
+    providers::{ProviderAction, StackBranch, StackPr, StackViewResponse},
+};
 use stack_stat_tui::{
     action::{Action, KEYMAP},
     app::{Mode, NoticeLevel},
@@ -297,6 +300,54 @@ async fn single_mode_push_requires_confirmation_and_reports_branch_success() {
         assert!(notice.text.to_lowercase().contains("branch"));
         assert!(!notice.text.to_lowercase().contains("stack"));
     }
+}
+
+fn view(mode: StackMode, branch: &str, pr_state: &str) -> StackViewResponse {
+    StackViewResponse {
+        mode,
+        trunk: "main".into(),
+        current_branch: branch.into(),
+        branches: vec![StackBranch {
+            name: branch.into(),
+            is_merged: false,
+            is_queued: false,
+            pr: Some(StackPr {
+                number: 42,
+                url: "https://example.test/pr/42".into(),
+                state: pr_state.into(),
+            }),
+        }],
+    }
+}
+
+#[tokio::test]
+async fn mode_dependent_actions_refresh_after_an_outside_branch_switch() {
+    let (mut app, handles) = TestScenario::builder()
+        .single("main", "feature")
+        .pr("feature", PrBuilder::new(42))
+        .into_app();
+    app.poll_once(Source::All).await;
+    // The worktree moves to a stacked branch, but only Git has polled since.
+    handles.git.set_current_branch("api");
+    handles
+        .github
+        .set_stack(view(StackMode::Stacked, "api", "OPEN"));
+    app.poll_once(Source::Git).await;
+
+    for command in ['p', 'c', 'S'] {
+        assert_eq!(
+            app.handle_key(key(command)),
+            vec![Effect::Refresh(Source::All)],
+            "{command}"
+        );
+        assert_eq!(app.mode(), &Mode::Normal);
+        assert!(app.notice().unwrap().text.contains("refreshing"));
+    }
+    assert!(handles.github.recorded_actions().is_empty());
+
+    app.poll_once(Source::GitHub).await;
+    assert!(app.handle_key(key('p')).is_empty());
+    assert_eq!(confirmation_action(&app), &ProviderAction::PushStack);
 }
 
 #[tokio::test]
