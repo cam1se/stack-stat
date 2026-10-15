@@ -172,7 +172,7 @@ pub(super) fn thread_label(branch: &BranchState) -> (String, Health) {
     (format!("◷ {}", pr.unresolved_threads), Health::Running)
 }
 
-pub(super) fn rebase_label(branch: &BranchState, full: bool) -> (String, Health) {
+pub(super) fn rebase_label(branch: &BranchState, trunk: &str, full: bool) -> (String, Health) {
     if branch.pr_number.is_none() && branch.pr.is_none() {
         return (String::new(), Health::Muted);
     }
@@ -180,7 +180,11 @@ pub(super) fn rebase_label(branch: &BranchState, full: bool) -> (String, Health)
         RebaseNeed::None => (String::new(), Health::Muted),
         RebaseNeed::Parent | RebaseNeed::Stacked => ("↻".into(), Health::Failure),
         RebaseNeed::Trunk => (
-            if full { "↻ main" } else { "↻" }.into(),
+            if full {
+                format!("↻ {trunk}")
+            } else {
+                "↻".into()
+            },
             if branch.trunk_rebase_gates {
                 Health::Failure
             } else {

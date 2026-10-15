@@ -98,7 +98,13 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         if full_reviews { "Threads" } else { "Thr" },
     ];
     if show_rebase {
-        widths.push(Constraint::Length(7));
+        // Full rows name the trunk ("↻ develop"); fit it within a bounded column.
+        let rebase_width = if full_rebase {
+            (app.state().trunk.chars().count() + 2).clamp(7, 20) as u16
+        } else {
+            7
+        };
+        widths.push(Constraint::Length(rebase_width));
         header.push(if full_rebase { "Rebase" } else { "Rb" });
     }
     if show_local {
@@ -151,7 +157,7 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     full_reviews,
                 );
                 let threads = thread_label(branch);
-                let rebase = rebase_label(branch, full_rebase);
+                let rebase = rebase_label(branch, &app.state().trunk, full_rebase);
                 let local = local_label(branch, full_local);
                 let branch_name = branch.name.as_str();
                 let title = if no_pr {
