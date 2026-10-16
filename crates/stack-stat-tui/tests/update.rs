@@ -113,7 +113,10 @@ fn verified_extraction_supports_unix_and_windows_archives() {
         } else {
             make_tar(&archive, stem);
         }
-        let hash = format!("{:x}", Sha256::digest(fs::read(&archive).unwrap()));
+        let hash: String = Sha256::digest(fs::read(&archive).unwrap())
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
         let checksums = format!("{hash}  {name}\n");
         let binary = extract_verified(&archive, &checksums, &version, target, temp.path()).unwrap();
         assert_eq!(fs::read(binary).unwrap(), b"real-new-binary");
