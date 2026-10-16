@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/cam1se/stack-stat/compare/v0.7.0...v0.8.0) (2026-10-16)
+
+
+### Features
+
+* **tui:** lead rows, details, and next-to-merge with the PR title ([6bb6180](https://github.com/cam1se/stack-stat/commit/6bb61805acbcfafc4e2c820532de63e434a11d39)), closes [#49](https://github.com/cam1se/stack-stat/issues/49)
+
 ## [0.7.0](https://github.com/cam1se/stack-stat/compare/v0.6.0...v0.7.0) (2026-10-15)
 
 
