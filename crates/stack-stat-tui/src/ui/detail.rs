@@ -65,19 +65,28 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         ]);
     }
     let mut lines = vec![Line::from(header)];
-    lines.extend(
-        wrap::wrap(&branch.name, content_width)
-            .into_iter()
-            .map(|line| Line::styled(line, Style::default().add_modifier(Modifier::BOLD))),
-    );
-    if let Some(pr) = &branch.pr
-        && !pr.title.is_empty()
-    {
-        lines.extend(
-            wrap::wrap(&pr.title, content_width.saturating_sub(2))
+    // The PR title is the headline with the branch dimmed and indented beneath it; without a
+    // title the branch stays the headline.
+    match branch.pr.as_ref().filter(|pr| !pr.title.is_empty()) {
+        Some(pr) => {
+            lines.extend(
+                wrap::wrap(&pr.title, content_width)
+                    .into_iter()
+                    .map(|line| Line::styled(line, Style::default().add_modifier(Modifier::BOLD))),
+            );
+            lines.extend(
+                wrap::wrap(&branch.name, content_width.saturating_sub(2))
+                    .into_iter()
+                    .map(|line| {
+                        Line::styled(format!("  {line}"), Style::default().fg(theme.muted))
+                    }),
+            );
+        }
+        None => lines.extend(
+            wrap::wrap(&branch.name, content_width)
                 .into_iter()
-                .map(|line| Line::styled(format!("  {line}"), Style::default().fg(theme.muted))),
-        );
+                .map(|line| Line::styled(line, Style::default().add_modifier(Modifier::BOLD))),
+        ),
     }
     match branch.rebase {
         RebaseNeed::None => {}

@@ -44,7 +44,7 @@ async fn header_names_lowest_open_layer_and_its_issues() {
     app.poll_once(Source::All).await;
 
     let buffer = draw(&app, 120, 40);
-    let row = find_row(&buffer, "Next: #41 failing").expect("next-to-merge row");
+    let row = find_row(&buffer, "Next: #41 Change 41").expect("next-to-merge row");
     assert!(
         row_text(&buffer, row + 1).contains("- 1 check failing"),
         "each issue is an indented bullet under the Next line"
@@ -143,7 +143,7 @@ async fn header_marks_ready_lowest_open_layer_ready_to_merge() {
     app.poll_once(Source::All).await;
 
     let buffer = draw(&app, 120, 40);
-    let row = find_row(&buffer, "Next: #51 ready").expect("next-to-merge row");
+    let row = find_row(&buffer, "Next: #51 Change 51").expect("next-to-merge row");
     assert!(row_text(&buffer, row).contains("ready to merge"));
 }
 
@@ -182,15 +182,17 @@ async fn header_lists_only_nonzero_blocker_categories() {
 
 #[tokio::test]
 async fn header_text_stops_before_the_pie_chart() {
-    let branch = "feature/this-branch-name-is-deliberately-long-enough-to-force-the-header-next-to-merge-line-to-stop-before-the-pie-chart";
+    let branch = "feature/long-branch";
+    let title = "This pull request title is deliberately long enough to force the header next-to-merge line to stop before the pie chart";
     let (mut app, _) = TestScenario::builder()
         .stack("main", &[branch])
         .pr(
             branch,
-            PrBuilder::new(71)
-                .ready()
-                .approved()
-                .check("ci", "COMPLETED", Some("FAILURE")),
+            PrBuilder::new(71).title(title).ready().approved().check(
+                "ci",
+                "COMPLETED",
+                Some("FAILURE"),
+            ),
         )
         .current_branch(branch)
         .build()
@@ -249,7 +251,7 @@ async fn single_pr_header_identifies_mode_and_preserves_next_to_merge() {
 
     let buffer = draw(&app, 120, 40);
     assert!(find_row(&buffer, "owner/name · main · single PR").is_some());
-    let next = find_row(&buffer, "Next: #91 feature").expect("single PR merge candidate");
+    let next = find_row(&buffer, "Next: #91 Change 91").expect("single PR merge candidate");
     assert!(row_text(&buffer, next).contains("ready to merge"));
     assert!(find_row(&buffer, "1 layer").is_none());
 }
@@ -332,7 +334,7 @@ async fn one_entry_github_stack_still_uses_layer_identity_and_merge_evidence() {
 
     let buffer = draw(&app, 120, 40);
     assert!(find_row(&buffer, "owner/name · main · 1 layer").is_some());
-    let next = find_row(&buffer, "Next: #92 feature").expect("stack merge candidate");
+    let next = find_row(&buffer, "Next: #92 Change 92").expect("stack merge candidate");
     assert!(row_text(&buffer, next).contains("ready to merge"));
     assert!(find_row(&buffer, "single PR").is_none());
 }

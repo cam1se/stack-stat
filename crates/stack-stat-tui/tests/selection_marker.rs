@@ -85,7 +85,7 @@ async fn local_sync_gutter_labels_only_the_current_worktree_branch() {
         let auth_line: String = (0..buffer.area.width)
             .map(|x| buffer[(x, auth)].symbol())
             .collect();
-        let auth_gutter = &auth_line[..auth_line.find("auth").unwrap()];
+        let auth_gutter = &auth_line[..auth_line.find("Change 42").unwrap()];
         assert!(
             auth_gutter.contains(marker),
             "expected {marker:?} in current branch gutter: {auth_line}"
@@ -101,7 +101,7 @@ async fn local_sync_gutter_labels_only_the_current_worktree_branch() {
         let api_line: String = (0..buffer.area.width)
             .map(|x| buffer[(x, api)].symbol())
             .collect();
-        let api_gutter = &api_line[..api_line.find("api").unwrap()];
+        let api_gutter = &api_line[..api_line.find("Change 43").unwrap()];
         assert!(
             !api_gutter.contains('*'),
             "non-current branch must have an empty gutter: {api_line}"
