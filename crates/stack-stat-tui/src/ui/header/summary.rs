@@ -47,7 +47,12 @@ pub(super) fn next_to_merge_lines(
         Span::styled(glyph, Style::default().fg(verdict_color)),
         Span::styled(" Next: ", Style::default().fg(theme.muted)),
         Span::styled(number, Style::default().fg(theme.accent)),
-        Span::raw(next.name.clone()),
+        Span::raw(
+            next.pr
+                .as_ref()
+                .filter(|pr| !pr.title.is_empty())
+                .map_or_else(|| next.name.clone(), |pr| pr.title.clone()),
+        ),
     ];
     if issues.is_empty() {
         head.push(Span::raw(" — "));

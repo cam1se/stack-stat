@@ -46,29 +46,26 @@ async fn detail_wraps_long_branch_name_and_title_without_clipping() {
     let content_width = usize::from(detail.width.saturating_sub(2));
     let buffer = draw(&app, area.width, area.height);
     let rows = detail_rows(&buffer, detail);
-    let branch_lines = wrap::wrap(branch, content_width);
-    let title_lines = wrap::wrap(title, content_width.saturating_sub(2));
+    let title_lines = wrap::wrap(title, content_width);
+    let branch_lines = wrap::wrap(branch, content_width.saturating_sub(2));
 
     assert!(rows[0].contains("PR #1833"));
     assert_eq!(
-        rows[1..1 + branch_lines.len()]
-            .iter()
-            .map(|line| line.trim_end())
-            .collect::<String>(),
-        branch
-    );
-    assert!(
-        rows[1 + branch_lines.len()..1 + branch_lines.len() + title_lines.len()]
-            .iter()
-            .all(|line| line.starts_with("  "))
-    );
-    assert_eq!(
-        rows[1 + branch_lines.len()..1 + branch_lines.len() + title_lines.len()]
+        rows[1..1 + title_lines.len()]
             .iter()
             .map(|line| line.trim().to_owned())
             .collect::<Vec<_>>()
             .join(" "),
         title
+    );
+    let branch_rows = &rows[1 + title_lines.len()..1 + title_lines.len() + branch_lines.len()];
+    assert!(branch_rows.iter().all(|line| line.starts_with("  ")));
+    assert_eq!(
+        branch_rows
+            .iter()
+            .map(|line| line.trim())
+            .collect::<String>(),
+        branch
     );
     for y in (detail.y + 1)..detail.bottom().saturating_sub(1) {
         assert_eq!(buffer[(detail.right() - 1, y)].symbol(), "│");

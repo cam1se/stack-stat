@@ -212,13 +212,15 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 + usize::from(branch.rebase != RebaseNeed::None)
                 + branch.local_checks.len().max(1);
         }
-        let title = branch
-            .pr
-            .as_ref()
-            .filter(|pr| !pr.title.is_empty())
-            .map_or(0, |pr| {
-                wrap::wrap(&pr.title, self.detail_viewport_width.saturating_sub(2)).len()
-            });
+        let titled = branch.pr.as_ref().filter(|pr| !pr.title.is_empty());
+        // A titled PR leads with the title, then the branch name indented by two columns.
+        let name_and_title = titled.map_or_else(
+            || wrap::wrap(&branch.name, self.detail_viewport_width).len(),
+            |pr| {
+                wrap::wrap(&pr.title, self.detail_viewport_width).len()
+                    + wrap::wrap(&branch.name, self.detail_viewport_width.saturating_sub(2)).len()
+            },
+        );
         let checks = branch
             .pr
             .as_ref()
@@ -233,8 +235,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         let local = branch.local_checks.len().max(1);
         // Header, wrapped branch name and title, then blank-separated checks, reviews,
         // threads, and local sections.
-        1 + wrap::wrap(&branch.name, self.detail_viewport_width).len()
-            + title
+        1 + name_and_title
             + usize::from(branch.rebase != RebaseNeed::None)
             + checks
             + 1

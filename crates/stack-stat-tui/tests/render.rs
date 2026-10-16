@@ -90,19 +90,31 @@ async fn branch_table_shows_pr_lifecycle_ci_reviews_and_local_results() {
         &buf,
         auth,
         &[
-            "*", "✔", "auth", "#42", "Open", "1/1", "approved", "lint", "test",
+            "*",
+            "✔",
+            "Change 42",
+            "#42",
+            "Open",
+            "1/1",
+            "approved",
+            "lint",
+            "test",
         ],
     );
-    assert_row_contains(&buf, auth + 1, &["Change 42"]);
+    assert_row_contains(&buf, auth + 1, &["auth"]);
     let api = find_body_row(&buf, "#43").unwrap();
     let spinner = app.animation().spinner_char().to_string();
     assert_row_contains(
         &buf,
         api,
-        &["✖", "api", "#43", "Draft", &spinner, "0/1", "pending"],
+        &["✖", "Change 43", "#43", "Draft", &spinner, "0/1", "pending"],
     );
     let ui = find_body_row(&buf, "#44").unwrap();
-    assert_row_contains(&buf, ui, &["✖", "ui", "#44", "Open", "✖", "0/1", "changes"]);
+    assert_row_contains(
+        &buf,
+        ui,
+        &["✖", "Change 44", "#44", "Open", "✖", "0/1", "changes"],
+    );
     assert!(find_body_row(&buf, "#45").is_some());
     assert!(find_row(&buf, "stale").is_none());
 }
@@ -134,10 +146,19 @@ async fn single_pr_keeps_full_readiness_and_local_evidence() {
         &buffer,
         row,
         &[
-            "*", "↑", "✔", "feature", "#42", "Open", "✔ 1/1", "approved", "✔ 0", "lint",
+            "*",
+            "↑",
+            "✔",
+            "Change 42",
+            "#42",
+            "Open",
+            "✔ 1/1",
+            "approved",
+            "✔ 0",
+            "lint",
         ],
     );
-    assert_row_contains(&buffer, row + 1, &["Change 42"]);
+    assert_row_contains(&buffer, row + 1, &["feature"]);
     for evidence in [
         "PR #42",
         "ci/build",
@@ -340,7 +361,8 @@ async fn branch_switch_and_stale_check_have_distinct_visual_markers() {
     app.poll_once(Source::Git).await;
     let buf = draw(&app, 120, 40);
     let api = find_body_row(&buf, "#43").unwrap();
-    assert_row_contains(&buf, api, &["*", "api"]);
+    assert_row_contains(&buf, api, &["*", "Change 43"]);
+    assert_row_contains(&buf, api + 1, &["api"]);
     let auth = find_body_row(&buf, "#42").unwrap();
     let auth_line: String = (0..buf.area.width)
         .map(|x| buf[(x, auth)].symbol())

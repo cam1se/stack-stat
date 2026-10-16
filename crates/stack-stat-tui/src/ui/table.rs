@@ -185,6 +185,19 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                     Verdict::Merged | Verdict::Closed => ratatui::style::Color::Reset,
                     _ => verdict_color,
                 };
+                // The PR title is the row's headline with the branch dimmed beneath it.
+                // Without a title (no PR, or an untitled one) the branch stays the headline
+                // and the second line carries the hint.
+                let (primary, secondary) = if title.is_empty() || no_pr {
+                    (branch_name, title)
+                } else {
+                    (title, branch_name)
+                };
+                let primary_style = if dim {
+                    style(Column::Branch, branch_color)
+                } else {
+                    style(Column::Branch, branch_color).add_modifier(Modifier::BOLD)
+                };
                 let mut cells = vec![
                     Cell::from(vec![
                         Line::from(vec![
@@ -198,19 +211,12 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
                         Line::styled(connector, Style::default().fg(verdict_color)),
                     ]),
                     Cell::from(vec![
-                        Line::from(Span::styled(
-                            branch_name,
-                            if dim {
-                                style(Column::Branch, branch_color)
-                            } else {
-                                style(Column::Branch, branch_color).add_modifier(Modifier::BOLD)
-                            },
-                        )),
+                        Line::from(Span::styled(primary, primary_style)),
                         Line::styled(
-                            if title.is_empty() {
+                            if secondary.is_empty() {
                                 String::new()
                             } else {
-                                format!("  {title}")
+                                format!("  {secondary}")
                             },
                             Style::default().fg(theme.muted),
                         ),
