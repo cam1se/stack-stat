@@ -42,7 +42,14 @@ pub fn extract_verified(
         }
         digest.update(&buf[..n]);
     }
-    let actual = format!("{:x}", digest.finalize());
+    let actual = digest
+        .finalize()
+        .iter()
+        .fold(String::new(), |mut hex, byte| {
+            use std::fmt::Write as _;
+            let _ = write!(hex, "{byte:02x}");
+            hex
+        });
     ensure!(actual == expected, "release checksum mismatch for {name}");
 
     let stem = name
