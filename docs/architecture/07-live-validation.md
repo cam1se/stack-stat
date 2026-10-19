@@ -10,7 +10,7 @@ make live-fixture-check   # verify tags, branches, PR states, and labels
 make live-fixture-reset   # restore fixture branches to their start tags
 ```
 
-Tests skip silently unless `STACK_STAT_LIVE=1`; `make live-test` sets it. `STACK_STAT_FIXTURE_REPO` and `STACK_STAT_FIXTURE_FORK` override the fixture repository (default `cam1se/stack-stat`) and the fork that holds the fork PRs (default `tcamise-gpsw/stack-stat`). The suite needs `git`, `gh`, and network access; the `gh stack` extension is installed by `gh` itself on first use.
+Tests skip silently unless `STACK_STAT_LIVE=1`; `make live-test` sets it. `STACK_STAT_FIXTURE_REPO` overrides the fixture repository (default `cam1se/stack-stat`). The suite needs `git`, `gh`, and network access; the `gh stack` extension is installed by `gh` itself on first use.
 
 ## Fixture
 
@@ -20,7 +20,7 @@ The fixture PRs stay open permanently. Closing and reopening them, like the draf
 
 Muting the threads cuts the email noise, but GitHub requires the `notifications` token scope for that, which the CI and agent tokens do not have; mute them from each account's notification settings instead.
 
-`scripts/live-fixture.sh check` verifies the tags, branches, PR states, and labels. The tests run it once per process and the workflow runs it before the tests, so a broken fixture fails with `FIXTURE:` lines and is reported as "Live gh fixture broken", not as drift. `scripts/live-fixture.sh up` reopens any fixture PR that was closed by accident. `scripts/live-fixture.sh rebuild` recreates missing branches from their tags and missing PRs for stacks `s1` and `s2` and PR `s5`, and relabels every fixture PR. Merged PRs, the closed PR, and fork PRs cannot be rebuilt by the script; recreate them by hand, as the fixture was first built.
+`scripts/live-fixture.sh check` verifies the tags, branches, PR states, and labels. The tests run it once per process and the workflow runs it before the tests, so a broken fixture fails with `FIXTURE:` lines and is reported as "Live gh fixture broken", not as drift. `scripts/live-fixture.sh up` reopens any fixture PR that was closed by accident. `scripts/live-fixture.sh rebuild` recreates missing branches from their tags and missing PRs for stacks `s1` and `s2` and PR `s5`, and relabels every fixture PR. Merged PRs and the closed PR cannot be rebuilt by the script; recreate them by hand, as the fixture was first built.
 
 |Stack|Pull requests|Trunk|Role|
 |---|---|---|---|
@@ -32,7 +32,6 @@ Muting the threads cuts the email noise, but GitHub requires the `notifications`
 |`s6`|branch `fixture/s6-nopr`, pushed, no PR|none|No-PR branch; trunk is the default branch|
 |`s7`|one closed, unmerged PR|`fixture/single-base`|Single closed PR; read-only|
 |`s8`|one merged PR|`fixture/single-base`|Single merged PR; read-only, cannot be reset|
-|fork|fork PR #40 from `fixture/s1-c` (open); #38 from `fixture/s4-same` (closed, unused)|`main`|Same head branch name as an upstream PR, different head owner|
 
 [`scripts/live-fixture.sh`](../../scripts/live-fixture.sh) implements `status`, `reset`, and `conflict`. `reset` force-pushes each branch to its `fixture-start/<name>` tag and restores draft state. Read-only tests hold a shared fixture lock; a mutating test holds it exclusively, resets the fixture before it starts, and resets again when it ends, including when it panics, so no test reads a half-reset fixture. The workflow adds a final reset step and a `concurrency` group so two runs never touch the fixture at once.
 
@@ -52,16 +51,16 @@ Observed with `gh` 2.101.0 and `gh-stack` v0.1.1:
 
 ## Coverage and gaps
 
-Covered live: owner/name resolution; single-mode push with plain `git push` and its rejection; stacked, merged-stack and single-mode discovery (unstacked, non-default base, no PR, closed, merged) with PR details; same-name fork PR; link (`gh stack checkout`), push, sync, and draft toggle for stacked and single PRs; sync conflict; missing tracking, repository, extension, and authentication.
+Covered live: owner/name resolution; single-mode push with plain `git push` and its rejection; stacked, merged-stack and single-mode discovery (unstacked, non-default base, no PR, closed, merged) with PR details; link (`gh stack checkout`), push, sync, and draft toggle for stacked and single PRs; sync conflict; missing tracking, repository, extension, and authentication.
 
 Not covered:
 
 - **Discovery over 100 stack entries.** Needs a 100-PR stack; pagination remains fixture-tested.
-- **Fork clone pushing to its own fork.** The fork PR is read with a fork checkout, but push and sync from a fork are not exercised.
+- **Fork PRs.** The fixture has no fork. Same-name fork PR resolution and push or sync from a fork are covered only by the offline fixtures in `stack_discovery.rs`.
 - **Exact conflict exit code.** The test asserts the classified result, not whether `gh stack` returned 3 or 7.
 - **Real dashboard rendering.** There is no headless stack printer; the TUI is still covered through `TestBackend` and fake providers. Revisit if a non-interactive resolved-stack command is added.
 - **Older `gh` versions.** The workflow tests one pinned known-good pair and the latest releases; versions in between are not tested.
-- **`s3` and fork PR drift.** If someone closes a fixture PR or deletes a fork branch, tests fail until the fixture is rebuilt by hand.
+- **`s3` drift.** If someone closes a fixture PR, tests fail until the fixture is rebuilt by hand.
 
 ## Credentials
 

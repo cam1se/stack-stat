@@ -14,7 +14,7 @@
 #   check     Verify the fixture: tags, branches, PR states and labels.
 #   status    Print each fixture branch and whether it matches its start tag.
 #   rebuild   Recreate missing branches from their tags and missing PRs for
-#             stacks s1/s2, s4 and s5. Merged and fork PRs cannot be rebuilt
+#             stacks s1/s2, s4 and s5. Merged PRs cannot be rebuilt
 #             here; see docs/architecture/07-live-validation.md.
 #
 # Environment: STACK_STAT_FIXTURE_REPO (default cam1se/stack-stat).
@@ -27,12 +27,12 @@ labels=("fixture" "do not merge")
 # Branches restored to fixture-start/<name> by `reset`.
 branches=(s1-a s1-b s1-c s2-a s2-b s5-single s6-nopr trunk)
 # PRs that stay open; `reset` restores the drafts among them.
-open_prs=(27 28 29 31 32 37 40 43)
+open_prs=(27 28 29 31 32 37 43)
 # Of those, PRs that must be drafts while open.
 draft_prs=(27 28 29 31 32 43)
 # PRs that are permanently merged or closed; tests only read them.
 merged_prs=(34 35 45)
-closed_prs=(38 44)
+closed_prs=(44)
 
 remote_sha() { git ls-remote "$url" "$1" | cut -f1; }
 
