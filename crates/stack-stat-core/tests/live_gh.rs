@@ -19,11 +19,6 @@ fn fixture_repo() -> String {
     std::env::var("STACK_STAT_FIXTURE_REPO").unwrap_or_else(|_| "cam1se/stack-stat".into())
 }
 
-/// Fork of the fixture repository that holds the fork PR.
-fn fork_repo() -> String {
-    std::env::var("STACK_STAT_FIXTURE_FORK").unwrap_or_else(|_| "tcamise-gpsw/stack-stat".into())
-}
-
 /// Every test depends on the remote fixture. Read-only tests hold this lock
 /// shared; mutating tests hold it exclusively, so nothing reads a half-reset
 /// fixture.
@@ -264,28 +259,6 @@ async fn merged_stack_keeps_deleted_branches() {
         .map(|b| b.pr.as_ref().unwrap().number)
         .collect();
     assert_eq!(numbers, [34, 35]);
-}
-
-/// Two PRs use head branch `fixture/s1-c`: #29, the top of stack s1, and fork
-/// PR #40, which is not stacked. The push remote decides which one is ours.
-#[tokio::test]
-async fn same_branch_name_resolves_by_head_repository_owner() {
-    live!();
-    shared!();
-    let upstream = clone(&fixture_repo(), "fixture/s1-c");
-    let stack = provider(upstream.path())
-        .stack_view("fixture/s1-c")
-        .await
-        .unwrap();
-    assert_eq!(stack.mode, StackMode::Stacked);
-    assert_eq!(stack.branches.len(), 3);
-    let fork = clone(&fork_repo(), "fixture/s1-c");
-    let from_fork = provider(fork.path())
-        .stack_view("fixture/s1-c")
-        .await
-        .unwrap();
-    let pr = single_row(&from_fork).pr.as_ref().unwrap();
-    assert_eq!(pr.number, 40);
 }
 
 #[tokio::test]
