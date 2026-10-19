@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/cam1se/stack-stat/compare/v0.8.0...v0.8.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **update:** format sha2 0.11 digest as hex without LowerHex ([53deb51](https://github.com/cam1se/stack-stat/commit/53deb516f5ede9e8cb6a41a8bcc2470b60a49d62))
+
 ## [0.8.0](https://github.com/cam1se/stack-stat/compare/v0.7.0...v0.8.0) (2026-10-16)
 
 
