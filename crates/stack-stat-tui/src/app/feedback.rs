@@ -81,7 +81,9 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                 if steps.before.is_none()
                     && matches!(
                         steps.action,
-                        ProviderAction::PushStack | ProviderAction::SyncStack
+                        ProviderAction::PushStack
+                            | ProviderAction::SyncStack
+                            | ProviderAction::RebaseStack
                     ) =>
             {
                 if let Some(target) = self.link_target() {
@@ -142,6 +144,7 @@ fn success_message(action: &ProviderAction) -> String {
         ProviderAction::PushStack => "Pushed stack".into(),
         ProviderAction::PushBranch => "Pushed branch".into(),
         ProviderAction::SyncStack => "Synced stack".into(),
+        ProviderAction::RebaseStack => "Rebased stack".into(),
         ProviderAction::ToggleDraft { number, make_ready } => format!(
             "PR #{number} is {}",
             if *make_ready { "ready" } else { "draft" }

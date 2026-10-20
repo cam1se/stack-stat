@@ -77,7 +77,7 @@ async fn navigation_refresh_and_unbound_enter_tab_have_distinct_actions() {
         app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE))
             .is_empty()
     );
-    assert_eq!(app.handle_key(key('R')), vec![Effect::Refresh(Source::All)]);
+    assert_eq!(app.handle_key(key('r')), vec![Effect::Refresh(Source::All)]);
     assert_eq!(
         app.handle_key(key('o')),
         vec![Effect::Mutate(ActionSteps::single(ProviderAction::OpenPr(
@@ -99,6 +99,21 @@ fn keymap_keeps_help_text_and_dispatch_on_the_same_entries() {
             .any(|binding| matches!(binding.key.code, KeyCode::Enter | KeyCode::Tab))
     );
     assert!(KEYMAP.iter().any(|binding| binding.action == Action::Sync && binding.key.code == KeyCode::Char('S')));
+    // History-rewriting stack operations use shifted letters, and renamed keys stay unbound.
+    for action in [Action::Sync, Action::Rebase] {
+        assert!(KEYMAP.iter().any(|binding| binding.action == action
+            && matches!(binding.key.code, KeyCode::Char(c) if c.is_ascii_uppercase())));
+    }
+    for retired in ['m', 's'] {
+        assert!(
+            stack_stat_tui::action::lookup(KeyEvent::new(
+                KeyCode::Char(retired),
+                KeyModifiers::NONE
+            ))
+            .is_none(),
+            "{retired} was renamed and must not stay bound"
+        );
+    }
     let mut keys = std::collections::HashSet::new();
     for binding in KEYMAP {
         assert!(
@@ -204,6 +219,7 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
             ),
             Action::Push => assert_eq!(confirmation_action(&app), &ProviderAction::PushStack),
             Action::Sync => assert_eq!(confirmation_action(&app), &ProviderAction::SyncStack),
+            Action::Rebase => assert_eq!(confirmation_action(&app), &ProviderAction::RebaseStack),
             Action::ToggleDraft => assert_eq!(
                 confirmation_action(&app),
                 &ProviderAction::ToggleDraft {
@@ -233,7 +249,7 @@ async fn single_mode_disables_checkout_and_sync_without_confirming_or_calling_pr
         let (mut app, handles) = scenario.into_app();
         app.poll_once(Source::All).await;
 
-        for (command, operation) in [('c', "checkout"), ('S', "sync")] {
+        for (command, operation) in [('c', "checkout"), ('S', "sync"), ('R', "rebase")] {
             assert!(app.handle_key(key(command)).is_empty());
             assert_eq!(app.mode(), &Mode::Normal);
             let notice = app.notice().expect("disabled action explains why");
@@ -361,7 +377,7 @@ async fn closed_single_pr_refuses_draft_toggle_without_calling_provider() {
         .set_stack(view(StackMode::Single, "feature", "CLOSED"));
     app.poll_once(Source::All).await;
 
-    assert!(app.handle_key(key('m')).is_empty());
+    assert!(app.handle_key(key('d')).is_empty());
     assert_eq!(app.mode(), &Mode::Normal);
     let notice = app.notice().expect("refusal is explained");
     assert_eq!(notice.level, NoticeLevel::Info);
@@ -389,7 +405,7 @@ async fn single_mode_existing_pr_can_open_and_toggle_draft_both_directions() {
                 .set_prs(vec![PrBuilder::new(42).ready().build()]);
             app.poll_once(Source::GitHub).await;
         }
-        assert!(app.handle_key(key('m')).is_empty());
+        assert!(app.handle_key(key('d')).is_empty());
         assert_eq!(
             confirmation_action(&app),
             &ProviderAction::ToggleDraft {
@@ -436,6 +452,7 @@ async fn one_entry_real_stack_keeps_checkout_push_sync_and_local_link_recovery()
         ('c', ProviderAction::Checkout("feature".into())),
         ('p', ProviderAction::PushStack),
         ('S', ProviderAction::SyncStack),
+        ('R', ProviderAction::RebaseStack),
     ] {
         assert!(app.handle_key(key(command)).is_empty());
         assert_eq!(confirmation_action(&app), &action);
@@ -469,6 +486,7 @@ async fn one_entry_real_stack_keeps_checkout_push_sync_and_local_link_recovery()
             ProviderAction::Checkout("feature".into()),
             ProviderAction::PushStack,
             ProviderAction::SyncStack,
+            ProviderAction::RebaseStack,
             ProviderAction::PushStack,
             ProviderAction::Checkout("42".into()),
             ProviderAction::PushStack,
@@ -496,7 +514,7 @@ async fn known_single_pr_without_details_can_open_but_draft_waits_for_details() 
         handles.github.recorded_actions(),
         [ProviderAction::OpenPr(42)]
     );
-    assert!(app.handle_key(key('m')).is_empty());
+    assert!(app.handle_key(key('d')).is_empty());
     assert_eq!(app.mode(), &Mode::Normal);
     let notice = app.notice().expect("missing details are explained");
     assert_eq!(notice.level, NoticeLevel::Info);
