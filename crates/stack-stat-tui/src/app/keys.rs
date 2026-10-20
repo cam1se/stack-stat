@@ -141,7 +141,11 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     number,
                 )))];
             }
-            Action::Checkout | Action::Push | Action::Sync | Action::ToggleDraft => {
+            Action::Checkout
+            | Action::Push
+            | Action::Sync
+            | Action::Rebase
+            | Action::ToggleDraft => {
                 if self.mutation_busy {
                     if !self
                         .status
@@ -176,12 +180,12 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                     return Vec::new();
                 }
                 if self.state.mode == StackMode::Single
-                    && matches!(action, Action::Checkout | Action::Sync)
+                    && matches!(action, Action::Checkout | Action::Sync | Action::Rebase)
                 {
-                    let operation = if action == Action::Checkout {
-                        "checkout"
-                    } else {
-                        "sync"
+                    let operation = match action {
+                        Action::Checkout => "checkout",
+                        Action::Sync => "sync",
+                        _ => "rebase",
                     };
                     self.notify(
                         NoticeLevel::Info,
@@ -198,6 +202,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
                         StackMode::Single => ProviderAction::PushBranch,
                     }),
                     Action::Sync => Some(ProviderAction::SyncStack),
+                    Action::Rebase => Some(ProviderAction::RebaseStack),
                     Action::ToggleDraft => self.selected().and_then(|branch| {
                         branch.pr.as_ref().map(|pr| ProviderAction::ToggleDraft {
                             number: pr.number,

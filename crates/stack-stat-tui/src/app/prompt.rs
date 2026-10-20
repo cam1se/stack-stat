@@ -23,6 +23,7 @@ impl Prompt {
             ProviderAction::PushStack => "Push stack".into(),
             ProviderAction::PushBranch => "Push branch".into(),
             ProviderAction::SyncStack => "Sync stack".into(),
+            ProviderAction::RebaseStack => "Rebase stack".into(),
             ProviderAction::ToggleDraft { number, make_ready } => format!(
                 "Mark PR #{number} {}",
                 if *make_ready { "ready" } else { "draft" }
@@ -34,6 +35,9 @@ impl Prompt {
             ProviderAction::PushStack => "Push the stack branches to GitHub.",
             ProviderAction::PushBranch => "Run plain git push for the current branch.",
             ProviderAction::SyncStack => "Fetch, reconcile, rebase, and push the stack.",
+            ProviderAction::RebaseStack => {
+                "Rewrite local history: rebase each branch onto its parent and the trunk. Nothing is pushed."
+            }
             ProviderAction::ToggleDraft { .. } => {
                 "Change the pull request's draft state on GitHub."
             }
@@ -50,7 +54,8 @@ impl Prompt {
         let operation = match action {
             ProviderAction::PushStack => "push",
             ProviderAction::SyncStack => "sync",
-            _ => unreachable!("only push and sync require local stack tracking"),
+            ProviderAction::RebaseStack => "rebase",
+            _ => unreachable!("only push, sync and rebase require local stack tracking"),
         };
         Self {
             title: format!("Link stack and {operation}"),

@@ -247,6 +247,47 @@ async fn declining_link_prompt_does_not_checkout_or_retry_sync() {
 }
 
 #[tokio::test]
+async fn rebase_conflict_reports_resolution_commands_and_keeps_the_dashboard_open() {
+    let (mut app, handles) = dashboard().await;
+    handles
+        .github
+        .set_mutation_results([Err(GitHubError::RebaseConflict)]);
+    let effect = confirm(&mut app, 'R');
+    app.run_effect(effect).await;
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [ProviderAction::RebaseStack]
+    );
+    assert_eq!(app.mode(), &Mode::Normal);
+    let notice = app.notice().unwrap();
+    assert_eq!(notice.level, NoticeLevel::Error);
+    assert!(notice.text.contains("rebase --continue"));
+}
+
+#[tokio::test]
+async fn missing_local_tracking_prompts_to_link_then_retries_the_rebase() {
+    let (mut app, handles) = dashboard().await;
+    handles
+        .github
+        .set_mutation_results([Err(GitHubError::LocalTrackingMissing)]);
+    let effect = confirm(&mut app, 'R');
+    app.run_effect(effect).await;
+    assert!(prompt(&app).title.contains("rebase"));
+    let effect = app.handle_key(key(KeyCode::Char('y'))).pop().unwrap();
+    app.run_effect(effect).await;
+    assert_eq!(
+        handles.github.recorded_actions(),
+        [
+            ProviderAction::RebaseStack,
+            ProviderAction::Checkout("43".into()),
+            ProviderAction::RebaseStack,
+        ]
+    );
+    assert_eq!(app.mode(), &Mode::Normal);
+    assert!(app.notice().unwrap().text.contains("Rebased"));
+}
+
+#[tokio::test]
 async fn failed_link_checkout_aborts_before_retry_and_leaves_persistent_error() {
     let (mut app, handles) = dashboard().await;
     handles.github.set_mutation_results([

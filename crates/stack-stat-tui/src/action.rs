@@ -25,6 +25,8 @@ pub enum Action {
     Push,
     /// Sync the active stack.
     Sync,
+    /// Rebase the active stack locally.
+    Rebase,
     /// Toggle PR draft state.
     ToggleDraft,
     /// Immediately refresh all sources.
@@ -136,7 +138,14 @@ pub const KEYMAP: &[KeyBinding] = &[
         "Table"
     ),
     binding!(
-        KeyCode::Char('m'),
+        KeyCode::Char('R'),
+        KeyModifiers::SHIFT,
+        Action::Rebase,
+        "rebase stack",
+        "Table"
+    ),
+    binding!(
+        KeyCode::Char('d'),
         KeyModifiers::NONE,
         Action::ToggleDraft,
         "toggle draft",
@@ -157,8 +166,8 @@ pub const KEYMAP: &[KeyBinding] = &[
         "Detail"
     ),
     binding!(
-        KeyCode::Char('R'),
-        KeyModifiers::SHIFT,
+        KeyCode::Char('r'),
+        KeyModifiers::NONE,
         Action::Refresh,
         "refresh",
         "Global"
@@ -171,7 +180,7 @@ pub const KEYMAP: &[KeyBinding] = &[
         "Global"
     ),
     binding!(
-        KeyCode::Char('s'),
+        KeyCode::Char('t'),
         KeyModifiers::NONE,
         Action::Sort,
         "cycle sort",

@@ -120,7 +120,7 @@ async fn draft_toggle_requires_confirmation_and_records_effect() {
     app.poll_once(Source::GitHub).await;
     app.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("api"));
-    assert!(app.handle_key(key('m')).is_empty());
+    assert!(app.handle_key(key('d')).is_empty());
     assert!(matches!(
         app.mode(),
         Mode::Confirm(prompt) if prompt.steps.action == ProviderAction::ToggleDraft {
@@ -199,7 +199,7 @@ async fn selection_survives_refresh_and_filter_sort_and_cancel_are_predictable()
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
     assert_eq!(app.selected_branch(), Some("ui"));
     assert_eq!(app.filter(), "ui");
-    app.handle_key(key('s'));
+    app.handle_key(key('t'));
     assert_eq!(app.sort(), SortOrder::PrNumber);
     app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
     app.handle_key(key('p'));
@@ -223,7 +223,7 @@ async fn busy_mutation_and_pr_less_row_do_not_launch_commands() {
     app.poll_once(Source::GitHub).await;
     assert!(app.handle_key(key('o')).is_empty());
     assert!(app.notice().unwrap().text.contains("no PR"));
-    assert!(app.handle_key(key('m')).is_empty());
+    assert!(app.handle_key(key('d')).is_empty());
     assert!(app.handle_key(key('p')).is_empty());
     let effects = app.handle_key(key('y'));
     assert!(matches!(
