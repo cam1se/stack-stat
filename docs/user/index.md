@@ -68,12 +68,13 @@ Windows users can run [install.ps1](https://github.com/cam1se/stack-stat/blob/ma
 | `o` | Open the selected PR in a browser; unavailable without a PR |
 | `c` | Confirm stacked checkout; disabled in single mode |
 | `p` | Confirm push: `gh stack push` in stacked mode, plain `git push` in single mode |
-| `S` | Confirm stacked sync; disabled in single mode |
-| `m` | Confirm draft/ready toggle; unavailable without a PR |
-| `R` | Refresh all data sources |
-| `/`, `s`, `b` | Filter branches, cycle sort order, show/hide bot reviews |
+| `S` | Confirm stacked sync (`gh stack sync`: fetch, rebase, push); disabled in single mode |
+| `R` | Confirm stacked rebase (`gh stack rebase`: rewrites local history, pushes nothing); disabled in single mode |
+| `d` | Confirm draft/ready toggle; unavailable without a PR |
+| `r` | Refresh all data sources |
+| `/`, `t`, `b` | Filter branches, cycle sort order, show/hide bot reviews |
 | `?`, `q`, Ctrl-C | Help, quit |
 
-The in-app `?` overlay is the source of truth for keybindings. In filter mode, type a branch substring, press Enter to keep it, or Esc to clear it. `s` cycles stack order, ascending PR number, and worst-check-first status order. Git and local results refresh frequently; GitHub refreshes more often while CI is active. Network failures preserve the last successful GitHub data.
+The in-app `?` overlay is the source of truth for keybindings. Shifted letters mark operations that rewrite history; lowercase keys are safe or reversible. In filter mode, type a branch substring, press Enter to keep it, or Esc to clear it. `t` cycles stack order, ascending PR number, and worst-check-first status order. Git and local results refresh frequently; GitHub refreshes more often while CI is active. Network failures preserve the last successful GitHub data.
 
 Agents, hooks, and scripts can report commit-specific [local checks](local-checks.md). See [configuration](configuration.md) for CI filters, reviewer preferences, and polling, or [troubleshooting](troubleshooting.md) for error states.

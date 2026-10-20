@@ -29,7 +29,7 @@ Install Git and an authenticated [GitHub CLI](https://cli.github.com/):
 gh auth login
 ```
 
-The dashboard reads stack membership directly from GitHub, so it works without local stack tracking. Install the [`gh stack` extension](https://github.com/github/gh-stack) only to check out, push, or sync stacks: `gh extension install github/gh-stack`.
+The dashboard reads stack membership directly from GitHub, so it works without local stack tracking. Install the [`gh stack` extension](https://github.com/github/gh-stack) only to check out, push, sync, or rebase stacks: `gh extension install github/gh-stack`.
 
 ## Install
 
@@ -46,7 +46,7 @@ Windows users can run the [PowerShell installer](scripts/install.ps1). Alternati
 
 ## Use
 
-From a Git worktree, run `stack-stat`. It shows the current branch's GitHub stack, a single unstacked PR, or a no-PR branch row. The detail pane starts on the worktree's branch. Use ↑/↓ to select a row; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Available mutations ask for confirmation; stacked push and sync ask before linking missing local tracking. Single-mode push uses plain `git push`, while single-mode checkout and sync are disabled. See the [user guide](docs/user/index.md#setup) for trunk selection and mode-specific actions.
+From a Git worktree, run `stack-stat`. It shows the current branch's GitHub stack, a single unstacked PR, or a no-PR branch row. The detail pane starts on the worktree's branch. Use ↑/↓ to select a row; Page Up/Down or the mouse wheel scroll the detail pane. Press `?` for the authoritative keybinding list and `q` to quit. Available mutations ask for confirmation; stacked push, sync, and rebase ask before linking missing local tracking. Single-mode push uses plain `git push`, while single-mode checkout, sync, and rebase are disabled. See the [user guide](docs/user/index.md#setup) for trunk selection and mode-specific actions.
 
 ## Configuration
 
