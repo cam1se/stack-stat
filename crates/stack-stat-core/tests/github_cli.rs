@@ -140,7 +140,7 @@ fn parser_rejects_responses_without_data_and_preserves_bot_and_context() {
 
 #[test]
 fn classifier_distinguishes_local_tracking_from_remote_discovery() {
-    for action in ["push", "sync"] {
+    for action in ["push", "sync", "rebase"] {
         assert_eq!(
             classify_gh_failure(
                 &["stack", action],

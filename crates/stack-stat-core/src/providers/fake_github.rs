@@ -202,6 +202,10 @@ impl GitHubProvider for FakeGitHubProvider {
         self.record(ProviderAction::SyncStack)
     }
 
+    async fn rebase_stack(&self) -> Result<String, GitHubError> {
+        self.record(ProviderAction::RebaseStack)
+    }
+
     async fn toggle_draft(&self, number: u32, make_ready: bool) -> Result<(), GitHubError> {
         self.record(ProviderAction::ToggleDraft { number, make_ready })
             .map(|_| ())
