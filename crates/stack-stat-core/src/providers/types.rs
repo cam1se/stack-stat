@@ -170,6 +170,8 @@ pub enum ProviderAction {
     PushBranch,
     /// Synchronize with remote.
     SyncStack,
+    /// Rebase the stack locally.
+    RebaseStack,
     /// Toggle draft state.
     ToggleDraft {
         /// PR number.

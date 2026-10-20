@@ -131,6 +131,9 @@ impl GitHubProvider for SlowFirstFetch {
     async fn sync_stack(&self) -> Result<String, GitHubError> {
         self.inner.sync_stack().await
     }
+    async fn rebase_stack(&self) -> Result<String, GitHubError> {
+        self.inner.rebase_stack().await
+    }
     async fn toggle_draft(&self, number: u32, make_ready: bool) -> Result<(), GitHubError> {
         self.inner.toggle_draft(number, make_ready).await
     }

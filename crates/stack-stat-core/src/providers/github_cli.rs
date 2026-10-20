@@ -221,6 +221,17 @@ impl GitHubProvider for CliGitHubProvider {
         classify_sync_output(&stdout, &stderr)
     }
 
+    async fn rebase_stack(&self) -> Result<String, GitHubError> {
+        let (stdout, stderr) = self
+            .run_output(&["stack", "rebase"], MUTATION_TIMEOUT)
+            .await?;
+        Ok([stdout.trim(), stderr.trim()]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n"))
+    }
+
     async fn toggle_draft(&self, number: u32, make_ready: bool) -> Result<(), GitHubError> {
         let number = number.to_string();
         let args: &[&str] = if make_ready {

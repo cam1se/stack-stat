@@ -87,7 +87,7 @@ pub fn classify_gh_failure(args: &[&str], code: i32, stderr: &str) -> GitHubErro
             return GitHubError::MissingStackExtension;
         }
         if code == 2
-            && matches!(args.get(1), Some(&"push" | &"sync"))
+            && matches!(args.get(1), Some(&"push" | &"sync" | &"rebase"))
             && lower.contains("is not part of a stack")
         {
             return GitHubError::LocalTrackingMissing;

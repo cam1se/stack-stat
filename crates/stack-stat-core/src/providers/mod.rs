@@ -78,6 +78,8 @@ pub trait GitHubProvider: Send + Sync {
     async fn push_branch(&self) -> std::result::Result<(), GitHubError>;
     /// Sync the stack with its remote state and return output.
     async fn sync_stack(&self) -> std::result::Result<String, GitHubError>;
+    /// Rebase the stack's branches onto each other and the trunk, without pushing.
+    async fn rebase_stack(&self) -> std::result::Result<String, GitHubError>;
     /// Make a PR ready or return it to draft.
     async fn toggle_draft(
         &self,
