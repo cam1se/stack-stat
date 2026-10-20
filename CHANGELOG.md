@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/cam1se/stack-stat/compare/v0.8.1...v0.9.0) (2026-10-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **tui:** R no longer refreshes (use r), m no longer toggles draft (use d), and s no longer cycles sort (use t).
+
+### Features
+
+* **providers:** add stack rebase to the github provider ([9f32b73](https://github.com/cam1se/stack-stat/commit/9f32b73d54b9925b9b0fde89e004303e867ea41e))
+* **tui:** add a rebase key and clean up the keymap ([35a9e3a](https://github.com/cam1se/stack-stat/commit/35a9e3ac582879d0a633905dadca5ce6826fd2e4))
+
 ## [0.8.1](https://github.com/cam1se/stack-stat/compare/v0.8.0...v0.8.1) (2026-10-19)
 
 
