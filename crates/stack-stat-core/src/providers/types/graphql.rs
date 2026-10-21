@@ -204,6 +204,9 @@ pub struct RawCheckSuite {
 /// Workflow run metadata.
 #[derive(Clone, Debug, Deserialize)]
 pub struct RawWorkflowRun {
+    /// Per-workflow run counter; a higher number is a later run.
+    #[serde(rename = "runNumber")]
+    pub run_number: Option<u64>,
     /// Workflow identity.
     pub workflow: Option<RawWorkflow>,
 }

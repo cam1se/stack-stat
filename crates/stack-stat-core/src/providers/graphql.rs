@@ -23,7 +23,7 @@ pub fn build_stack_query(owner: &str, repo: &str, stack: &StackViewResponse) -> 
         reviewRequests(first:50) { nodes { requestedReviewer { __typename ... on User { login } ... on Bot { login } ... on Team { name } } } } \
         reviewThreads(first:100) { nodes { isResolved } } \
         commits(last:1) { nodes { commit { statusCheckRollup { contexts(first:100) { nodes { __typename \
-        ... on CheckRun { name status conclusion startedAt completedAt detailsUrl checkSuite { workflowRun { workflow { name } } } } \
+        ... on CheckRun { name status conclusion startedAt completedAt detailsUrl checkSuite { workflowRun { runNumber workflow { name } } } } \
         ... on StatusContext { context state targetUrl createdAt } } } } } } }";
     for number in numbers {
         query.push_str(&format!(

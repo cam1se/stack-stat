@@ -397,3 +397,74 @@ async fn rejected_plain_push_leads_with_the_rejection_and_keeps_git_output() {
     assert!(headline.contains("non-fast-forward"), "{message}");
     assert!(message.contains("failed to push some refs"), "{message}");
 }
+
+fn check_run(name: &str, conclusion: &str, workflow: &str, run: u32) -> serde_json::Value {
+    serde_json::json!({
+        "__typename": "CheckRun", "name": name, "status": "COMPLETED", "conclusion": conclusion,
+        "startedAt": "2026-10-21T15:42:20Z", "completedAt": "2026-10-21T15:43:00Z",
+        "detailsUrl": "https://example.test/run",
+        "checkSuite": {"workflowRun": {"runNumber": run, "workflow": {"name": workflow}}}
+    })
+}
+
+fn details_with_checks(checks: Vec<serde_json::Value>) -> Vec<(String, String)> {
+    let raw = serde_json::json!({"data": {"repository": {"pr42": {
+        "number": 42, "url": "https://github.com/example/project/pull/42", "isDraft": false,
+        "reviewDecision": null, "latestReviews": {"nodes": []}, "reviewRequests": {"nodes": []},
+        "reviewThreads": {"nodes": []},
+        "commits": {"nodes": [{"commit": {"statusCheckRollup": {"contexts": {"nodes": checks}}}}]}
+    }}}});
+    let details = parse_stack_response(&raw.to_string(), &stack()).unwrap();
+    details.prs[0]
+        .checks
+        .iter()
+        .map(|check| {
+            (
+                check.name.clone(),
+                check.conclusion.clone().unwrap_or_default(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn cancelled_workflow_run_is_dropped_once_a_newer_run_of_the_workflow_exists() {
+    // Shape observed on a real PR: a concurrency-cancelled run left a placeholder matrix job and a
+    // failed gate beside the passing rerun of the same workflow.
+    let checks = details_with_checks(vec![
+        check_run(
+            "Validate (${{ matrix.label }})",
+            "CANCELLED",
+            "PR Checks",
+            9664,
+        ),
+        check_run("PR Checks Passed", "FAILURE", "PR Checks", 9664),
+        check_run("Resolve Validation Plan", "CANCELLED", "PR Checks", 9664),
+        check_run("Validate (Test)", "SUCCESS", "PR Checks", 9666),
+        check_run("PR Checks Passed", "SUCCESS", "PR Checks", 9666),
+        check_run("Resolve Validation Plan", "SUCCESS", "PR Checks", 9666),
+        check_run("lint", "SUCCESS", "Other", 12),
+    ]);
+    assert_eq!(
+        checks,
+        [
+            ("Validate (Test)".into(), "SUCCESS".into()),
+            ("PR Checks Passed".into(), "SUCCESS".into()),
+            ("Resolve Validation Plan".into(), "SUCCESS".into()),
+            ("lint".into(), "SUCCESS".into()),
+        ]
+    );
+}
+
+#[test]
+fn cancelled_run_and_genuine_failures_stay_visible_when_nothing_newer_exists() {
+    let checks = details_with_checks(vec![
+        check_run("build", "CANCELLED", "CI", 7),
+        // An older run that merely failed is real evidence, not a superseded cancellation.
+        check_run("test", "FAILURE", "CI", 4),
+        check_run("test", "SUCCESS", "CI", 6),
+    ]);
+    assert_eq!(checks.len(), 3, "{checks:?}");
+    assert!(checks.contains(&("build".into(), "CANCELLED".into())));
+    assert!(checks.contains(&("test".into(), "FAILURE".into())));
+}
