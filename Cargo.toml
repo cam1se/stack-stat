@@ -4,7 +4,7 @@ members = ["crates/stack-stat-core", "crates/stack-stat-tui"]
 default-members = ["crates/stack-stat-tui"]
 
 [workspace.package]
-version = "0.9.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.98"
 
