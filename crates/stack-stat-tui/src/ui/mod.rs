@@ -18,6 +18,7 @@ use crate::{
 
 /// Tick-based animation state and cell change detection.
 pub mod animation;
+mod confirm;
 mod detail;
 mod header;
 mod help;
@@ -59,7 +60,7 @@ pub struct UiRegions {
     pub table: Rect,
     /// Optional selected-branch details.
     pub detail: Option<Rect>,
-    /// Confirmation content plus separate footer hints and feedback.
+    /// Footer hints and feedback.
     pub status: Rect,
 }
 
@@ -78,7 +79,7 @@ pub fn regions<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     } else {
         5
     };
-    let footer_height = status_bar::height(app.mode()).min(area.height);
+    let footer_height = 1.min(area.height);
     let header_height =
         header_height.min(area.height.saturating_sub(footer_height).saturating_sub(1));
     let chunks = Layout::vertical([
@@ -124,7 +125,7 @@ pub fn hit_test<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     x: u16,
     y: u16,
 ) -> PointerTarget {
-    if matches!(app.mode(), Mode::Help) {
+    if matches!(app.mode(), Mode::Help | Mode::Confirm(_)) {
         return PointerTarget::Outside;
     }
     let layout = regions(area, app);
@@ -170,7 +171,9 @@ pub fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
         detail::render(frame, detail, app, theme);
     }
     status_bar::render(frame, layout.status, app, theme);
-    if matches!(app.mode(), Mode::Help) {
-        help::render(frame, area, theme, app.state().mode);
+    match app.mode() {
+        Mode::Help => help::render(frame, area, theme, app.state().mode),
+        Mode::Confirm(prompt) => confirm::render(frame, area, prompt, theme),
+        _ => {}
     }
 }

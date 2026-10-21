@@ -1,4 +1,4 @@
-//! Separate confirmation prompts, contextual key hints, and typed notices.
+//! Contextual key hints and typed notices in the footer.
 
 use std::borrow::Cow;
 
@@ -9,24 +9,13 @@ use ratatui::{
     text::{Line, Span},
     widgets::Paragraph,
 };
-use stack_stat_core::providers::{
-    GitHubProvider, GitProvider, ProviderAction, StatusStoreProvider,
-};
+use stack_stat_core::providers::{GitHubProvider, GitProvider, StatusStoreProvider};
 
 use crate::{
     action::{Action, KEYMAP},
-    app::{App, Mode, NoticeLevel, Prompt},
+    app::{App, Mode, NoticeLevel},
     theme::Theme,
 };
-
-pub(super) fn height(mode: &Mode) -> u16 {
-    let Mode::Confirm(prompt) = mode else {
-        return 1;
-    };
-    // Title, each detail line, ordered command steps, then independent hints/notice.
-    let rows = 2 + prompt.detail.lines().count() + prompt.steps.iter().count();
-    rows.min(usize::from(u16::MAX)) as u16
-}
 
 pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame: &mut Frame<'_>,
@@ -36,17 +25,6 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
 ) {
     if area.is_empty() {
         return;
-    }
-    if let Mode::Confirm(prompt) = app.mode() {
-        render_prompt(
-            frame,
-            Rect {
-                height: area.height.saturating_sub(1),
-                ..area
-            },
-            prompt,
-            theme,
-        );
     }
     let feedback_area = Rect {
         y: area.bottom().saturating_sub(1),
@@ -121,61 +99,6 @@ pub(super) fn render<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
     frame.render_widget(Paragraph::new(Line::from(spans)), feedback_area);
 }
 
-fn render_prompt(frame: &mut Frame<'_>, area: Rect, prompt: &Prompt, theme: &Theme) {
-    if area.is_empty() {
-        return;
-    }
-    let width = usize::from(area.width);
-    let response = if prompt.title.ends_with('?') {
-        " y/n"
-    } else {
-        "? y/n"
-    };
-    let mut lines = vec![Line::from(vec![
-        Span::styled(
-            truncate(&prompt.title, width.saturating_sub(response.len())),
-            Style::default()
-                .fg(theme.accent)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(response, Style::default().fg(theme.accent)),
-    ])];
-    lines.extend(
-        prompt
-            .detail
-            .lines()
-            .map(|detail| Line::styled(truncate(detail, width), Style::default().fg(theme.muted))),
-    );
-    for (index, action) in prompt.steps.iter().enumerate() {
-        let command = command(action);
-        let prefix = if index == 0 { "1. " } else { "2. " };
-        let command = match truncate(&command, width.saturating_sub(prefix.len())) {
-            Cow::Borrowed(_) => command,
-            Cow::Owned(text) => Cow::Owned(text),
-        };
-        lines.push(Line::from(vec![
-            Span::styled(prefix, Style::default().fg(theme.muted)),
-            Span::styled(command, Style::default().fg(theme.accent)),
-        ]));
-    }
-    frame.render_widget(Paragraph::new(lines), area);
-}
-
-fn command(action: &ProviderAction) -> Cow<'_, str> {
-    match action {
-        ProviderAction::Checkout(target) => Cow::Owned(format!("gh stack checkout {target}")),
-        ProviderAction::PushStack => Cow::Borrowed("gh stack push"),
-        ProviderAction::PushBranch => Cow::Borrowed("git push"),
-        ProviderAction::SyncStack => Cow::Borrowed("gh stack sync"),
-        ProviderAction::RebaseStack => Cow::Borrowed("gh stack rebase"),
-        ProviderAction::OpenPr(number) => Cow::Owned(format!("gh pr view {number} --web")),
-        ProviderAction::ToggleDraft { number, make_ready } => Cow::Owned(format!(
-            "gh pr ready {number}{}",
-            if *make_ready { "" } else { " --undo" }
-        )),
-    }
-}
-
 fn normal_hints(width: u16, status_width: usize) -> Vec<(String, &'static str)> {
     let compact = width < 100 || status_width > 0;
     let actions: &[Action] = if compact {
@@ -218,13 +141,13 @@ fn mode_hint<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider>(
 ) -> Cow<'static, str> {
     match mode {
         Mode::Filter => Cow::Owned(format!("Filter: {} (Enter keep, Esc clear)", app.filter())),
-        Mode::Confirm(_) => "y confirm  n cancel".into(),
+        Mode::Confirm(_) => "Enter/y confirm  Esc/n cancel".into(),
         Mode::Help => "any key closes help".into(),
         Mode::Normal => unreachable!("normal mode uses key hints"),
     }
 }
 
-fn truncate(text: &str, width: usize) -> Cow<'_, str> {
+pub(super) fn truncate(text: &str, width: usize) -> Cow<'_, str> {
     if Span::raw(text).width() <= width {
         return Cow::Borrowed(text);
     }

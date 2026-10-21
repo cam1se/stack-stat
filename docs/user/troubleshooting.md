@@ -32,7 +32,7 @@ The muted suffix beside the `*` worktree marker is local sync information only: 
 
 ## Mutations and rebase conflicts
 
-Available mutations require a `y` confirmation. Only one operation runs at once. In stacked mode, a `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. A sync that prints `Sync aborted` despite exiting 0 means local and remote stack chains diverge; stack-stat treats it as an abort, not as a successful sync. Inspect the two chains before retrying. stack-stat never silently resolves conflicts.
+Available mutations open a confirmation modal; press `Enter` or `y` to accept and `Esc` or `n` to cancel. Only one operation runs at once. In stacked mode, a `gh stack` conflict leaves the TUI open and reports the error; resolve it with `gh stack rebase --continue` or `gh stack rebase --abort` in a terminal after inspecting the repository state. A sync that prints `Sync aborted` despite exiting 0 means local and remote stack chains diverge; stack-stat treats it as an abort, not as a successful sync. Inspect the two chains before retrying. stack-stat never silently resolves conflicts.
 
 If stacked checkout, push, sync, or rebase reports that `gh stack` is unavailable, run `gh extension install github/gh-stack` and verify with `gh extension list`. The extension is needed only for these stacked actions; its absence does not prevent the dashboard from opening or a single-mode push from running.
 
