@@ -42,7 +42,7 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
             return Vec::new();
         }
         match key.code {
-            KeyCode::Char('y' | 'Y') => {
+            KeyCode::Enter | KeyCode::Char('y' | 'Y') => {
                 let Mode::Confirm(prompt) = std::mem::replace(&mut self.mode, Mode::Normal) else {
                     unreachable!("confirmation input requires a prompt");
                 };

@@ -73,13 +73,10 @@ async fn confirmation_keeps_existing_notice_on_a_separate_footer_line() {
     let buffer = draw(&app, 120, 30, &theme);
     let prompt_row = find_row(&buffer, &prompt.title).expect("prompt title");
     let notice_row = find_row(&buffer, "Saved successfully").expect("retained notice");
-    assert_row_contains(&buffer, prompt_row, &[&prompt.title, "y/n"]);
     assert_ne!(prompt_row, notice_row);
     assert_eq!(notice_row, buffer.area.height - 1);
     assert_text_color(&buffer, notice_row, "Saved successfully", theme.muted);
-    let footer = ui::regions(buffer.area, &app).status;
-    assert!(prompt_row >= footer.y);
-    assert!(footer.height >= 2);
+    assert_eq!(ui::regions(buffer.area, &app).status.height, 1);
 }
 
 #[tokio::test]
@@ -93,7 +90,12 @@ async fn confirmation_without_notice_does_not_copy_prompt_into_feedback() {
     let buffer = draw(&app, 120, 30, &Theme::for_depth(ColorDepth::Ansi256));
     let prompt_row = find_row(&buffer, &prompt.title).expect("prompt title");
     assert!(prompt_row < buffer.area.height - 1);
-    assert_row_contains(&buffer, buffer.area.height - 1, &["y confirm", "n cancel"]);
+    assert_row_contains(&buffer, prompt_row + 1, &[&prompt.detail]);
+    assert_row_contains(
+        &buffer,
+        buffer.area.height - 1,
+        &["Enter/y confirm", "Esc/n cancel"],
+    );
 }
 
 #[tokio::test]
@@ -155,9 +157,9 @@ async fn link_prompt_displays_tracking_detail_and_exact_ordered_commands() {
         };
         let buffer = draw(&app, 120, 30, &Theme::for_depth(ColorDepth::TrueColor));
         let title = find_row(&buffer, &prompt.title).expect("link title");
-        assert_row_contains(&buffer, title, &[&prompt.title, "y/n"]);
+        assert_row_contains(&buffer, title, &[&prompt.title]);
         assert!(
-            find_row(&buffer, &prompt.detail).is_some(),
+            find_row(&buffer, "Local gh-stack tracking is missing.").is_some(),
             "link detail is visible"
         );
         let checkout = find_row(&buffer, "gh stack checkout 42").expect("exact PR checkout");
@@ -167,8 +169,7 @@ async fn link_prompt_displays_tracking_detail_and_exact_ordered_commands() {
             action < buffer.area.height - 1,
             "notice/hints remain separate"
         );
-        let footer = ui::regions(buffer.area, &app).status;
-        assert!(footer.height >= 5);
+        assert_eq!(ui::regions(buffer.area, &app).status.height, 1);
     }
 }
 
@@ -230,7 +231,7 @@ async fn narrow_notice_truncates_without_overwriting_contextual_hints() {
 }
 
 #[tokio::test]
-async fn tiny_terminals_keep_regions_bounded_and_prompt_feedback_separate_when_possible() {
+async fn tiny_terminals_keep_regions_bounded_and_footer_hints_visible_when_possible() {
     let mut app = ready(true).await;
     mutation(&mut app, Err(GitHubError::LocalTrackingMissing));
     let theme = Theme::for_depth(ColorDepth::Basic16);
@@ -248,8 +249,7 @@ async fn tiny_terminals_keep_regions_bounded_and_prompt_feedback_separate_when_p
         }
     }
     let buffer = draw(&app, 40, 2, &theme);
-    assert_row_contains(&buffer, 0, &["y/n"]);
-    assert_row_contains(&buffer, 1, &["y confirm", "n cancel"]);
+    assert_row_contains(&buffer, 1, &["Enter/y confirm", "Esc/n cancel"]);
 }
 
 #[tokio::test]

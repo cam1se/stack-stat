@@ -57,6 +57,17 @@ fn complete(app: &mut FakeApp, action: ProviderAction, result: Result<String, Gi
 }
 
 #[tokio::test]
+async fn enter_accepts_a_confirmation_like_y() {
+    let (mut app, _) = dashboard().await;
+    assert!(app.handle_key(key(KeyCode::Char('p'))).is_empty());
+    let expected = prompt(&app).steps.clone();
+    let effects = app.handle_key(key(KeyCode::Enter));
+    assert_eq!(effects, vec![Effect::Mutate(expected)]);
+    assert!(matches!(app.mode(), Mode::Normal));
+    assert_eq!(app.notice().unwrap().level, NoticeLevel::Progress);
+}
+
+#[tokio::test]
 async fn progress_has_no_expiry_and_success_info_expires_after_four_seconds() {
     let (mut app, _) = dashboard().await;
     let effect = confirm(&mut app, 'p');

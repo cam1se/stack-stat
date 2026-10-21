@@ -254,7 +254,7 @@ async fn single_mode_help_and_confirmation_describe_plain_branch_push() {
     app.handle_key(key('?'));
     app.handle_key(key('p'));
     let prompt = draw(&app, 120, 32);
-    assert!(find_row(&prompt, "Push branch? y/n").is_some());
+    assert!(find_row(&prompt, "Push branch?").is_some());
     assert!(find_row(&prompt, "git push").is_some());
     assert!(find_row(&prompt, "gh stack").is_none());
 }
@@ -422,7 +422,7 @@ async fn loading_not_in_stack_help_and_confirmation_render_without_panics() {
     }
     app.handle_key(key('?'));
     app.handle_key(key('p'));
-    assert!(find_row(&draw(&app, 120, 26), "Push stack? y/n").is_some());
+    assert!(find_row(&draw(&app, 120, 26), "Push stack?").is_some());
     handles.git.set_current_branch("");
     app.poll_once(Source::All).await;
     assert_eq!(app.state().stack_status, StackStatus::NotInStack);
