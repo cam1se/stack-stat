@@ -88,7 +88,7 @@ impl RawPr {
             .flatten()
             .filter(|thread| !thread.is_resolved)
             .count();
-        let checks = self
+        let checks: Vec<RawCheck> = self
             .commits
             .into_iter()
             .flat_map(|value| value.nodes)
@@ -96,6 +96,9 @@ impl RawPr {
             .filter_map(|node| node.commit.status_check_rollup)
             .flat_map(|rollup| rollup.contexts.nodes)
             .flatten()
+            .collect();
+        let checks = drop_superseded_runs(checks)
+            .into_iter()
             .map(RawCheck::normalize)
             .collect();
         PrResponse {
@@ -110,6 +113,46 @@ impl RawPr {
             checks,
         }
     }
+}
+
+/// (workflow name, run number) of a check run that belongs to a workflow run.
+fn run_key(check: &RawCheck) -> Option<(&str, u64)> {
+    let RawCheck::CheckRun { check_suite, .. } = check else {
+        return None;
+    };
+    let run = check_suite.as_ref()?.workflow_run.as_ref()?;
+    Some((run.workflow.as_ref()?.name.as_str(), run.run_number?))
+}
+
+/// Remove checks of a cancelled workflow run once a later run of the same workflow exists.
+///
+/// GitHub keeps every run for a commit in the rollup. A concurrency-cancelled run leaves cancelled
+/// jobs, unexpanded matrix placeholders, and a failed gate job beside the rerun that replaced it.
+/// Only a run containing a cancellation is treated as superseded, so an older run that genuinely
+/// failed stays visible.
+fn drop_superseded_runs(checks: Vec<RawCheck>) -> Vec<RawCheck> {
+    let superseded: std::collections::HashSet<(String, u64)> = checks
+        .iter()
+        .filter_map(|check| {
+            let (workflow, run) = run_key(check)?;
+            let RawCheck::CheckRun { conclusion, .. } = check else {
+                return None;
+            };
+            let newer = checks
+                .iter()
+                .filter_map(run_key)
+                .any(|(other, number)| other == workflow && number > run);
+            (conclusion.as_deref() == Some("CANCELLED") && newer)
+                .then(|| (workflow.to_owned(), run))
+        })
+        .collect();
+    checks
+        .into_iter()
+        .filter(|check| {
+            run_key(check)
+                .is_none_or(|(workflow, run)| !superseded.contains(&(workflow.to_owned(), run)))
+        })
+        .collect()
 }
 
 impl RawCheck {
