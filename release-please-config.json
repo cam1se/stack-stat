@@ -4,7 +4,6 @@
     ".": {
       "release-type": "simple",
       "exclude-paths": [".agents", ".githooks", ".github", "docs", "scripts"],
-      "bump-minor-pre-major": true,
       "prerelease": false,
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
