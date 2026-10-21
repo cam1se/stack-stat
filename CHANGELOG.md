@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.0](https://github.com/cam1se/stack-stat/compare/v0.9.0...v1.0.0) (2026-10-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **build:** stack-stat reaches 1.0.0. The keymap renamed in 0.9.0 (r refresh, d draft, t sort, R rebase) and the existing commands are now the stable public interface.
+
+### Features
+
+* **tui:** quit on escape ([f0c79dc](https://github.com/cam1se/stack-stat/commit/f0c79dcfba3722d750058d8c545af547f22e1bf1))
+* **tui:** show command confirmation in a modal ([511e711](https://github.com/cam1se/stack-stat/commit/511e7114ecc9ed95905e0627706a758bcf460977)), closes [#57](https://github.com/cam1se/stack-stat/issues/57)
+
+
+### Miscellaneous Chores
+
+* **build:** release 1.0.0 ([12123db](https://github.com/cam1se/stack-stat/commit/12123db9fdfbfc0a28d5f779f6dbb77fb70abd59))
+
 ## [0.9.0](https://github.com/cam1se/stack-stat/compare/v0.8.1...v0.9.0) (2026-10-20)
 
 
