@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/cam1se/stack-stat/compare/v1.0.0...v1.0.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **providers:** ignore checks from cancelled runs a newer run replaced ([ebe8623](https://github.com/cam1se/stack-stat/commit/ebe8623c97e6316c346e3bc08792998429ee016a))
+
 ## [1.0.0](https://github.com/cam1se/stack-stat/compare/v0.9.0...v1.0.0) (2026-10-21)
 
 
