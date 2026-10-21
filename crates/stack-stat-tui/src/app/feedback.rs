@@ -38,7 +38,8 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         }
     }
 
-    pub(super) fn dismiss_error(&mut self) {
+    /// Clear a persistent error notice; returns whether one was showing.
+    pub(super) fn dismiss_error(&mut self) -> bool {
         if self
             .status
             .as_ref()
@@ -46,7 +47,9 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
         {
             self.status = None;
             self.notice_source = None;
+            return true;
         }
+        false
     }
 
     pub(super) fn complete_mutation(

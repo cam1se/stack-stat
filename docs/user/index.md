@@ -73,7 +73,7 @@ Windows users can run [install.ps1](https://github.com/cam1se/stack-stat/blob/ma
 | `d` | Confirm draft/ready toggle; unavailable without a PR |
 | `r` | Refresh all data sources |
 | `/`, `t`, `b` | Filter branches, cycle sort order, show/hide bot reviews |
-| `?`, `q`, Ctrl-C | Help, quit |
+| `?`, `q` or Esc, Ctrl-C | Help, quit (Esc first dismisses a persistent error message) |
 
 The in-app `?` overlay is the source of truth for keybindings. Shifted letters mark operations that rewrite history; lowercase keys are safe or reversible. In filter mode, type a branch substring, press Enter to keep it, or Esc to clear it. `t` cycles stack order, ascending PR number, and worst-check-first status order. Git and local results refresh frequently; GitHub refreshes more often while CI is active. Network failures preserve the last successful GitHub data.
 
