@@ -106,8 +106,12 @@ impl<G: GitProvider, H: GitHubProvider, S: StatusStoreProvider> App<G, H, S> {
 
     fn normal_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         if key.code == KeyCode::Esc {
-            self.dismiss_error();
-            return Vec::new();
+            // Esc first dismisses a persistent error; with none showing it quits like `q`.
+            return if self.dismiss_error() {
+                Vec::new()
+            } else {
+                vec![Effect::Quit]
+            };
         }
         let Some(action) = lookup(key) else {
             return Vec::new();

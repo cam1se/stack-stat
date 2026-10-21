@@ -129,6 +129,19 @@ async fn mutation_error_persists_across_time_and_source_refresh_until_escape() {
 }
 
 #[tokio::test]
+async fn escape_quits_only_when_no_error_is_showing() {
+    let (mut app, _) = dashboard().await;
+    complete(
+        &mut app,
+        ProviderAction::PushStack,
+        Err(GitHubError::Network("push denied".into())),
+    );
+    assert!(app.handle_key(key(KeyCode::Esc)).is_empty());
+    assert!(app.notice().is_none());
+    assert_eq!(app.handle_key(key(KeyCode::Esc)), vec![Effect::Quit]);
+}
+
+#[tokio::test]
 async fn source_error_only_clears_when_its_source_recovers() {
     let (mut app, _) = dashboard().await;
     app.apply(AppMessage::GitHub(Err(GitHubError::Network(

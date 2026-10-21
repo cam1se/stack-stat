@@ -208,6 +208,13 @@ pub const KEYMAP: &[KeyBinding] = &[
         "Global"
     ),
     binding!(
+        KeyCode::Esc,
+        KeyModifiers::NONE,
+        Action::Quit,
+        "quit",
+        "Global"
+    ),
+    binding!(
         KeyCode::Char('c'),
         KeyModifiers::CONTROL,
         Action::Quit,

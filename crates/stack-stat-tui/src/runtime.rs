@@ -262,7 +262,8 @@ fn intro_key_action(key: KeyEvent) -> IntroKeyAction {
     if !matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
         return IntroKeyAction::Ignore;
     }
-    if (key.code == KeyCode::Char('q') && key.modifiers == KeyModifiers::NONE)
+    if (matches!(key.code, KeyCode::Char('q') | KeyCode::Esc)
+        && key.modifiers == KeyModifiers::NONE)
         || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
     {
         IntroKeyAction::Quit
@@ -280,6 +281,10 @@ mod tests {
     fn intro_quit_keys_exit_while_other_presses_skip() {
         assert_eq!(
             intro_key_action(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE)),
+            IntroKeyAction::Quit
+        );
+        assert_eq!(
+            intro_key_action(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
             IntroKeyAction::Quit
         );
         assert_eq!(
