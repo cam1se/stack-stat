@@ -14,7 +14,6 @@ flowchart LR
     RP[release-please]
     CI[Rust CI matrix]
     Release[Release builds and checksums]
-    Pages[Documentation site and rustdoc]
   end
   subgraph Users
     Installer[Install scripts]
@@ -24,7 +23,6 @@ flowchart LR
   Manifest --> RP
   RP --> CI --> Release --> Installer
   Release --> Update
-  Manifest --> Pages
 ```
 
 The release-please workflow uses the repository-scoped `GH_ACCESS_TOKEN` Actions secret so tag pushes trigger the release workflow. The [contributor guide](../../CONTRIBUTING.md) describes permission and rotation requirements. [System context](01-l1-context.md) and [containers](02-l2-containers.md) cover runtime architecture, not packaging.

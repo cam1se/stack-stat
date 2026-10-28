@@ -85,4 +85,4 @@ Stack discovery must precede the existing aliased detail/comparison query: entry
 - [Providers and store](../architecture/05-providers-and-store.md): read transport, normalization, and action failures.
 - [System context](../architecture/01-l1-context.md): GitHub authority and extension scope.
 - [TUI](../architecture/06-tui.md): preflight, confirmation, and not-in-stack behavior.
-- [Troubleshooting](../user/troubleshooting.md): missing PRs, extension installation, and local tracking.
+- [Troubleshooting](../../README.md#troubleshooting): missing PRs, extension installation, and local tracking.
