@@ -1,6 +1,6 @@
-# Records docs/user/assets/demo.gif from the fictional demo stack (crates/stack-stat-tui/examples/demo.rs).
+# Records assets/demo.gif from the fictional demo stack (crates/stack-stat-tui/examples/demo.rs).
 # Run from the repository root: make demo-gif
-Output "docs/user/assets/demo.gif"
+Output "assets/demo.gif"
 
 Require cargo
 

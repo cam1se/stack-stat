@@ -3,7 +3,7 @@
 //! Run with `make demo`. The stack is fictional and covers every layer verdict and issue
 //! category; one layer's running checks finish after a few seconds so the spinner and change
 //! flash are visible. Fakes replace Git, GitHub, and the status store; only the runtime's
-//! background release check still calls `gh`. `docs/user/assets/demo.tape` records the
+//! background release check still calls `gh`. `assets/demo.tape` records the
 //! published gif from this example.
 
 use std::{

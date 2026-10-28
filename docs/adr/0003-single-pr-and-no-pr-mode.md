@@ -40,5 +40,5 @@ Startup still requires authenticated `gh`, but no stack extension. Only stacked 
 - [Providers and store](../architecture/05-providers-and-store.md): discovery normalization, trunk selection, and action adapters.
 - [Terminal application](../architecture/06-tui.md): mode-aware actions and no-PR presentation.
 - [System context](../architecture/01-l1-context.md): read authority and extension scope.
-- [User guide](../user/index.md): single-mode usage and `Next to merge`.
-- [Troubleshooting](../user/troubleshooting.md): no PR, disabled actions, and upstream errors.
+- [README](../../README.md#use): single-mode usage and `Next to merge`.
+- [Troubleshooting](../../README.md#troubleshooting): no PR, disabled actions, and upstream errors.

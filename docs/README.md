@@ -15,8 +15,7 @@
 
 | Location | Content | Lifetime |
 |---|---|---|
-| Root [README](../README.md) | Summary and install pointer | Living |
-| [User docs](user/) | Installation, usage, configuration; published on [GitHub Pages](https://cam1se.github.io/stack-stat/) | Living |
+| Root [README](../README.md) | Install, usage, configuration, local checks, and troubleshooting | Living |
 | Root [AGENTS.md](../AGENTS.md) | Contributor and agent workflow | Living |
 | [Architecture](architecture/01-l1-context.md) | Context, crate boundaries, rationale, extending recipes | Living |
 | [ADRs](adr/README.md) | Significant decisions and alternatives | Append-only |
@@ -31,7 +30,7 @@ Read in this order:
 |---|---|
 | [01 Context](architecture/01-l1-context.md) | Users and external systems |
 | [02 Containers](architecture/02-l2-containers.md) | Binary, library, and local data |
-| [03 Distribution](architecture/03-distribution.md) | Versioning, packages, and documentation site |
+| [03 Distribution](architecture/03-distribution.md) | Versioning and packages |
 | [04 Domain and config](architecture/04-domain-and-config.md) | Model vocabulary and configuration precedence |
 | [05 Providers and store](architecture/05-providers-and-store.md) | CLI adapters and local check retention |
 | [06 Terminal application](architecture/06-tui.md) | App modes, polling, effects, and rendering |
