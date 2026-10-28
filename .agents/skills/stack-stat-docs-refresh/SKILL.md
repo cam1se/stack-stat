@@ -7,7 +7,7 @@ description: Use for a repository-wide documentation audit, refresh, or sweep, i
 
 Read [documentation conventions](../../../docs/README.md). A change is complete only when statements are accurate, links resolve, and commands correspond to the actual workspace.
 
-1. Check [plans](../../../docs/plans/) for shipped work. Invoke `stack-stat-docs-absorb-plan` for completed plans; leave in-flight plans alone.
+1. Check `docs/plans/` for shipped work; the directory exists only while a plan is in flight, so skip this step when it is absent. Invoke `stack-stat-docs-absorb-plan` for completed plans; leave in-flight plans alone.
 2. Resolve every local Markdown link in root README/AGENTS and living docs; fix dead links instead of merely reporting them.
 3. Compare architecture claims, crate names, command examples, and Mermaid nodes with code. Fix inaccuracies; flag a section that cannot be corrected without a design change.
 4. Remove rot-prone counts, duplicated signatures, exhaustive inventories, and filler; retain meaningful rationale.

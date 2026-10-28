@@ -5,7 +5,7 @@ description: Use after a plan ships to fold durable structure and decisions into
 
 # Absorb a shipped plan
 
-Read the corresponding design in [specs](../../../docs/specs/), the implementation [plan and notes](../../../docs/plans/), and the current code. Findings from implementation take precedence over intentions when they differ. Leave unshipped plans alone.
+Read the design in `docs/specs/`, the implementation plan and notes in `docs/plans/`, and the current code. These point-in-time directories exist only while work is in flight and are absent when nothing is pending; if neither exists, there is nothing to absorb. Findings from implementation take precedence over intentions when they differ. Leave unshipped plans alone.
 
 Classify each lasting finding:
 - Current subsystem structure or an extending recipe belongs in [architecture](../../../docs/architecture/).
