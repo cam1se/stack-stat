@@ -24,6 +24,8 @@ For build, focused test, and commit commands, see [AGENTS.md](AGENTS.md). System
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/). The authoritative types and scopes are in [`.gitmessage`](.gitmessage). Update documentation alongside the change.
 
+Runtime dependency bumps use `fix(deps):` so release-please cuts a patch release; `chore` commits never release. Dependabot is configured to do this for production Cargo dependencies. Development-only bumps and the automated `chore(build): sync Cargo.lock` commit stay `chore`.
+
 ## Repository setup
 
 The release-please workflow uses the `GH_ACCESS_TOKEN` Actions repository secret. Its value is a fine-grained personal access token owned by `cam1se`, limited to this repository. Give it **Contents**, **Pull requests**, and **Issues** repository permissions at Read and write; Metadata read-only is automatic. Rotate it before expiration. Set or rotate it through `gh secret set GH_ACCESS_TOKEN --repo cam1se/stack-stat` using stdin or the interactive prompt, never by putting the value in a command argument, repository file, or chat. Only the secret name can be listed with `gh secret list --repo cam1se/stack-stat`.

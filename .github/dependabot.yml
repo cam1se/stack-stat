@@ -6,6 +6,10 @@ updates:
       interval: weekly
       day: monday
     assignees: [cam1se]
+    commit-message:
+      prefix: fix
+      prefix-development: chore
+      include: scope
     groups:
       stack-stat-prod:
         dependency-type: production
