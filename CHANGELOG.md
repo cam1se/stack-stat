@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/cam1se/stack-stat/compare/v1.0.1...v1.0.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* **deps:** bump the stack-stat-prod group with 2 updates ([a6c487f](https://github.com/cam1se/stack-stat/commit/a6c487fc081f9741f4aad5de53788d53469cccfd))
+
 ## [1.0.1](https://github.com/cam1se/stack-stat/compare/v1.0.0...v1.0.1) (2026-10-21)
 
 
