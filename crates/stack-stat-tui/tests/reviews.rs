@@ -6,7 +6,7 @@ use stack_stat_tui::{
     theme::{ColorDepth, Theme},
     ui,
 };
-use support::{PrBuilder, TestScenario, assert_row_contains, find_body_row};
+use support::{ConfigBuilder, PrBuilder, TestScenario, assert_row_contains, find_body_row};
 
 #[tokio::test]
 async fn review_column_is_yellow_text_only_when_a_review_is_required() {
@@ -48,4 +48,33 @@ async fn review_column_is_yellow_text_only_when_a_review_is_required() {
     assert_eq!(colored(required, "◷ required"), theme.warning);
     assert_eq!(colored(requested, "◷ pending"), theme.warning);
     assert_ne!(colored(none, "—"), theme.warning);
+}
+
+#[tokio::test]
+async fn github_approval_by_a_hidden_bot_is_not_masked_by_pending_requests() {
+    let (mut app, _) = TestScenario::builder()
+        .stack("main", &["botok"])
+        .pr(
+            "botok",
+            PrBuilder::new(1)
+                .ready()
+                .approved()
+                .bot_review("copilot-pull-request-reviewer")
+                .pending_review(),
+        )
+        .config(ConfigBuilder::new().show_bots(false))
+        .current_branch("botok")
+        .build()
+        .into_app();
+    app.poll_once(Source::All).await;
+
+    let theme = Theme::for_depth(ColorDepth::TrueColor);
+    let mut terminal = Terminal::new(TestBackend::new(120, 40)).unwrap();
+    terminal
+        .draw(|frame| ui::render(frame, &app, &theme))
+        .unwrap();
+    let buffer = terminal.backend().buffer();
+
+    let row = find_body_row(buffer, "#1").unwrap();
+    assert_row_contains(buffer, row, &["#1", "✔ approved (bot)"]);
 }

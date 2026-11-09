@@ -96,17 +96,19 @@ pub(super) fn review_label(
     let Some(pr) = &branch.pr else {
         return (missing_pr_label(branch), Health::Muted);
     };
-    let summary = pr.review_summary(show_bots);
-    let summary = if pr.reviews.is_empty() {
-        match pr.review_decision {
-            ReviewDecision::Approved => ReviewSummary::Approved,
-            ReviewDecision::ChangesRequested => ReviewSummary::ChangesRequested,
-            ReviewDecision::ReviewRequired => ReviewSummary::Pending,
-            ReviewDecision::None => summary,
+    let visible = pr.review_summary(show_bots);
+    // GitHub's decision is authoritative for approval: pending reviewer requests
+    // and the bot display filter must not mask it.
+    let summary = match pr.review_decision {
+        ReviewDecision::Approved if visible != ReviewSummary::ChangesRequested => {
+            ReviewSummary::Approved
         }
-    } else {
-        summary
+        ReviewDecision::ChangesRequested => ReviewSummary::ChangesRequested,
+        ReviewDecision::ReviewRequired if pr.reviews.is_empty() => ReviewSummary::Pending,
+        _ => visible,
     };
+    let approved_by_hidden_bot =
+        summary == ReviewSummary::Approved && visible != ReviewSummary::Approved;
     let requested = pr
         .reviews
         .iter()
@@ -121,6 +123,9 @@ pub(super) fn review_label(
         )
     } else {
         match summary {
+            ReviewSummary::Approved if approved_by_hidden_bot => {
+                ("✔", "approved (bot)", Health::Success)
+            }
             ReviewSummary::Approved => ("✔", "approved", Health::Success),
             ReviewSummary::ChangesRequested => ("↺", "changes", Health::Failure),
             ReviewSummary::Pending => ("◷", "pending", Health::Running),
@@ -130,7 +135,7 @@ pub(super) fn review_label(
     if !full {
         return (icon.into(), health);
     }
-    if expanded {
+    if expanded && !approved_by_hidden_bot {
         let names: Vec<_> = pr
             .reviews
             .iter()
