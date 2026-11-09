@@ -336,11 +336,11 @@ async fn bot_review_visibility_toggles_in_detail_pane() {
         .build()
         .into_app();
     app.poll_once(Source::All).await;
-    assert!(find_row(&draw(&app, 120, 28), "dependabot[bot]").is_none());
+    let visible = draw(&app, 120, 28);
+    assert!(find_row(&visible, "dependabot[bot]").is_some());
+    assert!(find_row(&visible, "(bot)").is_some());
     app.handle_key(key('b'));
-    let buf = draw(&app, 120, 28);
-    assert!(find_row(&buf, "dependabot[bot]").is_some());
-    assert!(find_row(&buf, "(bot)").is_some());
+    assert!(find_row(&draw(&app, 120, 28), "dependabot[bot]").is_none());
 }
 
 #[tokio::test]

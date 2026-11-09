@@ -85,8 +85,9 @@ async fn navigation_refresh_and_unbound_enter_tab_have_distinct_actions() {
         )))]
     );
     assert!(handles.github.recorded_actions().is_empty());
+    assert!(app.show_bots(), "bot reviews are visible by default");
     app.handle_key(key('b'));
-    assert!(app.show_bots());
+    assert!(!app.show_bots());
     app.handle_key(key('q'));
 }
 
@@ -230,7 +231,7 @@ async fn every_normal_mode_binding_has_its_documented_effect() {
             Action::Refresh => assert_eq!(effects, [Effect::Refresh(Source::All)]),
             Action::Filter => assert_eq!(app.mode(), &Mode::Filter),
             Action::Sort => assert_eq!(app.sort(), stack_stat_tui::app::SortOrder::PrNumber),
-            Action::ToggleBots => assert!(app.show_bots()),
+            Action::ToggleBots => assert!(!app.show_bots(), "toggles away from the default"),
             Action::Help => assert_eq!(app.mode(), &Mode::Help),
             Action::Quit => assert_eq!(effects, [Effect::Quit]),
         }
