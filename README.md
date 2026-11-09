@@ -97,7 +97,7 @@ test = { description = "cargo test --workspace --locked --no-fail-fast" }
 
 [reviews]
 bots = ["ci-bot"]
-show_bots = false
+show_bots = true
 gate_on_unresolved_threads = false
 
 [rebase]

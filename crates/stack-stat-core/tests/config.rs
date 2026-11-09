@@ -15,7 +15,7 @@ fn absent_files_use_defaults() {
     assert_eq!(config.poll.github, 30);
     assert_eq!(config.poll.github_active, 15);
     assert_eq!(config.poll.store, 2);
-    assert!(!config.reviews.show_bots);
+    assert!(config.reviews.show_bots);
     assert!(!config.reviews.gate_on_unresolved_threads);
     assert!(!config.rebase.onto_trunk);
     assert_eq!(config.display.reviews_default, ReviewsDefault::Collapsed);

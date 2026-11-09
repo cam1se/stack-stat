@@ -55,15 +55,25 @@ pub struct LocalCheckConfig {
 }
 
 /// Known automated reviewers and initial visibility.
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct ReviewsConfig {
     /// Review logins the repository identifies as bots.
     pub bots: Vec<String>,
     /// Whether unresolved review threads block readiness.
     pub gate_on_unresolved_threads: bool,
-    /// Whether bot reviews are visible before toggling them.
+    /// Whether bot reviews are visible before toggling them. Defaults to `true`.
     pub show_bots: bool,
+}
+
+impl Default for ReviewsConfig {
+    fn default() -> Self {
+        Self {
+            bots: Vec::new(),
+            gate_on_unresolved_threads: false,
+            show_bots: true,
+        }
+    }
 }
 
 /// Repository policy for whether trunk drift blocks readiness.
