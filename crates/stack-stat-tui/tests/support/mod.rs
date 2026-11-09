@@ -37,6 +37,10 @@ impl ConfigBuilder {
         self.0.reviews.bots.push(name.into());
         self
     }
+    pub fn show_bots(mut self, show: bool) -> Self {
+        self.0.reviews.show_bots = show;
+        self
+    }
     pub fn gate_on_unresolved_threads(mut self, gate: bool) -> Self {
         self.0.reviews.gate_on_unresolved_threads = gate;
         self
