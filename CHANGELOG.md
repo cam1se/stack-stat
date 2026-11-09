@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/cam1se/stack-stat/compare/v1.0.2...v1.1.0) (2026-11-09)
+
+
+### Features
+
+* **config:** show bot reviews by default ([69994f8](https://github.com/cam1se/stack-stat/commit/69994f8a65673922c5a2944c3a890cb42009c582))
+
+
+### Bug Fixes
+
+* **deps:** bump the stack-stat-prod group across 1 directory with 4 updates ([49ff7f6](https://github.com/cam1se/stack-stat/commit/49ff7f6b0760d3aa8bcc4fdebb77985c1804a117))
+* **tui:** show github approval in the reviews cell ([f48a0ed](https://github.com/cam1se/stack-stat/commit/f48a0ed342f2f8726eeed13ad1f134811c737c8a))
+
 ## [1.0.2](https://github.com/cam1se/stack-stat/compare/v1.0.1...v1.0.2) (2026-10-28)
 
 
