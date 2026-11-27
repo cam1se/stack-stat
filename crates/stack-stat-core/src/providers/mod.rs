@@ -8,14 +8,20 @@ use async_trait::async_trait;
 use crate::model::LocalSync;
 
 pub mod branch_dir;
+mod change_probe;
 mod file_store;
+mod gated;
 mod git_cli;
 mod github_cli;
 pub mod graphql;
 mod push_remote;
+mod rest_probe;
+pub use change_probe::{ChangeProbe, ProbeOutcome, classify_rest_status};
 pub use file_store::FileStatusStore;
+pub use gated::{ChangeGatedProvider, GateStats};
 pub use git_cli::{CliGitProvider, DETACHED_HEAD};
 pub use github_cli::{CliGitHubProvider, classify_graphql_result, classify_sync_output};
+pub use rest_probe::RestChangeProbe;
 
 mod retention;
 mod types;
@@ -68,6 +74,10 @@ pub trait GitHubProvider: Send + Sync {
         &self,
         stack: &StackViewResponse,
     ) -> std::result::Result<StackDetailsResponse, GitHubError>;
+    /// Discard any cached GitHub state so the next poll queries GitHub in full.
+    ///
+    /// Providers that cache nothing keep the default no-op.
+    fn invalidate(&self) {}
     /// Open a PR in a browser.
     async fn open_pr_in_browser(&self, number: u32) -> std::result::Result<(), GitHubError>;
     /// Checkout a stack branch or PR number and establish local stack tracking.

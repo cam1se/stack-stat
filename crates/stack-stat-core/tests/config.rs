@@ -15,6 +15,7 @@ fn absent_files_use_defaults() {
     assert_eq!(config.poll.github, 30);
     assert_eq!(config.poll.github_active, 15);
     assert_eq!(config.poll.store, 2);
+    assert_eq!(config.poll.github_full, 600);
     assert!(config.reviews.show_bots);
     assert!(!config.reviews.gate_on_unresolved_threads);
     assert!(!config.rebase.onto_trunk);
@@ -106,4 +107,15 @@ fn zero_poll_interval_is_rejected() {
     write(&repo.path().join(".stack-stat.toml"), "[poll]\nstore = 0\n");
     let err = Config::load(repo.path(), None).unwrap_err().to_string();
     assert!(err.contains("store"), "{err}");
+}
+
+#[test]
+fn zero_full_refresh_interval_is_rejected() {
+    let repo = tempfile::tempdir().unwrap();
+    write(
+        &repo.path().join(".stack-stat.toml"),
+        "[poll]\ngithub_full = 0\n",
+    );
+    let err = Config::load(repo.path(), None).unwrap_err().to_string();
+    assert!(err.contains("github_full"), "{err}");
 }

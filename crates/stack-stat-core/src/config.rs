@@ -96,6 +96,11 @@ pub struct PollConfig {
     pub store: u64,
     /// GitHub API refresh seconds while checks are running.
     pub github_active: u64,
+    /// Seconds between full GitHub refreshes that bypass the REST change check.
+    ///
+    /// Review-thread resolution cannot be detected through REST, so it appears at the
+    /// next full refresh at the latest.
+    pub github_full: u64,
 }
 
 impl Default for PollConfig {
@@ -105,6 +110,7 @@ impl Default for PollConfig {
             github: 30,
             store: 2,
             github_active: 15,
+            github_full: 600,
         }
     }
 }
@@ -154,6 +160,7 @@ struct UserPoll {
     github: Option<u64>,
     store: Option<u64>,
     github_active: Option<u64>,
+    github_full: Option<u64>,
 }
 
 impl Config {
@@ -217,12 +224,16 @@ impl Config {
             if let Some(value) = poll.github_active {
                 config.poll.github_active = value;
             }
+            if let Some(value) = poll.github_full {
+                config.poll.github_full = value;
+            }
         }
         for (key, value) in [
             ("git", config.poll.git),
             ("github", config.poll.github),
             ("store", config.poll.store),
             ("github_active", config.poll.github_active),
+            ("github_full", config.poll.github_full),
         ] {
             if value == 0 {
                 bail!("poll.{key} must be greater than zero");

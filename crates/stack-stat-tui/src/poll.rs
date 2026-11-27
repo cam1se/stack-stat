@@ -180,7 +180,7 @@ where
                 } else {
                     tokio::select! {
                         () = sleep(delay) => {},
-                        () = wake.notified() => {},
+                        () = wake.notified() => github.invalidate(),
                         changed = active_rx.changed() => { if changed.is_err() { break; } },
                         () = tx.closed() => break,
                     }

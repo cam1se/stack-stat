@@ -46,7 +46,7 @@ pub fn build_stack_query(owner: &str, repo: &str, stack: &StackViewResponse) -> 
         ));
         parent = &branch.name;
     }
-    query.push_str("} }");
+    query.push_str("} rateLimit { cost remaining } }");
     query
 }
 
