@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/cam1se/stack-stat/compare/v1.1.0...v1.2.0) (2026-11-27)
+
+
+### Features
+
+* **providers:** skip GraphQL polls while conditional REST checks return 304 ([54eaf0c](https://github.com/cam1se/stack-stat/commit/54eaf0c0badfa1111538184d53ad87753a380b67))
+
+
+### Bug Fixes
+
+* **deps:** bump the stack-stat-prod group across 1 directory with 3 updates ([93513ee](https://github.com/cam1se/stack-stat/commit/93513ee0ddfee13f82a8495500f0fbe3babbcdb3))
+
 ## [1.1.0](https://github.com/cam1se/stack-stat/compare/v1.0.2...v1.1.0) (2026-11-09)
 
 
