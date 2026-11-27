@@ -163,6 +163,7 @@ impl GitHubProvider for CliGitHubProvider {
             .await?;
         let raw = String::from_utf8(output.stdout)
             .map_err(|error| GitHubError::Parse(error.to_string()))?;
+        log_graphql_cost(&raw);
         classify_graphql_result(
             output.status.code().unwrap_or(1),
             &raw,
@@ -240,6 +241,39 @@ impl GitHubProvider for CliGitHubProvider {
             &["pr", "ready", &number, "--undo"]
         };
         self.run(args, MUTATION_TIMEOUT).await.map(|_| ())
+    }
+}
+
+/// Record the GraphQL points a detail query spent, when debug logging is enabled.
+fn log_graphql_cost(raw: &str) {
+    #[derive(serde::Deserialize)]
+    struct Cost {
+        cost: u64,
+        remaining: u64,
+    }
+    #[derive(serde::Deserialize)]
+    struct Data {
+        #[serde(rename = "rateLimit")]
+        rate_limit: Option<Cost>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Body {
+        data: Option<Data>,
+    }
+    if !tracing::enabled!(tracing::Level::DEBUG) {
+        return;
+    }
+    if let Ok(Body {
+        data: Some(Data {
+            rate_limit: Some(cost),
+        }),
+    }) = serde_json::from_str(raw)
+    {
+        tracing::debug!(
+            cost = cost.cost,
+            remaining = cost.remaining,
+            "GraphQL detail query"
+        );
     }
 }
 

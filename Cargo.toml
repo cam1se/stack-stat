@@ -28,6 +28,7 @@ tachyonfx = { version = "0.25", default-features = false, features = ["std"] }
 tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process", "sync"] }
 toml = "1"
+ureq = "3"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 zip = { version = "9", default-features = false, features = ["deflate"] }

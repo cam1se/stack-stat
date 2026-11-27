@@ -71,10 +71,17 @@ async fn run() -> Result<()> {
             let (owner, repo) =
                 stack_stat_core::providers::CliGitHubProvider::resolve_repo(git.worktree_root())
                     .await?;
-            let github = stack_stat_core::providers::CliGitHubProvider::new(
+            let probe =
+                stack_stat_core::providers::RestChangeProbe::new(owner.clone(), repo.clone());
+            let cli = stack_stat_core::providers::CliGitHubProvider::new(
                 git.worktree_root().into(),
                 owner,
                 repo,
+            );
+            let github = stack_stat_core::providers::ChangeGatedProvider::new(
+                cli,
+                probe,
+                std::time::Duration::from_secs(config.poll.github_full),
             );
             let store = FileStatusStore::new(git.common_dir());
             stack_stat_tui::runtime::run(Arc::new(git), Arc::new(github), Arc::new(store), config)

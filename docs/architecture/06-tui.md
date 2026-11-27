@@ -52,7 +52,7 @@ Startup is runtime-owned rather than App-owned: before the first GitHub outcome 
 
 ## Refresh policy
 
-Git and the local store poll independently at their configured intervals. GitHub polls more often while checks are running or queued, and pauses after a rate-limit error until a parseable reset or the fallback delay. A forced refresh wakes pollers without waiting for their normal timers. Store cleanup waits for an initial Git branch map so it does not delete reports before learning which branches exist.
+Git and the local store poll independently at their configured intervals. GitHub polls more often while checks are running or queued, and pauses after a rate-limit error until a parseable reset or the fallback delay. A forced refresh wakes pollers without waiting for their normal timers, and also discards the GitHub change-detection cache so the next poll queries in full ([provider architecture](05-providers-and-store.md#change-detection-in-front-of-graphql)). Store cleanup waits for an initial Git branch map so it does not delete reports before learning which branches exist.
 
 ## Extending a keybinding
 
